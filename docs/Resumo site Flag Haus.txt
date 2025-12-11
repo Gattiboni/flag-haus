@@ -1,0 +1,150 @@
+Resumo site Flag Haus
+
+MUST HAVE
+
+Home
+Sobre
+Serviços
+Agendamento
+Blog
+Contato
+Políticas
+
+NICE TO HAVE
+
+Serviços detalhados
+Depoimentos
+FAQ
+Landing pages
+Press
+
+FOR LATER
+
+Área do cliente
+Loja completa
+Recursos avançados
+Dashboard
+Formulários inteligentes
+
+---
+
+
+REFERENCIAS:
+https://www.sitebuilderreport.com/inspiration/tattoo-websites
+https://www.nyctattooshop.com/
+https://createtoday.io/examples?category=tattoo&platform=wordpress
+https://glossgenius.com/blog/tattoo-website-design
+https://qodeinteractive.com/theme-tag/tattoo-studio-wordpress-themes/
+https://wordpress.org/themes/tattoo-studio/
+https://www.templatemonster.com/wordpress-themes/leoink-creative-tattoo-studio-elementor-wordpress-theme-352491.html
+https://www.sliderrevolution.com/design/tattoo-website-templates/
+
+
+# Arquitetura Inicial do Site – Flag Haus / Julio Bandeiras  
+Documentação base (v1)
+
+---
+
+## 1) Embedding do Instagram na Home
+A Home será o local do embedding do Instagram.  
+Formato (carrossel, grid etc.) depende do template e do plugin escolhido.
+
+Plugins recomendados:
+- Smash Balloon Instagram Feed  
+- Spotlight Social Photo Feed  
+
+---
+
+## 2) Políticas no Rodapé
+O rodapé terá apenas **links** para as páginas completas:
+- Política de Privacidade  
+- Termos de Uso  
+
+Nada de texto extenso no footer.
+
+---
+
+## 3) Conteúdo Básico do Rodapé
+- Endereço  
+- Email  
+- Telefone (se aplicável)  
+- Link do Instagram  
+- Link do WhatsApp  
+- Navegação reduzida (Home, Blog, Contato...)  
+- Links legais (políticas)
+
+---
+
+## 4) Contato no Cabeçalho
+Mesmo com redundância no rodapé, a página **Contato** deve estar no menu principal.
+
+---
+
+## 5) Agendamentos + CRM Básico
+A página de agendamento deve aceitar:
+- Formulário  
+- Armazenamento interno de dados (WordPress)  
+- Integração futura com CRM ou automação  
+
+**WordPress já resolve isso**, sem stack externo.
+
+Plugins possíveis:
+- Amelia  
+- Bookly  
+- Calendly (embed)  
+- FluentCRM  
+- Jetpack CRM  
+
+Supabase é opcional e só fará sentido em uma fase mais avançada (escala, automações próprias, dashboards personalizados).
+
+---
+
+## 6) Itens Adicionais Importantes
+
+### a) Página 404 customizada
+Refinar experiência e reforçar branding.
+
+### b) Menu Mobile
+Pensar desde o início no comportamento mobile.
+
+### c) Configuração inicial de SEO técnico
+- Permalinks  
+- Sitemap  
+- Robots.txt  
+- Titles + metas  
+- Schema básico  
+
+### d) Performance
+- LiteSpeed Cache (se o servidor suportar)  
+- ou WP Rocket  
+
+### e) Segurança
+- Firewall (Wordfence / Solid Security)  
+- Proteção contra brute force  
+
+### f) LGPD / GDPR
+- Aviso de cookies  
+- Consentimento básico  
+
+### g) Favicon + logos em múltiplos tamanhos
+Configurar assets de marca corretamente.
+
+---
+
+## Resumo Geral (Checklist)
+- [x] Embedding do Insta na Home  
+- [x] Políticas no rodapé (links apenas)  
+- [x] Rodapé completo com dados essenciais  
+- [x] Contato no cabeçalho  
+- [x] Agendamentos operando com CRM básico em WordPress  
+- [x] Supabase deixado para futuro, não necessário agora  
+- [x] SEO técnico configurado  
+- [x] Performance configurada  
+- [x] Segurança mínima ativa  
+- [x] 404 customizada  
+- [x] Menu mobile  
+- [x] LGPD básica  
+- [x] Favicon + assets  
+
+---
+
