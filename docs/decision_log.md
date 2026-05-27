@@ -1,325 +1,522 @@
 # Decision Log – Flag Haus / Julio Bandeiras
+
 Versão inicial – 08/12/2025
 
-Este documento registra decisões técnicas, operacionais e estratégicas do projeto, seguindo o formato padrão de entradas numeradas.
-Cada entrada contém: **Decisão, Contexto, Motivos e Impacto**.
+Este documento registra decisões técnicas, operacionais e estratégicas do
+projeto, seguindo o formato padrão de entradas numeradas. Cada entrada contém:
+**Decisão, Contexto, Motivos e Impacto**.
 
 ---
 
-## 001 — 2025-12-08  
-### Decisão: Adoção do WordPress como Plataforma Oficial do Site
-**Contexto**  
-Foram avaliadas alternativas: Squarespace, Wix, builders visuais e stack custom. O projeto demanda escalabilidade, SEO técnico sólido, integrações futuras com CRM e automações.
+## 001 — 2025-12-08
 
-**Motivos**  
-- Maior flexibilidade para crescer no longo prazo.  
-- Suporte maduro para SEO, blog e integrações.  
-- Liberdade para customização de tema e automações futuras.  
+### Decisão: Adoção do WordPress como Plataforma Oficial do Site
+
+**Contexto**\
+Foram avaliadas alternativas: Squarespace, Wix, builders visuais e stack custom.
+O projeto demanda escalabilidade, SEO técnico sólido, integrações futuras com
+CRM e automações.
+
+**Motivos**
+
+- Maior flexibilidade para crescer no longo prazo.
+- Suporte maduro para SEO, blog e integrações.
+- Liberdade para customização de tema e automações futuras.
 - Ecossistema modular consistente.
 
-**Impacto**  
-- WordPress define toda a base do projeto.  
-- Documentação técnica (stack) orientada a WP.  
+**Impacto**
+
+- WordPress define toda a base do projeto.
+- Documentação técnica (stack) orientada a WP.
 - Facilita CRM leve, agendamentos, blog e automações.
 
 ---
 
-## 002 — 2025-12-08  
-### Decisão: Definição das Páginas MUST HAVE, NICE TO HAVE e FOR LATER
-**Contexto**  
-Necessidade de estabilizar a arquitetura inicial do site antes de wireframes, conteúdo e implementação.
+## 002 — 2025-12-08
 
-**Motivos**  
+### Decisão: Definição das Páginas MUST HAVE, NICE TO HAVE e FOR LATER
+
+**Contexto**\
+Necessidade de estabilizar a arquitetura inicial do site antes de wireframes,
+conteúdo e implementação.
+
+**Motivos**\
 Criar um escopo claro que permita construção incremental.
 
-**Impacto**  
+**Impacto**\
 Base da arquitetura e backlog futuro estabilizados.
 
-**MUST HAVE**  
-- Home  
-- Sobre  
-- Serviços  
-- Agendamento  
-- Blog  
-- Post Individual  
-- Contato  
+**MUST HAVE**
+
+- Home
+- Sobre
+- Serviços
+- Agendamento
+- Blog
+- Post Individual
+- Contato
 - Políticas (Privacidade + Termos)
 
-**NICE TO HAVE**  
-- Serviços detalhados  
-- Depoimentos  
-- FAQ  
-- Landing Pages  
+**NICE TO HAVE**
+
+- Serviços detalhados
+- Depoimentos
+- FAQ
+- Landing Pages
 - Press
 
-**FOR LATER**  
-- Área do Cliente  
-- Loja  
-- Recursos Avançados  
-- Dashboard interno  
+**FOR LATER**
+
+- Área do Cliente
+- Loja
+- Recursos Avançados
+- Dashboard interno
 - Formulários Inteligentes
 
 ---
 
-## 003 — 2025-12-08  
-### Decisão: Embedding do Instagram na Home
-**Contexto**  
-O branding requer movimento, presença e frescor constante. A Home é o espaço mais lógico.
+## 003 — 2025-12-08
 
-**Motivos**  
-- Reforçar presença digital.  
-- Integrar conteúdo recorrente ao SEO.  
+### Decisão: Embedding do Instagram na Home
+
+**Contexto**\
+O branding requer movimento, presença e frescor constante. A Home é o espaço
+mais lógico.
+
+**Motivos**
+
+- Reforçar presença digital.
+- Integrar conteúdo recorrente ao SEO.
 - Permitir modularidade do layout.
 
-**Impacto**  
+**Impacto**\
 Plugins definidos para avaliação: Smash Balloon ou Spotlight.
 
 ---
 
-## 004 — 2025-12-08  
+## 004 — 2025-12-08
+
 ### Decisão: Manter Página de Contato no Cabeçalho
-**Contexto**  
+
+**Contexto**\
 Mesmo com redundância no rodapé, decisões de UX priorizam acesso rápido.
 
-**Motivos**  
+**Motivos**\
 Reduz atrito de conversão e melhora experiência.
 
-**Impacto**  
+**Impacto**\
 Contato é item fixo do menu principal.
 
 ---
 
-## 005 — 2025-12-08  
-### Decisão: Políticas Como Links no Rodapé
-**Contexto**  
-Evitar poluição visual e manter conformidade legal.  
+## 005 — 2025-12-08
 
-**Motivos**  
+### Decisão: Políticas Como Links no Rodapé
+
+**Contexto**\
+Evitar poluição visual e manter conformidade legal.
+
+**Motivos**\
 Fica mais limpo, mais padrão e mais acessível.
 
-**Impacto**  
+**Impacto**\
 Rodapé concentra informações institucionais essenciais.
 
 ---
 
-## 006 — 2025-12-08  
-### Decisão: CRM Leve Interno via WordPress (FluentCRM ou Jetpack)
-**Contexto**  
-O projeto precisa capturar leads, tags, e armazenar contatos básicos para automações futuras.
+## 006 — 2025-12-08
 
-**Motivos**  
-- Leve, direto e já integrado ao WordPress.  
-- Evita stacks desnecessárias neste momento.  
+### Decisão: CRM Leve Interno via WordPress (FluentCRM ou Jetpack)
+
+**Contexto**\
+O projeto precisa capturar leads, tags, e armazenar contatos básicos para
+automações futuras.
+
+**Motivos**
+
+- Leve, direto e já integrado ao WordPress.
+- Evita stacks desnecessárias neste momento.
 - Integra naturalmente com formulários e agendamento.
 
-**Impacto**  
+**Impacto**\
 Supabase fica reservado para etapas avançadas.
 
 ---
 
-## 007 — 2025-12-08  
-### Decisão: Agendamentos via Plugin WP (Amelia / Bookly / Calendly)
-**Contexto**  
-O site precisa permitir marcações reais, registrar informações e enviar dados para CRM.
+## 007 — 2025-12-08
 
-**Motivos**  
+### Decisão: Agendamentos via Plugin WP (Amelia / Bookly / Calendly)
+
+**Contexto**\
+O site precisa permitir marcações reais, registrar informações e enviar dados
+para CRM.
+
+**Motivos**\
 WordPress tem plugins sólidos que resolvem tudo sem stack externa.
 
-**Impacto**  
+**Impacto**\
 Agendamento vira pilar funcional desde o lançamento.
 
 ---
 
-## 008 — 2025-12-08  
-### Decisão: Padronizar Segurança Mínima (Firewall, 2FA, Backup e Limite de Login)
-**Contexto**  
-WordPress é alvo de robôs 24/7 e precisa de proteção mesmo sem usuários externos.
+## 008 — 2025-12-08
 
-**Motivos**  
-- Evitar invasão do painel admin.  
-- Proteger CRM e agendamentos.  
+### Decisão: Padronizar Segurança Mínima (Firewall, 2FA, Backup e Limite de Login)
+
+**Contexto**\
+WordPress é alvo de robôs 24/7 e precisa de proteção mesmo sem usuários
+externos.
+
+**Motivos**
+
+- Evitar invasão do painel admin.
+- Proteger CRM e agendamentos.
 - Garantir integridade dos dados.
 
-**Impacto**  
+**Impacto**\
 Camada de segurança ativa desde a etapa de testes.
 
 ---
 
-## 009 — 2025-12-08  
+## 009 — 2025-12-08
+
 ### Decisão: Uso do Metabase como Ferramenta Oficial de Dashboards
-**Contexto**  
+
+**Contexto**\
 O Looker foi rejeitado por limitações irritantes e decisões de design absurdas.
 
-**Motivos**  
-- Metabase é flexível, amigável e escalável.  
-- Permite embed direto no site WordPress.  
+**Motivos**
+
+- Metabase é flexível, amigável e escalável.
+- Permite embed direto no site WordPress.
 - Opera bem com GA4, Meta e CRM.
 
-**Impacto**  
+**Impacto**\
 Stack de observabilidade definida para médio prazo.
 
 ---
 
-## 010 — 2025-12-08  
-### Decisão: Estrutura Geral da Stack (Stack.md)
-**Contexto**  
-Criar documento único que consolida decisões técnicas.  
+## 010 — 2025-12-08
 
-**Motivos**  
-- Evitar perda de contexto.  
-- Padronizar evolução do projeto.  
+### Decisão: Estrutura Geral da Stack (Stack.md)
+
+**Contexto**\
+Criar documento único que consolida decisões técnicas.
+
+**Motivos**
+
+- Evitar perda de contexto.
+- Padronizar evolução do projeto.
 - Facilitar onboarding futuro.
 
-**Impacto**  
+**Impacto**\
 Arquivo `stack.md` criado e vinculado ao repositório.
 
 ---
 
-## 011 — 2025-12-08  
+## 011 — 2025-12-08
+
 ### Decisão: Roadmap Técnico em 7 etapas
-**Contexto**  
+
+**Contexto**\
 O site precisa se desenvolver incrementalmente sem perder coerência.
 
-**Motivos**  
+**Motivos**\
 Definir trajetória realista entre MVP e maturidade.
 
-**Impacto**  
-Roadmap oficial: 1) MVP, 2) Landing pages, 3) Área do cliente, 4) Automações, 5) Supabase, 6) Dashboard, 7) Loja.
+**Impacto**\
+Roadmap oficial: 1) MVP, 2) Landing pages, 3) Área do cliente, 4) Automações, 5)
+Supabase, 6) Dashboard, 7) Loja.
 
 ---
 
-## 012 — 2025-12-08  
-### Decisão: Embedding do Instagram como parte da estratégia de SEO
-**Contexto**  
-Os posts servirão como extensão do blog para reforçar presença e conteúdo indexável.
+## 012 — 2025-12-08
 
-**Motivos**  
-- Atualização orgânica de conteúdo  
-- Aproveitamento de copies existentes  
+### Decisão: Embedding do Instagram como parte da estratégia de SEO
+
+**Contexto**\
+Os posts servirão como extensão do blog para reforçar presença e conteúdo
+indexável.
+
+**Motivos**
+
+- Atualização orgânica de conteúdo
+- Aproveitamento de copies existentes
 - Sinergia com imagem FH
 
-**Impacto**  
+**Impacto**\
 Home terá seção dinâmica alimentada pelo Instagram.
 
 ---
 
-## 013 — 2026-01-25  
+## 013 — 2026-01-25
+
 ### Decisão: Migração do domínio e ambiente WP para Hostinger (WordPress.org self‑hosted)
 
-**Contexto**  
-O projeto estava sendo configurado em WordPress.com, que exige plano Business para uso de temas/plugins avançados (ex.: Astra, Elementor, Page Scroll to ID), limitando a liberdade visual necessária para replicar referências como Saints Tattoos e Bang Bang. Ao mesmo tempo, o domínio `flaghaus.art` já estava registrado na Hostinger, mas apenas com DNS e e‑mail configurados, sem instalação ativa de WordPress.org.
+**Contexto**\
+O projeto estava sendo configurado em WordPress.com, que exige plano Business
+para uso de temas/plugins avançados (ex.: Astra, Elementor, Page Scroll to ID),
+limitando a liberdade visual necessária para replicar referências como Saints
+Tattoos e Bang Bang. Ao mesmo tempo, o domínio `flaghaus.art` já estava
+registrado na Hostinger, mas apenas com DNS e e‑mail configurados, sem
+instalação ativa de WordPress.org.
 
-**Motivos**  
-- Eliminar a dependência de planos pagos do WordPress.com para recursos básicos de customização.  
-- Unificar domínio, hospedagem, DNS, e e‑mail na Hostinger, simplificando operação e suporte.  
-- Permitir uso pleno de tema base leve (Astra) + page builder (Elementor) + CPTs e plugins específicos (Instagram, Artistas, agendamento) alinhados à arquitetura do projeto.  
-- Evitar dívida técnica em cima de temas FSE limitados e de ambiente gerenciado pelo WordPress.com.
+**Motivos**
 
-**Impacto**  
-- Instalação de um novo WordPress.org “limpo” na Hostinger, vinculado ao domínio `flaghaus.art`.  
-- DNS ajustado: registro A `@` apontando para o IP da hospedagem Hostinger (`185.245.180.219`), com propagação concluída e site já servindo o novo WP (tela padrão “Hello world”).  
-- WordPress.com deixa de ser o ambiente principal; passa a ser apenas uma conta legada, enquanto toda a evolução do site (tema, estrutura de páginas, branding, integrações) acontecerá exclusivamente no WordPress.org self‑hosted.  
-- Liberação de caminho para implementar o layout one‑page dinâmico, seção Artistas e embeds de Instagram exatamente como definido na arquitetura e no branding book.
+- Eliminar a dependência de planos pagos do WordPress.com para recursos básicos
+  de customização.
+- Unificar domínio, hospedagem, DNS, e e‑mail na Hostinger, simplificando
+  operação e suporte.
+- Permitir uso pleno de tema base leve (Astra) + page builder (Elementor) + CPTs
+  e plugins específicos (Instagram, Artistas, agendamento) alinhados à
+  arquitetura do projeto.
+- Evitar dívida técnica em cima de temas FSE limitados e de ambiente gerenciado
+  pelo WordPress.com.
 
+**Impacto**
+
+- Instalação de um novo WordPress.org “limpo” na Hostinger, vinculado ao domínio
+  `flaghaus.art`.
+- DNS ajustado: registro A `@` apontando para o IP da hospedagem Hostinger
+  (`185.245.180.219`), com propagação concluída e site já servindo o novo WP
+  (tela padrão “Hello world”).
+- WordPress.com deixa de ser o ambiente principal; passa a ser apenas uma conta
+  legada, enquanto toda a evolução do site (tema, estrutura de páginas,
+  branding, integrações) acontecerá exclusivamente no WordPress.org self‑hosted.
+- Liberação de caminho para implementar o layout one‑page dinâmico, seção
+  Artistas e embeds de Instagram exatamente como definido na arquitetura e no
+  branding book.
 
 ---
 
-## 014 — 2026-01-26  
+## 014 — 2026-01-26
+
 ### Decisão: Abandono do Gutenberg/Astra para Layout e Motion; Adoção de Elementor + Tema Leve
 
-**Contexto**  
-Durante a implementação da Home, tornou-se evidente que a combinação Gutenberg + Astra impõe restrições estruturais severas para layouts com camadas independentes, backgrounds animados e motion contínuo. Mesmo soluções tecnicamente corretas geraram fricção excessiva, baixa previsibilidade e alto custo cognitivo, especialmente considerando o plano de incorporar múltiplas animações ao longo do site.
+**Contexto**\
+Durante a implementação da Home, tornou-se evidente que a combinação Gutenberg +
+Astra impõe restrições estruturais severas para layouts com camadas
+independentes, backgrounds animados e motion contínuo. Mesmo soluções
+tecnicamente corretas geraram fricção excessiva, baixa previsibilidade e alto
+custo cognitivo, especialmente considerando o plano de incorporar múltiplas
+animações ao longo do site.
 
-**Motivos**  
-- Gutenberg não foi projetado para motion complexo nem para separação clara entre canvas visual e conteúdo.  
-- Astra introduz containers e regras implícitas que dificultam controle preciso de largura, overflow e camadas.  
-- O projeto Flag Haus tem motion como linguagem conceitual (tempo, gesto, presença), não como ornamento.  
-- Necessidade de preservar liberdade criativa futura sem lock-in rígido de animação.  
-- Redução deliberada de custo emocional e dívida técnica já nas primeiras etapas do projeto.
+**Motivos**
 
-**Decisão**  
-- Adotar **Elementor como engine principal de layout**.  
-- Utilizar **tema Hello Elementor** como base neutra, sem estilos ou containers opinativos.  
-- Abandonar definitivamente Gutenberg para construção de layout da Home e páginas principais.  
-- Tratar motion como camada independente do conteúdo, garantindo flexibilidade e iteração futura.
+- Gutenberg não foi projetado para motion complexo nem para separação clara
+  entre canvas visual e conteúdo.
+- Astra introduz containers e regras implícitas que dificultam controle preciso
+  de largura, overflow e camadas.
+- O projeto Flag Haus tem motion como linguagem conceitual (tempo, gesto,
+  presença), não como ornamento.
+- Necessidade de preservar liberdade criativa futura sem lock-in rígido de
+  animação.
+- Redução deliberada de custo emocional e dívida técnica já nas primeiras etapas
+  do projeto.
 
-**Impacto**  
-- Conteúdo textual foi extraído e documentado separadamente, preservando 100% do material.  
-- Layout e animações passam a ser reconstruídos sobre base previsível e escalável.  
-- O projeto ganha liberdade para evoluir visualmente sem reestruturações recorrentes.  
+**Decisão**
+
+- Adotar **Elementor como engine principal de layout**.
+- Utilizar **tema Hello Elementor** como base neutra, sem estilos ou containers
+  opinativos.
+- Abandonar definitivamente Gutenberg para construção de layout da Home e
+  páginas principais.
+- Tratar motion como camada independente do conteúdo, garantindo flexibilidade e
+  iteração futura.
+
+**Impacto**
+
+- Conteúdo textual foi extraído e documentado separadamente, preservando 100% do
+  material.
+- Layout e animações passam a ser reconstruídos sobre base previsível e
+  escalável.
+- O projeto ganha liberdade para evoluir visualmente sem reestruturações
+  recorrentes.
 - Redução significativa de risco de refatorações forçadas ao longo do roadmap.
-
 
 ---
 
 ## 2026-05-27 — CRM Flag Haus: decisões arquiteturais do schema base
 
 ### Contexto
-Construção incremental do schema do CRM Flag Haus em Supabase hosted, projeto `inuboxnkbtkvtxbupmqb`. Base para questionário de anamnese, página admin, e ETL futuro com Google Ads.
+
+Construção incremental do schema do CRM Flag Haus em Supabase hosted, projeto
+`inuboxnkbtkvtxbupmqb`. Base para questionário de anamnese, página admin, e ETL
+futuro com Google Ads.
 
 ### Decisões tomadas
 
 **Entidade cliente: tabela única `people` com `lifecycle_stage`**
-- Padrão consolidado em CRMs modernos (HubSpot, Attio, Folk) — pesquisa de benchmark feita em 26/05.
+
+- Padrão consolidado em CRMs modernos (HubSpot, Attio, Folk) — pesquisa de
+  benchmark feita em 26/05.
 - Evita duplicação lead→cliente, simplifica FKs, permite análise longitudinal.
-- Identidade frouxa: apenas `phone` obrigatório, demais atributos preenchidos incrementalmente.
+- Identidade frouxa: apenas `phone` obrigatório, demais atributos preenchidos
+  incrementalmente.
 
 **UUIDs v7 via função SQL pure (não extensão)**
+
 - Extensão `pg_uuidv7` não disponível no Supabase hosted (em fila há +2 anos).
-- Função `public.uuid_generate_v7()` implementada em SQL puro, performance equivalente.
-- v7 escolhido sobre v4 pela ordenação temporal (melhor performance de índice B-tree).
+- Função `public.uuid_generate_v7()` implementada em SQL puro, performance
+  equivalente.
+- v7 escolhido sobre v4 pela ordenação temporal (melhor performance de índice
+  B-tree).
 
 **ENUMs Postgres (não TEXT + CHECK)**
+
 - Decisão de rigidez: ENUM mostra intenção no schema, custo zero.
-- Trade-off aceito: migration obrigatória pra adicionar valor novo (alinhado com "incremental sem dívida").
-- Aplicado em `lifecycle_stage`, `job_status`, `user_role`. NÃO aplicado em `event_type` (mudaria muito).
+- Trade-off aceito: migration obrigatória pra adicionar valor novo (alinhado com
+  "incremental sem dívida").
+- Aplicado em `lifecycle_stage`, `job_status`, `user_role`. NÃO aplicado em
+  `event_type` (mudaria muito).
 
 **Geolocalização: dupla representação `lat/lng` + `geography`**
+
 - PostGIS ativado desde o início, evita migração futura.
 - Coluna `location` populada por trigger a partir de lat/lng.
-- Mantém compatibilidade com ferramentas que esperam float, habilita queries espaciais (ST_DWithin, ST_Distance).
+- Mantém compatibilidade com ferramentas que esperam float, habilita queries
+  espaciais (ST_DWithin, ST_Distance).
 
 **`on delete` diferenciado por natureza da tabela**
+
 - `jobs` → RESTRICT (negócio, protegido contra apagamento acidental).
-- `lifecycle_transitions`, `identity_links`, `customer_segments_snapshot` → CASCADE (logs subordinados).
+- `lifecycle_transitions`, `identity_links`, `customer_segments_snapshot` →
+  CASCADE (logs subordinados).
 - `events` → SET NULL (histórico sobrevive ao apagamento pra análise temporal).
 
 **`events` como tabela unificada (não separar funil de marketing)**
-- Discriminador `event_type` com convenção `namespace.action` (ex: `funnel.first_contact`, `marketing.ad_click`).
+
+- Discriminador `event_type` com convenção `namespace.action` (ex:
+  `funnel.first_contact`, `marketing.ad_click`).
 - Payload livre em JSONB.
 - Append-only (sem updated_at/deleted_at).
-- Fronteira entre funil e marketing é ambígua na prática — separar criaria reconciliação desnecessária.
+- Fronteira entre funil e marketing é ambígua na prática — separar criaria
+  reconciliação desnecessária.
 
 **Sem FK explícita de `user_roles.user_id` pra `auth.users`**
+
 - Tabela `auth` é território Supabase, refator deles quebraria FK.
 - Padrão recomendado pela própria doc Supabase.
 
 **Sem trigger automático de `lifecycle_transitions`**
+
 - Magia escondida descartada — inserção será explícita pela aplicação.
 - Permite registrar `changed_by` e `reason` com contexto da camada de aplicação.
 
 **Identificadores publicáveis vs sensíveis**
+
 - Publishable key é segura por design, pode aparecer em frontend/docs.
-- Direct connection string com senha = credencial root, deve ficar em `.env` (gitignored).
+- Direct connection string com senha = credencial root, deve ficar em `.env`
+  (gitignored).
 - Atualmente registrada com placeholder `[YOUR-PASSWORD]`.
 
 **RLS habilitada sem policies (Leva 3 adiada)**
-- 7 tabelas com `enable row level security` mas sem policies = banco fechado pra todos.
+
+- 7 tabelas com `enable row level security` mas sem policies = banco fechado pra
+  todos.
 - Estado seguro pra continuar desenvolvimento solo.
-- Adiamento consciente porque não há página admin nem usuários adicionais ainda — RLS protege contra terceiros, não contra o desenvolvedor solo.
-- Leva 3 (policies + Auth Hook + cadastro de usuários) será atacada quando a página admin entrar (Bloco 4 do plano de junho).
+- Adiamento consciente porque não há página admin nem usuários adicionais ainda
+  — RLS protege contra terceiros, não contra o desenvolvedor solo.
+- Leva 3 (policies + Auth Hook + cadastro de usuários) será atacada quando a
+  página admin entrar (Bloco 4 do plano de junho).
 
 ### Não-decisões (deixadas em aberto)
 
-- Critérios automáticos de transição entre lifecycle stages (ex: "lead → dormant após N dias sem evento"). Será definido quando houver volume mínimo de dados reais.
-- Segmentação RFM concreta. `rfm_segment` está como TEXT por enquanto, vira ENUM quando os cortes estiverem cravados.
-- Política de retenção/anonimização (LGPD). Soft delete via `deleted_at` está pronto; processo de anonimização pós-X meses fica pra depois.
+- Critérios automáticos de transição entre lifecycle stages (ex: "lead → dormant
+  após N dias sem evento"). Será definido quando houver volume mínimo de dados
+  reais.
+- Segmentação RFM concreta. `rfm_segment` está como TEXT por enquanto, vira ENUM
+  quando os cortes estiverem cravados.
+- Política de retenção/anonimização (LGPD). Soft delete via `deleted_at` está
+  pronto; processo de anonimização pós-X meses fica pra depois.
 
 ### Fonte de verdade
-SQL fonte vive no Supabase. Não versionado localmente por decisão consciente (evita drift entre dois lugares).
+
+SQL fonte vive no Supabase. Não versionado localmente por decisão consciente
+(evita drift entre dois lugares).
 
 ---
 
+## 2026-05-27 — Leva 0007: dados clínicos, consentimentos e motivações em tabelas separadas
 
-*(Novas entradas devem seguir este mesmo formato.)*
+### Contexto
 
+Após aprovação do copy v2 dos questionários (`/anamnese` e `/cadastro`), foi
+necessário decidir como persistir três naturezas distintas de dado: clínico
+(sensível LGPD), consentimentos (registro legal), e motivações declaradas
+(qualitativo). O princípio "incremental + zero dívida" exigiu decidir entre
+enriquecer `extra_data` em `people` ou criar tabelas dedicadas.
+
+### Decisões tomadas
+
+**`clinical_records` como tabela separada de `people`**
+
+- LGPD art. 5º trata dado de saúde como sensível — separação física tem vantagem
+  regulatória clara (justificativa de coleta, retenção e apagamento mais
+  auditável).
+- Wide table com colunas nomeadas em vez de JSONB único: poucos campos (10),
+  conhecidos, e auditoria se beneficia de tipos explícitos.
+- Uma linha por anamnese preenchida = uma linha por job. Cliente recorrente
+  acumula histórico (saúde muda entre sessões).
+- `job_id` nullable: anamnese pode ser preenchida antes do job ser formalmente
+  criado.
+- Append-only (sem `updated_at`, sem `deleted_at`). LGPD: apagamento via
+  processo explícito, não soft delete trivial.
+- `on delete restrict` em `person_id`: protege contra apagamento acidental,
+  exige fluxo deliberado de anonimização.
+
+**`consents` como tabela única com discriminador**
+
+- Uma tabela só (não uma por tipo), com ENUM `consent_type` ∈ {procedure, lgpd,
+  image, marketing}.
+- Append-only: cada renovação, revogação ou nova autorização vira linha nova.
+  Consentimento atual = mais recente por `(person_id, consent_type)`.
+- `granted BOOLEAN`: revogação também é evento registrado, não delete.
+- `valid_until` nullable: comporta consentimentos eternos (procedure, marketing)
+  e com expiração (LGPD anual recomendada).
+- `job_id` nullable: procedure sempre tem job, marketing/lgpd nunca têm, image
+  varia.
+- `on delete restrict` em `person_id`: mesma lógica de clinical — registro legal
+  sobrevive.
+
+**`motivations` como tabela separada com `on delete cascade`**
+
+- Diferente de clinical e consents — motivação é dado declarativo, não registro
+  legal.
+- `cascade` faz sentido: morre com a pessoa quando apagamento real acontece.
+- Append-only: cliente recorrente acumula motivações ao longo da vida.
+- `recorded_at` separado de `created_at`: permite registro retroativo via admin
+  (motivação declarada em conversa, registrada depois).
+- Sem schema interno no `content` por enquanto — texto livre. Quando houver
+  massa crítica, considerar categorização / embedding / RAG.
+
+**Não-decisão: `people.extra_data` permanece sem schema definido a priori**
+
+- Tentativa de definir chave-por-chave agora foi descartada como
+  overengineering.
+- Convenção: backend grava em snake_case conforme campos do form v2.
+- Promoção para colunas dedicadas só quando: (a) virar consulta frequente, (b)
+  padrão de uso estabilizar, (c) houver volume suficiente pra justificar índice.
+- Frente futura: RAG/embeddings sobre `extra_data` quando massa permitir.
+
+**Padrão de `source` em texto livre (não ENUM) em `consents` e `motivations`**
+
+- Origens podem crescer organicamente (futuras integrações: bot WhatsApp,
+  importação manual, etc).
+- Convenção documentada nos comments da coluna; ENUM seria rigidez sem ganho.
+
+**Padrão de relacionamento com `jobs`**
+
+- `clinical_records.job_id` → `on delete set null` (histórico clínico sobrevive
+  a job apagado).
+- `consents.job_id` → `on delete set null` (consentimento sobrevive).
+- `motivations.job_id` → `on delete set null` (motivação sobrevive ao job, mas
+  morre com pessoa).
+
+### Fonte de verdade
+
+SQL fonte no Supabase. Copy aprovado em `docs/copy_anamnese_v2_consolidado.md`.
+
+---
+
+_(Novas entradas devem seguir este mesmo formato.)_
