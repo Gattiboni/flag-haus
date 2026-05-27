@@ -1,0 +1,950 @@
+{
+    "exportFormatVersion": 2,
+    "exportTime": "2026-02-23 02:59:13",
+    "containerVersion": {
+        "path": "accounts/6339017990/containers/243426745/versions/15",
+        "accountId": "6339017990",
+        "containerId": "243426745",
+        "containerVersionId": "15",
+        "name": "v15 - Default no WP head + Update via cookie/evento",
+        "container": {
+            "path": "accounts/6339017990/containers/243426745",
+            "accountId": "6339017990",
+            "containerId": "243426745",
+            "name": "FH - Web",
+            "publicId": "GTM-54FPKFNP",
+            "usageContext": [
+                "WEB"
+            ],
+            "fingerprint": "1770858953388",
+            "tagManagerUrl": "https://tagmanager.google.com/#/container/accounts/6339017990/containers/243426745/workspaces?apiLink=container",
+            "features": {
+                "supportUserPermissions": true,
+                "supportEnvironments": true,
+                "supportWorkspaces": true,
+                "supportGtagConfigs": false,
+                "supportBuiltInVariables": true,
+                "supportClients": false,
+                "supportFolders": true,
+                "supportTags": true,
+                "supportTemplates": true,
+                "supportTriggers": true,
+                "supportVariables": true,
+                "supportVersions": true,
+                "supportZones": true,
+                "supportTransformations": false
+            },
+            "tagIds": [
+                "GTM-54FPKFNP"
+            ]
+        },
+        "tag": [
+            {
+                "accountId": "6339017990",
+                "containerId": "243426745",
+                "tagId": "3",
+                "name": "Google tag - Base (GA4)",
+                "type": "googtag",
+                "parameter": [
+                    {
+                        "type": "TEMPLATE",
+                        "key": "tagId",
+                        "value": "G-GGQ1LWJN4G"
+                    }
+                ],
+                "fingerprint": "1770965003761",
+                "firingTriggerId": [
+                    "2147479553"
+                ],
+                "tagFiringOption": "ONCE_PER_EVENT",
+                "monitoringMetadata": {
+                    "type": "MAP"
+                },
+                "consentSettings": {
+                    "consentStatus": "NOT_NEEDED"
+                }
+            },
+            {
+                "accountId": "6339017990",
+                "containerId": "243426745",
+                "tagId": "6",
+                "name": "GA4 - generate_lead (Calendly inline)",
+                "type": "gaawe",
+                "parameter": [
+                    {
+                        "type": "BOOLEAN",
+                        "key": "sendEcommerceData",
+                        "value": "false"
+                    },
+                    {
+                        "type": "LIST",
+                        "key": "eventSettingsTable",
+                        "list": [
+                            {
+                                "type": "MAP",
+                                "map": [
+                                    {
+                                        "type": "TEMPLATE",
+                                        "key": "parameter",
+                                        "value": "page_location"
+                                    },
+                                    {
+                                        "type": "TEMPLATE",
+                                        "key": "parameterValue",
+                                        "value": "{{Page URL}}"
+                                    }
+                                ]
+                            },
+                            {
+                                "type": "MAP",
+                                "map": [
+                                    {
+                                        "type": "TEMPLATE",
+                                        "key": "parameter",
+                                        "value": "page_path"
+                                    },
+                                    {
+                                        "type": "TEMPLATE",
+                                        "key": "parameterValue",
+                                        "value": "{{Page Path}}"
+                                    }
+                                ]
+                            },
+                            {
+                                "type": "MAP",
+                                "map": [
+                                    {
+                                        "type": "TEMPLATE",
+                                        "key": "parameter",
+                                        "value": "lead_source"
+                                    },
+                                    {
+                                        "type": "TEMPLATE",
+                                        "key": "parameterValue",
+                                        "value": "calendly_inline"
+                                    }
+                                ]
+                            }
+                        ]
+                    },
+                    {
+                        "type": "TEMPLATE",
+                        "key": "eventName",
+                        "value": "generate_lead"
+                    },
+                    {
+                        "type": "TEMPLATE",
+                        "key": "measurementIdOverride",
+                        "value": "G-GGQ1LWJN4G"
+                    }
+                ],
+                "fingerprint": "1770964902978",
+                "firingTriggerId": [
+                    "7"
+                ],
+                "tagFiringOption": "ONCE_PER_EVENT",
+                "monitoringMetadata": {
+                    "type": "MAP"
+                },
+                "consentSettings": {
+                    "consentStatus": "NOT_NEEDED"
+                }
+            },
+            {
+                "accountId": "6339017990",
+                "containerId": "243426745",
+                "tagId": "8",
+                "name": "GA4 - view_agendamento",
+                "type": "gaawe",
+                "parameter": [
+                    {
+                        "type": "BOOLEAN",
+                        "key": "sendEcommerceData",
+                        "value": "false"
+                    },
+                    {
+                        "type": "LIST",
+                        "key": "eventSettingsTable",
+                        "list": [
+                            {
+                                "type": "MAP",
+                                "map": [
+                                    {
+                                        "type": "TEMPLATE",
+                                        "key": "parameter",
+                                        "value": "page_location"
+                                    },
+                                    {
+                                        "type": "TEMPLATE",
+                                        "key": "parameterValue",
+                                        "value": "{{Page URL}}"
+                                    }
+                                ]
+                            },
+                            {
+                                "type": "MAP",
+                                "map": [
+                                    {
+                                        "type": "TEMPLATE",
+                                        "key": "parameter",
+                                        "value": "page_path"
+                                    },
+                                    {
+                                        "type": "TEMPLATE",
+                                        "key": "parameterValue",
+                                        "value": "{{Page Path}}"
+                                    }
+                                ]
+                            }
+                        ]
+                    },
+                    {
+                        "type": "TEMPLATE",
+                        "key": "eventName",
+                        "value": "view_agendamento"
+                    },
+                    {
+                        "type": "TEMPLATE",
+                        "key": "measurementIdOverride",
+                        "value": "G-GGQ1LWJN4G"
+                    }
+                ],
+                "fingerprint": "1770964965026",
+                "firingTriggerId": [
+                    "5"
+                ],
+                "tagFiringOption": "ONCE_PER_EVENT",
+                "monitoringMetadata": {
+                    "type": "MAP"
+                },
+                "consentSettings": {
+                    "consentStatus": "NOT_NEEDED"
+                }
+            },
+            {
+                "accountId": "6339017990",
+                "containerId": "243426745",
+                "tagId": "11",
+                "name": "GA4 – click_link (geral)",
+                "type": "gaawe",
+                "parameter": [
+                    {
+                        "type": "BOOLEAN",
+                        "key": "sendEcommerceData",
+                        "value": "false"
+                    },
+                    {
+                        "type": "LIST",
+                        "key": "eventSettingsTable",
+                        "list": [
+                            {
+                                "type": "MAP",
+                                "map": [
+                                    {
+                                        "type": "TEMPLATE",
+                                        "key": "parameter",
+                                        "value": "link_url"
+                                    },
+                                    {
+                                        "type": "TEMPLATE",
+                                        "key": "parameterValue",
+                                        "value": "{{Click URL}}"
+                                    }
+                                ]
+                            },
+                            {
+                                "type": "MAP",
+                                "map": [
+                                    {
+                                        "type": "TEMPLATE",
+                                        "key": "parameter",
+                                        "value": "link_text"
+                                    },
+                                    {
+                                        "type": "TEMPLATE",
+                                        "key": "parameterValue",
+                                        "value": "{{Click Text}}"
+                                    }
+                                ]
+                            },
+                            {
+                                "type": "MAP",
+                                "map": [
+                                    {
+                                        "type": "TEMPLATE",
+                                        "key": "parameter",
+                                        "value": "link_id"
+                                    },
+                                    {
+                                        "type": "TEMPLATE",
+                                        "key": "parameterValue",
+                                        "value": "{{Click ID}}"
+                                    }
+                                ]
+                            },
+                            {
+                                "type": "MAP",
+                                "map": [
+                                    {
+                                        "type": "TEMPLATE",
+                                        "key": "parameter",
+                                        "value": "link_classes"
+                                    },
+                                    {
+                                        "type": "TEMPLATE",
+                                        "key": "parameterValue",
+                                        "value": "{{Click Classes}}"
+                                    }
+                                ]
+                            },
+                            {
+                                "type": "MAP",
+                                "map": [
+                                    {
+                                        "type": "TEMPLATE",
+                                        "key": "parameter",
+                                        "value": "page_location"
+                                    },
+                                    {
+                                        "type": "TEMPLATE",
+                                        "key": "parameterValue",
+                                        "value": "{{Page URL}}"
+                                    }
+                                ]
+                            },
+                            {
+                                "type": "MAP",
+                                "map": [
+                                    {
+                                        "type": "TEMPLATE",
+                                        "key": "parameter",
+                                        "value": "page_path"
+                                    },
+                                    {
+                                        "type": "TEMPLATE",
+                                        "key": "parameterValue",
+                                        "value": "{{Page Path}}"
+                                    }
+                                ]
+                            },
+                            {
+                                "type": "MAP",
+                                "map": [
+                                    {
+                                        "type": "TEMPLATE",
+                                        "key": "parameter",
+                                        "value": "page_referrer"
+                                    },
+                                    {
+                                        "type": "TEMPLATE",
+                                        "key": "parameterValue",
+                                        "value": "{{Referrer}}"
+                                    }
+                                ]
+                            }
+                        ]
+                    },
+                    {
+                        "type": "TEMPLATE",
+                        "key": "eventName",
+                        "value": "click_link"
+                    },
+                    {
+                        "type": "TEMPLATE",
+                        "key": "measurementIdOverride",
+                        "value": "G-GGQ1LWJN4G"
+                    }
+                ],
+                "fingerprint": "1771469542340",
+                "firingTriggerId": [
+                    "10"
+                ],
+                "tagFiringOption": "ONCE_PER_EVENT",
+                "monitoringMetadata": {
+                    "type": "MAP"
+                },
+                "consentSettings": {
+                    "consentStatus": "NOT_NEEDED"
+                }
+            },
+            {
+                "accountId": "6339017990",
+                "containerId": "243426745",
+                "tagId": "13",
+                "name": "GA4 – scroll_75",
+                "type": "gaawe",
+                "parameter": [
+                    {
+                        "type": "BOOLEAN",
+                        "key": "sendEcommerceData",
+                        "value": "false"
+                    },
+                    {
+                        "type": "LIST",
+                        "key": "eventSettingsTable",
+                        "list": [
+                            {
+                                "type": "MAP",
+                                "map": [
+                                    {
+                                        "type": "TEMPLATE",
+                                        "key": "parameter",
+                                        "value": "page_location"
+                                    },
+                                    {
+                                        "type": "TEMPLATE",
+                                        "key": "parameterValue",
+                                        "value": "{{Page URL}}"
+                                    }
+                                ]
+                            },
+                            {
+                                "type": "MAP",
+                                "map": [
+                                    {
+                                        "type": "TEMPLATE",
+                                        "key": "parameter",
+                                        "value": "page_path"
+                                    },
+                                    {
+                                        "type": "TEMPLATE",
+                                        "key": "parameterValue",
+                                        "value": "{{Page Path}}"
+                                    }
+                                ]
+                            },
+                            {
+                                "type": "MAP",
+                                "map": [
+                                    {
+                                        "type": "TEMPLATE",
+                                        "key": "parameter",
+                                        "value": "scroll_percent"
+                                    },
+                                    {
+                                        "type": "TEMPLATE",
+                                        "key": "parameterValue",
+                                        "value": "75"
+                                    }
+                                ]
+                            }
+                        ]
+                    },
+                    {
+                        "type": "TEMPLATE",
+                        "key": "eventName",
+                        "value": "scroll_75"
+                    },
+                    {
+                        "type": "TEMPLATE",
+                        "key": "measurementIdOverride",
+                        "value": "G-GGQ1LWJN4G"
+                    }
+                ],
+                "fingerprint": "1770964986224",
+                "firingTriggerId": [
+                    "12"
+                ],
+                "tagFiringOption": "ONCE_PER_EVENT",
+                "monitoringMetadata": {
+                    "type": "MAP"
+                },
+                "consentSettings": {
+                    "consentStatus": "NOT_NEEDED"
+                }
+            },
+            {
+                "accountId": "6339017990",
+                "containerId": "243426745",
+                "tagId": "15",
+                "name": "Complainz",
+                "type": "cvt_WF68Z",
+                "parameter": [
+                    {
+                        "type": "BOOLEAN",
+                        "key": "ads_data_redaction",
+                        "value": "true"
+                    },
+                    {
+                        "type": "TEMPLATE",
+                        "key": "defaultConsentMarketing",
+                        "value": "denied"
+                    },
+                    {
+                        "type": "TEMPLATE",
+                        "key": "defaultConsentStatistics",
+                        "value": "denied"
+                    },
+                    {
+                        "type": "TEMPLATE",
+                        "key": "defaultConsentPreferences",
+                        "value": "denied"
+                    },
+                    {
+                        "type": "BOOLEAN",
+                        "key": "url_passthrough",
+                        "value": "true"
+                    }
+                ],
+                "fingerprint": "1771478370562",
+                "firingTriggerId": [
+                    "2147479572"
+                ],
+                "tagFiringOption": "ONCE_PER_EVENT",
+                "paused": true,
+                "monitoringMetadata": {
+                    "type": "MAP"
+                },
+                "consentSettings": {
+                    "consentStatus": "NOT_NEEDED"
+                }
+            },
+            {
+                "accountId": "6339017990",
+                "containerId": "243426745",
+                "tagId": "18",
+                "name": "GA4 – click_whatsapp",
+                "type": "gaawe",
+                "parameter": [
+                    {
+                        "type": "BOOLEAN",
+                        "key": "sendEcommerceData",
+                        "value": "false"
+                    },
+                    {
+                        "type": "LIST",
+                        "key": "eventSettingsTable",
+                        "list": [
+                            {
+                                "type": "MAP",
+                                "map": [
+                                    {
+                                        "type": "TEMPLATE",
+                                        "key": "parameter",
+                                        "value": "link_url"
+                                    },
+                                    {
+                                        "type": "TEMPLATE",
+                                        "key": "parameterValue",
+                                        "value": "{{Click URL}}"
+                                    }
+                                ]
+                            },
+                            {
+                                "type": "MAP",
+                                "map": [
+                                    {
+                                        "type": "TEMPLATE",
+                                        "key": "parameter",
+                                        "value": "link_text"
+                                    },
+                                    {
+                                        "type": "TEMPLATE",
+                                        "key": "parameterValue",
+                                        "value": "{{Click Text}}"
+                                    }
+                                ]
+                            },
+                            {
+                                "type": "MAP",
+                                "map": [
+                                    {
+                                        "type": "TEMPLATE",
+                                        "key": "parameter",
+                                        "value": "page_location"
+                                    },
+                                    {
+                                        "type": "TEMPLATE",
+                                        "key": "parameterValue",
+                                        "value": "{{Page URL}}"
+                                    }
+                                ]
+                            },
+                            {
+                                "type": "MAP",
+                                "map": [
+                                    {
+                                        "type": "TEMPLATE",
+                                        "key": "parameter",
+                                        "value": "page_path"
+                                    },
+                                    {
+                                        "type": "TEMPLATE",
+                                        "key": "parameterValue",
+                                        "value": "{{Page Path}}"
+                                    }
+                                ]
+                            }
+                        ]
+                    },
+                    {
+                        "type": "TEMPLATE",
+                        "key": "eventName",
+                        "value": "whatsapp_click"
+                    },
+                    {
+                        "type": "TEMPLATE",
+                        "key": "measurementIdOverride",
+                        "value": "G-GGQ1LWJN4G"
+                    }
+                ],
+                "fingerprint": "1771471445791",
+                "firingTriggerId": [
+                    "16",
+                    "17"
+                ],
+                "tagFiringOption": "ONCE_PER_EVENT",
+                "monitoringMetadata": {
+                    "type": "MAP"
+                },
+                "consentSettings": {
+                    "consentStatus": "NOT_NEEDED"
+                }
+            },
+            {
+                "accountId": "6339017990",
+                "containerId": "243426745",
+                "tagId": "20",
+                "name": "Consent - Default + Update (Manual)",
+                "type": "html",
+                "priority": {
+                    "type": "INTEGER",
+                    "value": "10"
+                },
+                "parameter": [
+                    {
+                        "type": "TEMPLATE",
+                        "key": "html",
+                        "value": "<script>\n// Consent Update - CookieYes\n// O gtag Default esta no WordPress head (Snippets plugin, priority 1)\nwindow.dataLayer = window.dataLayer || [];\nfunction gtag(){dataLayer.push(arguments);}\n\nfunction applyFromCategories(analytics, functional, advertisement) {\n  gtag('consent', 'update', {\n    'ad_storage':              advertisement ? 'granted' : 'denied',\n    'ad_user_data':            advertisement ? 'granted' : 'denied',\n    'ad_personalization':      advertisement ? 'granted' : 'denied',\n    'analytics_storage':       analytics    ? 'granted' : 'denied',\n    'functionality_storage':   functional   ? 'granted' : 'denied',\n    'personalization_storage': functional   ? 'granted' : 'denied'\n  });\n}\n\n// METODO 1: cookie cookieyes-consent\n(function() {\n  var raw = '';\n  document.cookie.split(';').forEach(function(c) {\n    var t = c.trim();\n    if (t.indexOf('cookieyes-consent=') === 0) raw = decodeURIComponent(t.substring(18));\n  });\n  if (!raw) return;\n  var m = {};\n  raw.split(',').forEach(function(p) {\n    var kv = p.split(':');\n    if (kv[0] && kv[1]) m[kv[0].trim()] = kv[1].trim();\n  });\n  if (m.action === 'yes' || m.consent === 'yes') {\n    applyFromCategories(m.analytics==='yes', m.functional==='yes', m.advertisement==='yes');\n  }\n})();\n\n// METODO 2: evento cookieyes_consent_update\ndocument.addEventListener('cookieyes_consent_update', function(e) {\n  var acc = (e.detail && e.detail.accepted) ? e.detail.accepted : [];\n  applyFromCategories(\n    acc.indexOf('analytics') > -1,\n    acc.indexOf('functional') > -1,\n    acc.indexOf('advertisement') > -1\n  );\n});\n</script>"
+                    },
+                    {
+                        "type": "BOOLEAN",
+                        "key": "supportDocumentWrite",
+                        "value": "false"
+                    }
+                ],
+                "fingerprint": "1771484095443",
+                "firingTriggerId": [
+                    "2147479572"
+                ],
+                "tagFiringOption": "ONCE_PER_EVENT",
+                "monitoringMetadata": {
+                    "type": "MAP"
+                },
+                "consentSettings": {
+                    "consentStatus": "NOT_SET"
+                }
+            }
+        ],
+        "trigger": [
+            {
+                "accountId": "6339017990",
+                "containerId": "243426745",
+                "triggerId": "5",
+                "name": "PV - /agendamento",
+                "type": "PAGEVIEW",
+                "filter": [
+                    {
+                        "type": "EQUALS",
+                        "parameter": [
+                            {
+                                "type": "TEMPLATE",
+                                "key": "arg0",
+                                "value": "{{Page Path}}"
+                            },
+                            {
+                                "type": "TEMPLATE",
+                                "key": "arg1",
+                                "value": "/agendamento/"
+                            }
+                        ]
+                    }
+                ],
+                "fingerprint": "1770869344282"
+            },
+            {
+                "accountId": "6339017990",
+                "containerId": "243426745",
+                "triggerId": "7",
+                "name": "EV – Calendly Confirmado (Inline)",
+                "type": "ELEMENT_VISIBILITY",
+                "filter": [
+                    {
+                        "type": "CONTAINS",
+                        "parameter": [
+                            {
+                                "type": "TEMPLATE",
+                                "key": "arg0",
+                                "value": "{{Page Path}}"
+                            },
+                            {
+                                "type": "TEMPLATE",
+                                "key": "arg1",
+                                "value": "/agendamento"
+                            }
+                        ]
+                    }
+                ],
+                "fingerprint": "1770870000743",
+                "parameter": [
+                    {
+                        "type": "BOOLEAN",
+                        "key": "useOnScreenDuration",
+                        "value": "false"
+                    },
+                    {
+                        "type": "BOOLEAN",
+                        "key": "useDomChangeListener",
+                        "value": "true"
+                    },
+                    {
+                        "type": "TEMPLATE",
+                        "key": "elementSelector",
+                        "value": "h1:contains(\"Você está agendado\")"
+                    },
+                    {
+                        "type": "TEMPLATE",
+                        "key": "firingFrequency",
+                        "value": "ONCE"
+                    },
+                    {
+                        "type": "TEMPLATE",
+                        "key": "selectorType",
+                        "value": "CSS"
+                    },
+                    {
+                        "type": "TEMPLATE",
+                        "key": "onScreenRatio",
+                        "value": "50"
+                    }
+                ]
+            },
+            {
+                "accountId": "6339017990",
+                "containerId": "243426745",
+                "triggerId": "10",
+                "name": "GA4 – click_link (geral)",
+                "type": "LINK_CLICK",
+                "waitForTags": {
+                    "type": "BOOLEAN",
+                    "value": "false"
+                },
+                "checkValidation": {
+                    "type": "BOOLEAN",
+                    "value": "false"
+                },
+                "waitForTagsTimeout": {
+                    "type": "TEMPLATE",
+                    "value": "2000"
+                },
+                "uniqueTriggerId": {
+                    "type": "TEMPLATE"
+                },
+                "fingerprint": "1770871055548"
+            },
+            {
+                "accountId": "6339017990",
+                "containerId": "243426745",
+                "triggerId": "12",
+                "name": "SC – 75% – All Pages",
+                "type": "SCROLL_DEPTH",
+                "fingerprint": "1770871541461",
+                "parameter": [
+                    {
+                        "type": "TEMPLATE",
+                        "key": "verticalThresholdUnits",
+                        "value": "PERCENT"
+                    },
+                    {
+                        "type": "TEMPLATE",
+                        "key": "verticalThresholdsPercent",
+                        "value": "75"
+                    },
+                    {
+                        "type": "BOOLEAN",
+                        "key": "verticalThresholdOn",
+                        "value": "true"
+                    },
+                    {
+                        "type": "TEMPLATE",
+                        "key": "triggerStartOption",
+                        "value": "WINDOW_LOAD"
+                    },
+                    {
+                        "type": "BOOLEAN",
+                        "key": "horizontalThresholdOn",
+                        "value": "false"
+                    }
+                ]
+            },
+            {
+                "accountId": "6339017990",
+                "containerId": "243426745",
+                "triggerId": "16",
+                "name": "CL – whatsapp_click – wa.me",
+                "type": "LINK_CLICK",
+                "filter": [
+                    {
+                        "type": "CONTAINS",
+                        "parameter": [
+                            {
+                                "type": "TEMPLATE",
+                                "key": "arg0",
+                                "value": "{{Click URL}}"
+                            },
+                            {
+                                "type": "TEMPLATE",
+                                "key": "arg1",
+                                "value": "wa.me"
+                            }
+                        ]
+                    }
+                ],
+                "waitForTags": {
+                    "type": "BOOLEAN",
+                    "value": "false"
+                },
+                "checkValidation": {
+                    "type": "BOOLEAN",
+                    "value": "false"
+                },
+                "waitForTagsTimeout": {
+                    "type": "TEMPLATE",
+                    "value": "2000"
+                },
+                "uniqueTriggerId": {
+                    "type": "TEMPLATE"
+                },
+                "fingerprint": "1771470864611"
+            },
+            {
+                "accountId": "6339017990",
+                "containerId": "243426745",
+                "triggerId": "17",
+                "name": "CL – whatsapp_click – api.whatsapp.com",
+                "type": "LINK_CLICK",
+                "filter": [
+                    {
+                        "type": "CONTAINS",
+                        "parameter": [
+                            {
+                                "type": "TEMPLATE",
+                                "key": "arg0",
+                                "value": "{{Click URL}}"
+                            },
+                            {
+                                "type": "TEMPLATE",
+                                "key": "arg1",
+                                "value": "api.whatsapp.com"
+                            }
+                        ]
+                    }
+                ],
+                "waitForTags": {
+                    "type": "BOOLEAN",
+                    "value": "false"
+                },
+                "checkValidation": {
+                    "type": "BOOLEAN",
+                    "value": "false"
+                },
+                "waitForTagsTimeout": {
+                    "type": "TEMPLATE",
+                    "value": "2000"
+                },
+                "uniqueTriggerId": {
+                    "type": "TEMPLATE"
+                },
+                "fingerprint": "1771470906737"
+            }
+        ],
+        "builtInVariable": [
+            {
+                "accountId": "6339017990",
+                "containerId": "243426745",
+                "type": "PAGE_URL",
+                "name": "Page URL"
+            },
+            {
+                "accountId": "6339017990",
+                "containerId": "243426745",
+                "type": "PAGE_HOSTNAME",
+                "name": "Page Hostname"
+            },
+            {
+                "accountId": "6339017990",
+                "containerId": "243426745",
+                "type": "PAGE_PATH",
+                "name": "Page Path"
+            },
+            {
+                "accountId": "6339017990",
+                "containerId": "243426745",
+                "type": "REFERRER",
+                "name": "Referrer"
+            },
+            {
+                "accountId": "6339017990",
+                "containerId": "243426745",
+                "type": "EVENT",
+                "name": "Event"
+            },
+            {
+                "accountId": "6339017990",
+                "containerId": "243426745",
+                "type": "CLICK_ELEMENT",
+                "name": "Click Element"
+            },
+            {
+                "accountId": "6339017990",
+                "containerId": "243426745",
+                "type": "CLICK_CLASSES",
+                "name": "Click Classes"
+            },
+            {
+                "accountId": "6339017990",
+                "containerId": "243426745",
+                "type": "CLICK_ID",
+                "name": "Click ID"
+            },
+            {
+                "accountId": "6339017990",
+                "containerId": "243426745",
+                "type": "CLICK_TARGET",
+                "name": "Click Target"
+            },
+            {
+                "accountId": "6339017990",
+                "containerId": "243426745",
+                "type": "CLICK_URL",
+                "name": "Click URL"
+            },
+            {
+                "accountId": "6339017990",
+                "containerId": "243426745",
+                "type": "CLICK_TEXT",
+                "name": "Click Text"
+            }
+        ],
+        "fingerprint": "1771484117034",
+        "tagManagerUrl": "https://tagmanager.google.com/#/versions/accounts/6339017990/containers/243426745/versions/15?apiLink=version",
+        "customTemplate": [
+            {
+                "accountId": "6339017990",
+                "containerId": "243426745",
+                "templateId": "14",
+                "name": "Complianz.io - The Privacy Suite for WordPress",
+                "fingerprint": "1770964036085",
+                "templateData": "___TERMS_OF_SERVICE___\n\nBy creating or modifying this file you agree to Google Tag Manager's Community\nTemplate Gallery Developer Terms of Service available at\nhttps://developers.google.com/tag-manager/gallery-tos (or such other URL as\nGoogle may provide), as modified from time to time.\n\n\n___INFO___\n\n{\n  \"type\": \"TAG\",\n  \"id\": \"cvt_WF68Z\",\n  \"version\": 1,\n  \"categories\": [\n    \"TAG_MANAGEMENT\",\n    \"ADVERTISING\",\n    \"UTILITY\"\n  ],\n  \"displayName\": \"Complianz.io - The Privacy Suite for WordPress\",\n  \"brand\": {\n    \"id\": \"github.com_complianz\",\n    \"displayName\": \"complianz\",\n    \"thumbnail\": \"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAIAAAACACAYAAADDPmHLAAAABmJLR0QA/wD/AP+gvaeTAAAJE0lEQVR42u2dQYsTSRTH/9El7EJgQ0AICDEDOSxzihfxIDjuaU4aYQ/ixZlPsJlPsOMnmPgJZjwtgrDRk140gpf1YrzkNOAYELIsxBwCugGZPbx51Oue7qQ7qe5OUu8Hw2S6O5VO/f/9qvp1VU0OAHB4egCgCcUlWtjN7eVUfKdp5XB4epr1WSjZcSHrE1CyRQ3gOGoAx1EDOI4awHHUAI6jBnAcNYDjqAEcRw3gOGoAx1EDOI4awHHUAI6jBnAcNYDjqAEcRw3gOGoAx1EDOI4awHHUAI6jBnAcNYDjqAEcRw3gOD9kfQLrzFYZuFMB6iV6LRlNgO4QeNYH2n3gZJzNOercwATYqQF/1IFqwWzrDkl0plrw7u8MgL13dFyaqAEsUi0AhzfM1d7uA4+PSVwpvjy+UQF+3zRm2HsHtHrpnbM2AZaol4DX20AxH/1qPhmT2K0eRY2Da8CVQrTPs4VGAAtI8Vs9Et+/f6tM+5mTMRklq7af0QiwIFL83bfA0bHZF9QX8JNV289oBFiAMPGLeeoLNCr0d7tPvX15tddLwIMa/QaAh11gv2v279SojLuv6P1JoQaYk2niv96m/d0h7Zt2dTcqJHQxT2XsvqXt1QLw8TfqPG48De5E2kATQXMQVfxbL7ziF/Pn8wHtPh03mtBVz1HjZEzlFvO0PSk0AsQkjvh81Qb1Bfxtf70EvL/tveI5CnSHwNXnyXwfjQAxmEf8wxv0Uy2Q6K0eHbNVJsH5iu8OqR9QzHujQLtP5VYTuj1UA0RkXvF3avT31ee0b+8dvea2ntt/wJR5p2I+94OIEEmgBojAouL7+wIAlRF0xXN0YDoDcw5JoAaYgU3xt8pAc9OUzbd3MryPJt6EUdKoAaZgU/ydGr3n4JopP+ssIKAGCMW2+Ic36DW3/YAJ/fIeP82rH1ADBJKk+FxWtWCiATcFxTyVze0+HwdoIig10hC/mAf++pV+P+yapoATPs9E6vfmWYdQmsImagCBTfF5bAAQXtbRscn/F/OULAK8uf9GxYweSgJ9GnhGtWD/Vq8zoAEhYeLL/gDnA/wRgZ8RJIWmgs/gsBwmWFzxg8qfJv5OzZvyLeYpU1gtUGo4qTsGjQBnsJDMvGEfOC9WVPHl5/Ozg1Yv2dtFp/sA1UJwhm0e8flhDrf7QWXNEp8/o1GhhNHJmJqEJEk1AtRLwQ82RhNqL9McFSM7fLkjs31e8bmsx8fBZUUVn983mtBgkKRu/5jE+wDFPLn5QW32Ey1++vUo4bBns7cfpaw44qdNogZoblJbxtmtdh94c3als8A8Pv5mmUIfH+sfImULFd9LIgaQY+JGE7qiW71oX5aHRxfzVEl3X9mLBssqPieMkjL9NKwbwF+ZQQJyyhOgfUH7pYGi3GbNYtnFt/U942LdAO9vB1dAtUAzYBqV4E5gu+9NgkwTIC4qfjhWDbBfpza/M/De0wJUOVtl0+PnkS5XCrSdTdHqkRHmTbj4UfGnY80As4YxcwcvLK0pB04umnVjVPzZWDMAf1n/7Jg4yLZ/UROo+NGwYoBiHvhyn9rvjaem0hqV873/rbI3J8B3CfJxZ1jlRTWBih8dK5lAHtnySExrPrhGYrf75os2N71DouT7ZSXybx5GxZUYtN1fiSp+PKw8C/APWqiedey6Q/NFGxUSnysgd0Q/XBly8ARgKlyKILdLEZh5xN8q2xO/ubla4gOWDMDhXI5+Bbx5cb7yb73whnu+Y1jUBPOIz+f8sEuPYRcRHzCp7FURH7DUBPCsF/k3Vy5XXLXgbQ54Gy+dcusFVS4Pi4rbHHCZccQH6G+ZfZtXfIC+nxzNs+ziA5YjQBgcpj+ICmhuUtKIBZeVNE8k4NE0UcRvbpp+i/8844rvX/iBWQXxAUsG6A6nD2fm6CCnPLX7VDncaQIWMwFAmcZ6aXaH7+AaHSuZt8P3ets72QNYHfEBSwYYTbydMX9fACAT1EtGbCmMLROwWFF6+3IZl0V7+3JRp1USH7AYAbgiAXPFPxDz2rnCpdhJmUBv9aJjxQBvfIKPJlRp1YIJj7xahqxA3m7bBIB3HT4VPxxrqeAv9+m3f3GDqJMlbIohBe8Mgh8rq/jERTT2920U9NNFYPsy8N93szDipzFwb4N+Xn4GBl+pcj6NSZRGhV53h7Tv5WdzPG//9h148pHK3r5MxuKZM8/69Dfve/KRjuft1y8Bv/ys4k/D2qhgzvlzTxwwlejP2snKTaM5kKj4XqxFgG/fgX++0tV7/ZK5GvmKzzoS3Nug8/vzpoovsWYAgCohSAhpgh8vGuHSNkGjQp+v4hsSGRQaVnH1Er32jwFMu2PIorkuPmA5AjBhV+Pga/DI4Cyag7//pebAZfGBBKeGhXXOGN6eRcdw3R7pLkKicwOnmYDHDGR9dyAHsfBnrdoj3UVIZXp43JAapU8gF1GO0pa3+/Qe//ZZoq6z+EBKs4PDrsZF8gQymsyKBK2eSVf7zyloZBGz7uIDKS8QYSsShBFl0EbYOYV99jqLD6S8PoCtSOCHj58WCRhefXtax9AV8YEMFoiwbYI4I4sAKpcHcoSZwBXxgYxWCLFpAn7wFPXuoDMIvzvoDMziDC6ID2S4REwSHcNFbhF3ambuoiviA0uwSlgSt4hx08YnY8pLuCY+sASLRGUdCToDd8UHlsAAQHYmcDXsSzJvAiRpNgedgYoPLEkEYNKKBCdjFZ9ZKgMAyZuAl6hR8YmlagIkSTQHR8d21hxaJ5bWAMBsE8gFKeR2INwEKr4XK7ODkyJsZvDRcfA/V2LB+X/18TaeL6jin2epIwATd3VNGQk07E9nJQwAhJtA/vsV+e9VpQlU/HCWugmQBDUHQPhgDkbFn87KGAAIXhXE1ZE8tlgpAwBeEwDnp6ar+PFYOQMAZAKegbz7lgTngR7a4YvHynQCp8FrFAMqflyWLhW8CCp+fNbCAHKpORU/HmvRBCjzsxYRQJkfNYDjqAEcRw3gOGoAx1EDOI4awHHUAI6jBnAcNYDjqAEcRw3gOGoAx1EDOI4awHHUAI6jBnAcNYDjqAEcRw3gOBcAtLI+CSUzWjkAwOHpAYBm1mejpEoLu7m9/wGR+DnIRgoAowAAABl0RVh0U29mdHdhcmUAQWRvYmUgSW1hZ2VSZWFkeXHJZTwAAAASdEVYdEVYSUY6T3JpZW50YXRpb24AMYRY7O8AAAAASUVORK5CYII\\u003d\"\n  },\n  \"description\": \"Consent Mode GTM Template by Complianz\",\n  \"containerContexts\": [\n    \"WEB\"\n  ]\n}\n\n\n___TEMPLATE_PARAMETERS___\n\n[\n  {\n    \"type\": \"GROUP\",\n    \"name\": \"defaultSettings2\",\n    \"displayName\": \"Default Consent State\",\n    \"groupStyle\": \"ZIPPY_OPEN\",\n    \"subParams\": [\n      {\n        \"type\": \"TEXT\",\n        \"name\": \"region\",\n        \"displayName\": \"Region\",\n        \"simpleValueType\": true,\n        \"help\": \"Leave empty for the default set-up. Complianz handles regions automatically based on your wizard configuration. Check our documentation to change, if needed.\",\n        \"valueHint\": \"Automated by Complianz\",\n        \"defaultValue\": \"\"\n      },\n      {\n        \"type\": \"SELECT\",\n        \"name\": \"defaultConsentPreferences\",\n        \"displayName\": \"Preferences (personalization_storage)\",\n        \"macrosInSelect\": false,\n        \"selectItems\": [\n          {\n            \"value\": \"denied\",\n            \"displayValue\": \"Denied (Default)\"\n          },\n          {\n            \"value\": \"granted\",\n            \"displayValue\": \"Granted\"\n          }\n        ],\n        \"simpleValueType\": true,\n        \"help\": \"Select default consent state for preference cookies\",\n        \"defaultValue\": \"denied\"\n      },\n      {\n        \"type\": \"SELECT\",\n        \"name\": \"defaultConsentStatistics\",\n        \"displayName\": \"Analytics (analytics_storage)\",\n        \"macrosInSelect\": false,\n        \"selectItems\": [\n          {\n            \"value\": \"denied\",\n            \"displayValue\": \"Denied (Default)\"\n          },\n          {\n            \"value\": \"granted\",\n            \"displayValue\": \"Granted\"\n          }\n        ],\n        \"simpleValueType\": true,\n        \"help\": \"Select default consent state for analytics tracking\",\n        \"defaultValue\": \"denied\"\n      },\n      {\n        \"type\": \"SELECT\",\n        \"name\": \"defaultConsentMarketing\",\n        \"displayName\": \"Advertising (ad_storage, ad_user_data, ad_personalization)\",\n        \"macrosInSelect\": false,\n        \"selectItems\": [\n          {\n            \"value\": \"denied\",\n            \"displayValue\": \"Denied (Default)\"\n          },\n          {\n            \"value\": \"granted\",\n            \"displayValue\": \"Granted\"\n          }\n        ],\n        \"simpleValueType\": true,\n        \"help\": \"Select default consent state for marketing and advertising\",\n        \"defaultValue\": \"denied\"\n      },\n      {\n        \"type\": \"CHECKBOX\",\n        \"name\": \"ads_data_redaction\",\n        \"checkboxText\": \"Redact Ads Data\",\n        \"simpleValueType\": true,\n        \"help\": \"When ad data redaction is true and marketing cookies are denied, ad click identifiers sent in network requests by Google Ads and Floodlight tags will be redacted. Network requests will also be sent through a cookieless domain\"\n      },\n      {\n        \"type\": \"CHECKBOX\",\n        \"name\": \"url_passthrough\",\n        \"checkboxText\": \"Enable URL passthrough\",\n        \"simpleValueType\": true,\n        \"help\": \"\"\n      }\n    ],\n    \"help\": \"A default consent state of \\u0027denied\\u0027 will apply until the user has submitted a consent.\"\n  }\n]\n\n\n___SANDBOXED_JS_FOR_WEB_TEMPLATE___\n\n// The first two lines are optional, use if you want to enable logging\nconst log = require('logToConsole');\nconst setDefaultConsentState = require('setDefaultConsentState');\nconst updateConsentState = require('updateConsentState');\nconst getCookieValues = require('getCookieValues');//permission to reach specific cookies is set\nconst callInWindow = require('callInWindow');//permission for each used function is set\nconst gtagSet = require('gtagSet'); //permission for each used key is set\nconst COOKIE_NAME = 'cmplz_consent_mode'; //permission for this name is set\nconst marketingCategories = ['ad_storage', 'ad_user_data', 'ad_personalization'];\nconst statisticsCategories = ['analytics_storage'];\nconst defaultCategories = [ 'functionality_storage','security_storage'];\nconst preferencesCategories = [ 'personalization_storage' ];\nconst allCategories = ['ad_storage','analytics_storage','functionality_storage','security_storage','personalization_storage', 'ad_user_data', 'ad_personalization'];\n log(\"ConsentModeV2\",data);\n/**\n * Splits the input string using comma as a delimiter, returning an array of\n * strings\n */\nconst splitInput = (input) => {\n    //  log('split input ', input);\n\treturn input.split(',')\n\t\t.map(entry => entry.trim())\n\t\t.filter(entry => entry.length !== 0);\n};\n\nconst defaultGrantedCategories = () => {\n    let defaultSettings = data;\n\n        let granted = defaultCategories;\n        if (defaultSettings.defaultConsentMarketing === 'granted' ){\n          granted = granted.concat(marketingCategories);\n        }\n        if (defaultSettings.defaultConsentStatistics === 'granted' ){\n          granted = granted.concat(statisticsCategories);\n        }\n        if (defaultSettings.defaultConsentPreferences === 'granted' ){\n          granted = granted.concat(preferencesCategories);\n        }\n  return granted;\n};\n\nconst onUserRevoke = () => {\n    let granted = defaultGrantedCategories();\n    //  log('onuser revoke',getConsentState(granted));\n\tonUserConsent(getConsentState(granted));\n};\n\nconst onUserConsent = (consent) => {\n    //  log('onuser consent',consent);\n\tupdateConsentState(consent);\n};\n\nconst getConsentState = (granted) => {\n  let denied = allCategories;\n  let consentState = {};\n  granted.forEach(entry => {\n\tdenied = denied.filter(item => item !== entry);\n\tconsentState[entry] = 'granted';\n  });\n  denied.forEach(entry => {\n\tconsentState[entry] = 'denied';\n  });\n  return consentState;\n};\n\n/**\n * Executes the default command, sets the developer ID, and sets up the consent\n * update callback\n */\nconst main = (data) => {\n  // log('loaded main');\n\tgtagSet(\n\t\t'developer_id.dYWVlZG', true\n\t);\n  // log('added dev id');\n\t\n  gtagSet('ads_data_redaction', data.ads_data_redaction);\n  gtagSet('url_passthrough', data.url_passthrough);\n  // log('added data redaction', data.ads_data_redaction);\n  \n   const settings = getCookieValues(COOKIE_NAME);\n  \n    // set default state\n        let granted = defaultGrantedCategories();\n  // log('set default state, granted', granted);\n        let defaultConsent = getConsentState(granted);\n  // log('defaultconsent',defaultConsent);\n\t\tdefaultConsent.wait_for_update = 500;\n\t\tsetDefaultConsentState(defaultConsent);\n    \n  // log('new data', data);\n  // log('cookie settings', settings);\n\tif (settings && settings.length>0) {\n      // log(\"found settings\");\n      let granted = splitInput(settings[0]);\n  // log('load stored state, granted', granted);\n  // log('update state', getConsentState(granted));\n\t\tonUserConsent(getConsentState(granted));\n    } \n  \n\tcallInWindow('addConsentUpdateListener', onUserConsent);\n\tcallInWindow('addRevokeListener', onUserRevoke);\n};\nmain(data);\ndata.gtmOnSuccess();\n\n\n___WEB_PERMISSIONS___\n\n[\n  {\n    \"instance\": {\n      \"key\": {\n        \"publicId\": \"access_globals\",\n        \"versionId\": \"1\"\n      },\n      \"param\": [\n        {\n          \"key\": \"keys\",\n          \"value\": {\n            \"type\": 2,\n            \"listItem\": [\n              {\n                \"type\": 3,\n                \"mapKey\": [\n                  {\n                    \"type\": 1,\n                    \"string\": \"key\"\n                  },\n                  {\n                    \"type\": 1,\n                    \"string\": \"read\"\n                  },\n                  {\n                    \"type\": 1,\n                    \"string\": \"write\"\n                  },\n                  {\n                    \"type\": 1,\n                    \"string\": \"execute\"\n                  }\n                ],\n                \"mapValue\": [\n                  {\n                    \"type\": 1,\n                    \"string\": \"addConsentUpdateListener\"\n                  },\n                  {\n                    \"type\": 8,\n                    \"boolean\": false\n                  },\n                  {\n                    \"type\": 8,\n                    \"boolean\": false\n                  },\n                  {\n                    \"type\": 8,\n                    \"boolean\": true\n                  }\n                ]\n              },\n              {\n                \"type\": 3,\n                \"mapKey\": [\n                  {\n                    \"type\": 1,\n                    \"string\": \"key\"\n                  },\n                  {\n                    \"type\": 1,\n                    \"string\": \"read\"\n                  },\n                  {\n                    \"type\": 1,\n                    \"string\": \"write\"\n                  },\n                  {\n                    \"type\": 1,\n                    \"string\": \"execute\"\n                  }\n                ],\n                \"mapValue\": [\n                  {\n                    \"type\": 1,\n                    \"string\": \"addRevokeListener\"\n                  },\n                  {\n                    \"type\": 8,\n                    \"boolean\": false\n                  },\n                  {\n                    \"type\": 8,\n                    \"boolean\": false\n                  },\n                  {\n                    \"type\": 8,\n                    \"boolean\": true\n                  }\n                ]\n              }\n            ]\n          }\n        }\n      ]\n    },\n    \"clientAnnotations\": {\n      \"isEditedByUser\": true\n    },\n    \"isRequired\": true\n  },\n  {\n    \"instance\": {\n      \"key\": {\n        \"publicId\": \"write_data_layer\",\n        \"versionId\": \"1\"\n      },\n      \"param\": [\n        {\n          \"key\": \"keyPatterns\",\n          \"value\": {\n            \"type\": 2,\n            \"listItem\": [\n              {\n                \"type\": 1,\n                \"string\": \"developer_id.dYWVlZG\"\n              },\n              {\n                \"type\": 1,\n                \"string\": \"ads_data_redaction\"\n              },\n              {\n                \"type\": 1,\n                \"string\": \"url_passthrough\"\n              }\n            ]\n          }\n        }\n      ]\n    },\n    \"clientAnnotations\": {\n      \"isEditedByUser\": true\n    },\n    \"isRequired\": true\n  },\n  {\n    \"instance\": {\n      \"key\": {\n        \"publicId\": \"get_cookies\",\n        \"versionId\": \"1\"\n      },\n      \"param\": [\n        {\n          \"key\": \"cookieAccess\",\n          \"value\": {\n            \"type\": 1,\n            \"string\": \"specific\"\n          }\n        },\n        {\n          \"key\": \"cookieNames\",\n          \"value\": {\n            \"type\": 2,\n            \"listItem\": [\n              {\n                \"type\": 1,\n                \"string\": \"cmplz_consent_mode\"\n              }\n            ]\n          }\n        }\n      ]\n    },\n    \"clientAnnotations\": {\n      \"isEditedByUser\": true\n    },\n    \"isRequired\": true\n  },\n  {\n    \"instance\": {\n      \"key\": {\n        \"publicId\": \"access_consent\",\n        \"versionId\": \"1\"\n      },\n      \"param\": [\n        {\n          \"key\": \"consentTypes\",\n          \"value\": {\n            \"type\": 2,\n            \"listItem\": [\n              {\n                \"type\": 3,\n                \"mapKey\": [\n                  {\n                    \"type\": 1,\n                    \"string\": \"consentType\"\n                  },\n                  {\n                    \"type\": 1,\n                    \"string\": \"read\"\n                  },\n                  {\n                    \"type\": 1,\n                    \"string\": \"write\"\n                  }\n                ],\n                \"mapValue\": [\n                  {\n                    \"type\": 1,\n                    \"string\": \"ad_storage\"\n                  },\n                  {\n                    \"type\": 8,\n                    \"boolean\": false\n                  },\n                  {\n                    \"type\": 8,\n                    \"boolean\": true\n                  }\n                ]\n              },\n              {\n                \"type\": 3,\n                \"mapKey\": [\n                  {\n                    \"type\": 1,\n                    \"string\": \"consentType\"\n                  },\n                  {\n                    \"type\": 1,\n                    \"string\": \"read\"\n                  },\n                  {\n                    \"type\": 1,\n                    \"string\": \"write\"\n                  }\n                ],\n                \"mapValue\": [\n                  {\n                    \"type\": 1,\n                    \"string\": \"analytics_storage\"\n                  },\n                  {\n                    \"type\": 8,\n                    \"boolean\": false\n                  },\n                  {\n                    \"type\": 8,\n                    \"boolean\": true\n                  }\n                ]\n              },\n              {\n                \"type\": 3,\n                \"mapKey\": [\n                  {\n                    \"type\": 1,\n                    \"string\": \"consentType\"\n                  },\n                  {\n                    \"type\": 1,\n                    \"string\": \"read\"\n                  },\n                  {\n                    \"type\": 1,\n                    \"string\": \"write\"\n                  }\n                ],\n                \"mapValue\": [\n                  {\n                    \"type\": 1,\n                    \"string\": \"functionality_storage\"\n                  },\n                  {\n                    \"type\": 8,\n                    \"boolean\": false\n                  },\n                  {\n                    \"type\": 8,\n                    \"boolean\": true\n                  }\n                ]\n              },\n              {\n                \"type\": 3,\n                \"mapKey\": [\n                  {\n                    \"type\": 1,\n                    \"string\": \"consentType\"\n                  },\n                  {\n                    \"type\": 1,\n                    \"string\": \"read\"\n                  },\n                  {\n                    \"type\": 1,\n                    \"string\": \"write\"\n                  }\n                ],\n                \"mapValue\": [\n                  {\n                    \"type\": 1,\n                    \"string\": \"personalization_storage\"\n                  },\n                  {\n                    \"type\": 8,\n                    \"boolean\": false\n                  },\n                  {\n                    \"type\": 8,\n                    \"boolean\": true\n                  }\n                ]\n              },\n              {\n                \"type\": 3,\n                \"mapKey\": [\n                  {\n                    \"type\": 1,\n                    \"string\": \"consentType\"\n                  },\n                  {\n                    \"type\": 1,\n                    \"string\": \"read\"\n                  },\n                  {\n                    \"type\": 1,\n                    \"string\": \"write\"\n                  }\n                ],\n                \"mapValue\": [\n                  {\n                    \"type\": 1,\n                    \"string\": \"security_storage\"\n                  },\n                  {\n                    \"type\": 8,\n                    \"boolean\": false\n                  },\n                  {\n                    \"type\": 8,\n                    \"boolean\": true\n                  }\n                ]\n              },\n              {\n                \"type\": 3,\n                \"mapKey\": [\n                  {\n                    \"type\": 1,\n                    \"string\": \"consentType\"\n                  },\n                  {\n                    \"type\": 1,\n                    \"string\": \"read\"\n                  },\n                  {\n                    \"type\": 1,\n                    \"string\": \"write\"\n                  }\n                ],\n                \"mapValue\": [\n                  {\n                    \"type\": 1,\n                    \"string\": \"ad_user_data\"\n                  },\n                  {\n                    \"type\": 8,\n                    \"boolean\": false\n                  },\n                  {\n                    \"type\": 8,\n                    \"boolean\": true\n                  }\n                ]\n              },\n              {\n                \"type\": 3,\n                \"mapKey\": [\n                  {\n                    \"type\": 1,\n                    \"string\": \"consentType\"\n                  },\n                  {\n                    \"type\": 1,\n                    \"string\": \"read\"\n                  },\n                  {\n                    \"type\": 1,\n                    \"string\": \"write\"\n                  }\n                ],\n                \"mapValue\": [\n                  {\n                    \"type\": 1,\n                    \"string\": \"ad_personalization\"\n                  },\n                  {\n                    \"type\": 8,\n                    \"boolean\": false\n                  },\n                  {\n                    \"type\": 8,\n                    \"boolean\": true\n                  }\n                ]\n              }\n            ]\n          }\n        }\n      ]\n    },\n    \"clientAnnotations\": {\n      \"isEditedByUser\": true\n    },\n    \"isRequired\": true\n  },\n  {\n    \"instance\": {\n      \"key\": {\n        \"publicId\": \"logging\",\n        \"versionId\": \"1\"\n      },\n      \"param\": [\n        {\n          \"key\": \"environments\",\n          \"value\": {\n            \"type\": 1,\n            \"string\": \"all\"\n          }\n        }\n      ]\n    },\n    \"clientAnnotations\": {\n      \"isEditedByUser\": true\n    },\n    \"isRequired\": true\n  }\n]\n\n\n___TESTS___\n\nscenarios: []\n\n\n___NOTES___\n\nCreated on 12/10/2023, 16:17:33\n\n\n",
+                "galleryReference": {
+                    "host": "github.com",
+                    "owner": "complianz",
+                    "repository": "complianz-cm-template",
+                    "version": "78d28ac5ebebfa5aa6c3626a06516b012dd1f9cb",
+                    "signature": "137e54c6c4c4153b74339fdc72ce08e86e399785b25c0d522f478e2c2f38a67f",
+                    "galleryTemplateId": "WF68Z"
+                }
+            }
+        ]
+    }
+}

@@ -1,0 +1,218 @@
+
+== Server Environment ==
+	Operating System: Linux
+	Software: LiteSpeed
+	MySQL version: MariaDB Server v11.8.3-MariaDB-log
+	PHP Version: 8.3.28
+	PHP Memory Limit: 1536M
+	PHP Max Input Vars: 5000
+	PHP Max Post Size: 1536M
+	GD Installed: Yes
+	ZIP Installed: Yes
+	Write Permissions: All right
+	Elementor Library: Connected
+
+== WordPress Environment ==
+	Version: 6.9.1
+	Site URL: https://flaghaus.art
+	Home URL: https://flaghaus.art
+	WP Multisite: No
+	Max Upload Size: 2 GB
+	Memory limit: 40M
+	Max Memory limit: 1536M
+	Permalink Structure: /%postname%/
+	Language: pt_BR
+	Timezone: 0
+	Admin Email: alangattiboni@gmail.com
+	Debug Mode: Inactive
+
+== Theme ==
+	Name: Astra
+	Version: 4.12.1
+	Author: Brainstorm Force
+	Child Theme: No
+
+== User ==
+	Role: administrator
+	WP Profile lang: en-US
+	User Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36
+
+== Active Plugins ==
+	Code Snippets
+		Version: 3.9.4
+		Author: Code Snippets Pro
+
+	Complianz | GDPR/CCPA Cookie Consent
+		Version: 7.4.4.2
+		Author: Complianz
+
+	Custom Fonts
+		Version: 2.1.17
+		Author: Brainstorm Force
+
+	Custom Twitter Feeds
+		Version: 2.3.1
+		Author: Smash Balloon
+
+	Elementor
+		Version: 3.34.3
+		Author: Elementor.com
+
+	Feeds for TikTok (TikTok feed, video, and gallery plugin)
+		Version: 1.1.1
+		Author: Smash Balloon
+
+	Feeds for YouTube
+		Version: 2.6.2
+		Author: Smash Balloon YouTube Team
+
+	Hostinger Easy Onboarding
+		Version: 2.1.2
+		Author: Hostinger
+
+	Hostinger Reach
+		Version: 1.3.3
+		Author: Hostinger
+
+	Hostinger Tools
+		Version: 3.0.57
+		Author: Hostinger
+
+	LiteSpeed Cache
+		Version: 7.7
+		Author: LiteSpeed Technologies
+
+	One User Avatar
+		Version: 2.5.4
+		Author: One Designs
+
+	Premium Addons for Elementor
+		Version: 4.11.65
+		Author: Leap13
+
+	Rank Math SEO
+		Version: 1.0.262
+		Author: Rank Math SEO
+
+	Reviews Feed
+		Version: 2.1.1
+		Author: Smash Balloon
+
+	Smash Balloon Custom Facebook Feed
+		Version: 4.3.4
+		Author: Smash Balloon
+
+	Smash Balloon Instagram Feed
+		Version: 6.10.0
+		Author: Smash Balloon
+
+	Stick My Header for Astra
+		Version: 1.0
+		Author: WebTips
+
+	Unlimited Elements Blocks Library
+		Version: 2.0.1
+		Author: Unlimited Elements
+
+	Wordfence Security
+		Version: 8.1.4
+		Author: Wordfence
+
+
+== Must-Use Plugins ==
+	Hostinger Preview Domain
+		Version: 1.3.4
+		Author: Hostinger
+
+	Hostinger Smart Auto Updates
+		Version: 1.0.7
+		Author: Hostinger
+
+
+== Elements Usage ==
+	
+	wp-page : 5
+		button : 5
+		container : 35
+		divider : 1
+		heading : 24
+		html : 2
+		image : 2
+		image-carousel : 1
+		premium-addon-blog : 1
+		shortcode : 1
+		spacer : 4
+		text-editor : 18
+
+
+== Settings ==
+	
+	cpt_support: post, page
+	allow_tracking: yes
+	font_display: swap
+
+
+== Elementor Experiments ==
+	Inline Font Icons: Active by default
+	Additional Custom Breakpoints: Active
+	Container: Active by default
+	Optimized Markup: Active by default
+	Pro Free Trial Popup: Active by default
+	Nested Elements: Active by default
+	Pages Panel: Inactive by default
+	Elementor Home Screen: Active by default
+	Atomic Widgets: Inactive by default
+	Global Classes: Inactive by default
+	Enforce global classes capabilities: Active by default
+	Variables: Active by default
+	Cloud Library: Active
+	Editor v4 (Opt In Page): Active by default
+	Editor V4: Inactive by default
+	Components: Inactive by default
+	Interactions: Active by default
+	Editor one: Active by default
+	Import/Export Customization: Active by default
+	Elementor Editor Events: Active by default
+
+
+== Log ==
+	
+PHP: showing 1 of 1PHP: 2026-01-26 04:05:11 [warning X 2][/home/u903873572/domains/flaghaus.art/public_html/wp-content/plugins/elementor/modules/history/revisions-manager.php::363] Undefined array key &quot;editor_post_id&quot; [array (
+  'trace' => '
+#0: Elementor\Core\Logger\Manager -> shutdown()
+',
+)]
+
+JS: showing 8 of 8JS: 2026-01-26 04:07:45 [error X 5][https://brown-ferret-272851.hostingersite.com/wp-content/plugins/elementor/assets/js/packages/editor-documents/editor-documents.min.js?ver=3.34.2:1:5136] Cannot read properties of null (reading &#039;editor&#039;) 
+JS: 2026-01-26 04:30:01 [error X 1][https://brown-ferret-272851.hostingersite.com/wp-content/plugins/elementor/assets/js/editor.min.js?ver=3.34.2:2:500198] elementorFrontend is not defined 
+JS: 2026-01-26 05:32:23 [error X 2][https://brown-ferret-272851.hostingersite.com/wp-content/plugins/elementor/assets/js/editor.min.js?ver=3.34.2:2:1234456] Cannot read properties of null (reading &#039;id&#039;) 
+JS: 2026-01-27 17:13:02 [error X 3][https://flaghaus.art/wp-content/plugins/elementor/assets/js/editor.min.js?ver=3.34.3:2:78033] this.model.isValidChild is not a function 
+JS: 2026-01-28 02:44:15 [error X 7][https://flaghaus.art/wp-content/plugins/elementor/assets/js/editor.min.js?ver=3.34.3:2:1017125] Cannot read properties of undefined (reading &#039;localized&#039;) 
+JS: 2026-01-29 17:41:02 [error X 2][https://flaghaus.art/wp-content/plugins/elementor/assets/js/editor.min.js?ver=3.34.3:2:1016622] Cannot read properties of undefined (reading &#039;toLowerCase&#039;) 
+JS: 2026-01-31 02:15:26 [error X 3][https://flaghaus.art/wp-content/plugins/elementor/assets/js/common-modules.min.js?ver=3.34.3:1:102999] C.startsWith is not a function 
+JS: 2026-02-04 06:47:52 [error X 2][https://flaghaus.art/wp-content/plugins/elementor/assets/js/editor.min.js?ver=3.34.3:2:932438] Failed to execute &#039;querySelector&#039; on &#039;Document&#039;: &#039;#&#039; is not a valid selector. 
+
+Log: showing 6 of 62026-01-27 16:16:36 [info] elementor::elementor_updater Started 
+2026-01-27 16:16:36 [info] Elementor/Upgrades - _on_each_version Start  
+2026-01-27 16:16:36 [info] Elementor data updater process has been queued. [array (
+  'plugin' => 'Elementor',
+  'from' => '3.34.2',
+  'to' => '3.34.3',
+)]
+2026-01-27 16:16:37 [info] Elementor/Upgrades - _on_each_version Finished 
+2026-01-27 16:16:37 [info] Elementor data updater process has been completed. [array (
+  'plugin' => 'Elementor',
+  'from' => '3.34.2',
+  'to' => '3.34.3',
+)]
+2026-01-27 16:16:38 [info] Elementor data updater process has been queued. [array (
+  'plugin' => 'Elementor',
+  'from' => '3.34.2',
+  'to' => '3.34.3',
+)]
+
+
+
+== Elementor - Compatibility Tag ==
+	
+	Premium Addons for Elementor: Compatibility not specified

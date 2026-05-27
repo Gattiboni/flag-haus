@@ -62,8 +62,8 @@ Os textos devem refletir o branding FH: gesto, estrutura, presença. O conteúdo
 Aqui o site toma forma. É a transposição dos wireframes para código/tema, respeitando o branding e garantindo modularidade.
 
 ## ✔️ Tarefas
-- [ ] 4.1 Configurar ambiente WordPress no servidor  
-- [ ] 4.2 Instalar tema base (Astra, GeneratePress, Kadence ou similar)  
+- [X] 4.1 Configurar ambiente WordPress no servidor  
+- [X] 4.2 Instalar tema base (Astra, GeneratePress, Kadence ou similar)  
 - [ ] 4.3 Configurar tema filho (`/wp-content/themes/flag-haus-child`)  
 - [ ] 4.4 Implementar Header + navegação  
 - [ ] 4.5 Implementar Footer completo  

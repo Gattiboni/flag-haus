@@ -203,5 +203,123 @@ Home terá seção dinâmica alimentada pelo Instagram.
 
 ---
 
+## 013 — 2026-01-25  
+### Decisão: Migração do domínio e ambiente WP para Hostinger (WordPress.org self‑hosted)
+
+**Contexto**  
+O projeto estava sendo configurado em WordPress.com, que exige plano Business para uso de temas/plugins avançados (ex.: Astra, Elementor, Page Scroll to ID), limitando a liberdade visual necessária para replicar referências como Saints Tattoos e Bang Bang. Ao mesmo tempo, o domínio `flaghaus.art` já estava registrado na Hostinger, mas apenas com DNS e e‑mail configurados, sem instalação ativa de WordPress.org.
+
+**Motivos**  
+- Eliminar a dependência de planos pagos do WordPress.com para recursos básicos de customização.  
+- Unificar domínio, hospedagem, DNS, e e‑mail na Hostinger, simplificando operação e suporte.  
+- Permitir uso pleno de tema base leve (Astra) + page builder (Elementor) + CPTs e plugins específicos (Instagram, Artistas, agendamento) alinhados à arquitetura do projeto.  
+- Evitar dívida técnica em cima de temas FSE limitados e de ambiente gerenciado pelo WordPress.com.
+
+**Impacto**  
+- Instalação de um novo WordPress.org “limpo” na Hostinger, vinculado ao domínio `flaghaus.art`.  
+- DNS ajustado: registro A `@` apontando para o IP da hospedagem Hostinger (`185.245.180.219`), com propagação concluída e site já servindo o novo WP (tela padrão “Hello world”).  
+- WordPress.com deixa de ser o ambiente principal; passa a ser apenas uma conta legada, enquanto toda a evolução do site (tema, estrutura de páginas, branding, integrações) acontecerá exclusivamente no WordPress.org self‑hosted.  
+- Liberação de caminho para implementar o layout one‑page dinâmico, seção Artistas e embeds de Instagram exatamente como definido na arquitetura e no branding book.
+
+
+---
+
+## 014 — 2026-01-26  
+### Decisão: Abandono do Gutenberg/Astra para Layout e Motion; Adoção de Elementor + Tema Leve
+
+**Contexto**  
+Durante a implementação da Home, tornou-se evidente que a combinação Gutenberg + Astra impõe restrições estruturais severas para layouts com camadas independentes, backgrounds animados e motion contínuo. Mesmo soluções tecnicamente corretas geraram fricção excessiva, baixa previsibilidade e alto custo cognitivo, especialmente considerando o plano de incorporar múltiplas animações ao longo do site.
+
+**Motivos**  
+- Gutenberg não foi projetado para motion complexo nem para separação clara entre canvas visual e conteúdo.  
+- Astra introduz containers e regras implícitas que dificultam controle preciso de largura, overflow e camadas.  
+- O projeto Flag Haus tem motion como linguagem conceitual (tempo, gesto, presença), não como ornamento.  
+- Necessidade de preservar liberdade criativa futura sem lock-in rígido de animação.  
+- Redução deliberada de custo emocional e dívida técnica já nas primeiras etapas do projeto.
+
+**Decisão**  
+- Adotar **Elementor como engine principal de layout**.  
+- Utilizar **tema Hello Elementor** como base neutra, sem estilos ou containers opinativos.  
+- Abandonar definitivamente Gutenberg para construção de layout da Home e páginas principais.  
+- Tratar motion como camada independente do conteúdo, garantindo flexibilidade e iteração futura.
+
+**Impacto**  
+- Conteúdo textual foi extraído e documentado separadamente, preservando 100% do material.  
+- Layout e animações passam a ser reconstruídos sobre base previsível e escalável.  
+- O projeto ganha liberdade para evoluir visualmente sem reestruturações recorrentes.  
+- Redução significativa de risco de refatorações forçadas ao longo do roadmap.
+
+
+---
+
+## 2026-05-27 — CRM Flag Haus: decisões arquiteturais do schema base
+
+### Contexto
+Construção incremental do schema do CRM Flag Haus em Supabase hosted, projeto `inuboxnkbtkvtxbupmqb`. Base para questionário de anamnese, página admin, e ETL futuro com Google Ads.
+
+### Decisões tomadas
+
+**Entidade cliente: tabela única `people` com `lifecycle_stage`**
+- Padrão consolidado em CRMs modernos (HubSpot, Attio, Folk) — pesquisa de benchmark feita em 26/05.
+- Evita duplicação lead→cliente, simplifica FKs, permite análise longitudinal.
+- Identidade frouxa: apenas `phone` obrigatório, demais atributos preenchidos incrementalmente.
+
+**UUIDs v7 via função SQL pure (não extensão)**
+- Extensão `pg_uuidv7` não disponível no Supabase hosted (em fila há +2 anos).
+- Função `public.uuid_generate_v7()` implementada em SQL puro, performance equivalente.
+- v7 escolhido sobre v4 pela ordenação temporal (melhor performance de índice B-tree).
+
+**ENUMs Postgres (não TEXT + CHECK)**
+- Decisão de rigidez: ENUM mostra intenção no schema, custo zero.
+- Trade-off aceito: migration obrigatória pra adicionar valor novo (alinhado com "incremental sem dívida").
+- Aplicado em `lifecycle_stage`, `job_status`, `user_role`. NÃO aplicado em `event_type` (mudaria muito).
+
+**Geolocalização: dupla representação `lat/lng` + `geography`**
+- PostGIS ativado desde o início, evita migração futura.
+- Coluna `location` populada por trigger a partir de lat/lng.
+- Mantém compatibilidade com ferramentas que esperam float, habilita queries espaciais (ST_DWithin, ST_Distance).
+
+**`on delete` diferenciado por natureza da tabela**
+- `jobs` → RESTRICT (negócio, protegido contra apagamento acidental).
+- `lifecycle_transitions`, `identity_links`, `customer_segments_snapshot` → CASCADE (logs subordinados).
+- `events` → SET NULL (histórico sobrevive ao apagamento pra análise temporal).
+
+**`events` como tabela unificada (não separar funil de marketing)**
+- Discriminador `event_type` com convenção `namespace.action` (ex: `funnel.first_contact`, `marketing.ad_click`).
+- Payload livre em JSONB.
+- Append-only (sem updated_at/deleted_at).
+- Fronteira entre funil e marketing é ambígua na prática — separar criaria reconciliação desnecessária.
+
+**Sem FK explícita de `user_roles.user_id` pra `auth.users`**
+- Tabela `auth` é território Supabase, refator deles quebraria FK.
+- Padrão recomendado pela própria doc Supabase.
+
+**Sem trigger automático de `lifecycle_transitions`**
+- Magia escondida descartada — inserção será explícita pela aplicação.
+- Permite registrar `changed_by` e `reason` com contexto da camada de aplicação.
+
+**Identificadores publicáveis vs sensíveis**
+- Publishable key é segura por design, pode aparecer em frontend/docs.
+- Direct connection string com senha = credencial root, deve ficar em `.env` (gitignored).
+- Atualmente registrada com placeholder `[YOUR-PASSWORD]`.
+
+**RLS habilitada sem policies (Leva 3 adiada)**
+- 7 tabelas com `enable row level security` mas sem policies = banco fechado pra todos.
+- Estado seguro pra continuar desenvolvimento solo.
+- Adiamento consciente porque não há página admin nem usuários adicionais ainda — RLS protege contra terceiros, não contra o desenvolvedor solo.
+- Leva 3 (policies + Auth Hook + cadastro de usuários) será atacada quando a página admin entrar (Bloco 4 do plano de junho).
+
+### Não-decisões (deixadas em aberto)
+
+- Critérios automáticos de transição entre lifecycle stages (ex: "lead → dormant após N dias sem evento"). Será definido quando houver volume mínimo de dados reais.
+- Segmentação RFM concreta. `rfm_segment` está como TEXT por enquanto, vira ENUM quando os cortes estiverem cravados.
+- Política de retenção/anonimização (LGPD). Soft delete via `deleted_at` está pronto; processo de anonimização pós-X meses fica pra depois.
+
+### Fonte de verdade
+SQL fonte vive no Supabase. Não versionado localmente por decisão consciente (evita drift entre dois lugares).
+
+---
+
+
 *(Novas entradas devem seguir este mesmo formato.)*
 
