@@ -1,0 +1,88 @@
+﻿# ============================================================
+#  .gitignore — site-flag-haus
+#  Estado atual (docs/assets/HTMLs) e futuro (site próprio
+#  em framework JS, possível fase WordPress de transição).
+# ============================================================
+
+
+# --- Sistema operacional ---
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+.DS_Store
+._*
+
+
+# --- Editor / IDE ---
+.vscode/
+.idea/
+*.suo
+*.swp
+*.swo
+*~
+
+
+# --- Graphify (knowledge graph local) ---
+graphify-out/
+
+
+# --- Node.js / dependências ---
+node_modules/
+.pnpm-store/
+.yarn/
+.pnp.*
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+
+# --- Builds e outputs de framework JS ---
+dist/
+build/
+out/
+.next/
+.nuxt/
+.svelte-kit/
+.astro/
+
+
+# --- Variáveis de ambiente e segredos ---
+.env
+.env.local
+.env.*.local
+*.pem
+*.key
+
+
+# --- Cache ---
+.cache/
+.parcel-cache/
+.turbo/
+.eslintcache
+
+
+# --- WordPress (fase atual ou de transição) ---
+wp-config.php
+wp-content/uploads/
+wp-content/cache/
+wp-content/upgrade/
+wp-content/wflogs/
+wp-content/debug.log
+
+
+# --- Python (scripts auxiliares, se houver) ---
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+
+# --- Temporários e logs ---
+tmp/
+temp/
+*.tmp
+*.bak
+*.backup
+*.log
