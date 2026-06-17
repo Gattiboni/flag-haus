@@ -519,4 +519,22 @@ SQL fonte no Supabase. Copy aprovado em `docs/copy_anamnese_v2_consolidado.md`.
 
 ---
 
+## 2026-05-31 — Features pendentes de Ativação de Base
+
+Capturadas via feedback de Julio e Amanda no grupo durante revisão dos preview
+HTMLs dos questionários:
+
+- **Desconto de aniversário**: cliente recebe gatilho automatizado no mês do
+  aniversário. Depende de `birth_date` populado e camada de automação (Frente 4
+  do plano de junho).
+- **Programa de fidelidade por contagem**: desconto a cada N tatuagens
+  executadas. Depende de `jobs.status = 'executed'` populado e contagem por
+  `person_id`.
+
+**Decisão:** não implementar agora. Capturar como gatilhos da Frente 4 (Ativação
+de Base), a ser destravada após CRM populado e admin operacional. Risco
+mitigado: arquitetura atual já comporta os dois sem refator.
+
+---
+
 _(Novas entradas devem seguir este mesmo formato.)_

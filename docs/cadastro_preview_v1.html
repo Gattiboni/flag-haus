@@ -1,0 +1,689 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Flag Haus — Cadastro</title>
+
+<!--
+  Flag Haus — Form /cadastro (preview standalone v1)
+  Fluxo: renovação de cadastro, sem anamnese
+  Tom: Brand Book Flag Haus 11/2025, seção 4
+  Fontes: Fraunces (proxy de Neue Einstellung) + Lato
+  Paleta: Onyx Black #2D2C2A, Oxblood #8B0000, Terracota #A8643D,
+          Granite Gray #6B6B6B, Whisper Gray #F4F4F4, White #FFFFFF
+  Toggle "Novo / Recorrente" no canto = simulação dos dois modos
+-->
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@300;400;500&family=Lato:wght@300;400;700&display=swap" rel="stylesheet">
+
+<style>
+  :root {
+    --onyx: #2D2C2A;
+    --oxblood: #8B0000;
+    --terracota: #A8643D;
+    --granite: #6B6B6B;
+    --whisper: #F4F4F4;
+    --white: #FFFFFF;
+    --paper: #FAF8F5;
+    --line: rgba(45, 44, 42, 0.12);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html, body {
+    background: var(--paper);
+    color: var(--onyx);
+    font-family: 'Lato', sans-serif;
+    font-weight: 300;
+    font-size: 17px;
+    line-height: 1.6;
+    min-height: 100vh;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .demo-toggle {
+    position: fixed;
+    top: 16px;
+    right: 16px;
+    z-index: 100;
+    background: var(--white);
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    padding: 4px;
+    display: flex;
+    gap: 2px;
+    font-size: 11px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+  }
+  .demo-toggle button {
+    background: transparent;
+    border: none;
+    padding: 6px 12px;
+    border-radius: 999px;
+    cursor: pointer;
+    color: var(--granite);
+    font-family: 'Lato', sans-serif;
+    font-size: 11px;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    transition: all 0.2s;
+  }
+  .demo-toggle button.active {
+    background: var(--onyx);
+    color: var(--white);
+  }
+  .demo-toggle .label {
+    padding: 6px 8px 6px 12px;
+    color: var(--granite);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    font-size: 10px;
+    align-self: center;
+  }
+
+  .app {
+    max-width: 560px;
+    margin: 0 auto;
+    padding: 80px 32px 120px;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .header {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    padding-bottom: 32px;
+    border-bottom: 1px solid var(--line);
+    margin-bottom: 56px;
+  }
+  .header .brand {
+    font-family: 'Fraunces', serif;
+    font-weight: 400;
+    font-size: 18px;
+    letter-spacing: 0.02em;
+  }
+  .header .step-counter {
+    font-size: 11px;
+    color: var(--granite);
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+  }
+
+  .step {
+    display: none;
+    animation: fadeIn 0.4s ease-out;
+  }
+  .step.active { display: block; }
+
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  h1, h2 {
+    font-family: 'Fraunces', serif;
+    font-weight: 400;
+    color: var(--onyx);
+    letter-spacing: -0.01em;
+  }
+  h1 {
+    font-size: 32px;
+    line-height: 1.25;
+    margin-bottom: 24px;
+  }
+  h2 {
+    font-size: 24px;
+    line-height: 1.3;
+    margin-bottom: 20px;
+  }
+  p {
+    margin-bottom: 16px;
+  }
+  .muted {
+    color: var(--granite);
+    font-size: 15px;
+  }
+
+  .abertura {
+    padding: 40px 0;
+  }
+  .abertura .signature {
+    margin-top: 32px;
+    font-family: 'Fraunces', serif;
+    font-style: italic;
+    color: var(--onyx);
+  }
+
+  .field {
+    margin: 32px 0;
+  }
+  .field label {
+    display: block;
+    font-size: 13px;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: var(--granite);
+    margin-bottom: 12px;
+  }
+  .field input[type="text"],
+  .field input[type="tel"],
+  .field input[type="email"],
+  .field input[type="date"],
+  .field textarea {
+    width: 100%;
+    background: transparent;
+    border: none;
+    border-bottom: 1px solid var(--onyx);
+    padding: 10px 0;
+    font-family: 'Lato', sans-serif;
+    font-size: 18px;
+    color: var(--onyx);
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  .field input:focus,
+  .field textarea:focus {
+    border-color: var(--oxblood);
+  }
+  .field textarea {
+    resize: vertical;
+    min-height: 80px;
+  }
+
+  .options {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-top: 16px;
+  }
+  .options input[type="radio"] { display: none; }
+  .options label {
+    display: inline-block;
+    padding: 12px 20px;
+    border: 1px solid var(--onyx);
+    border-radius: 999px;
+    cursor: pointer;
+    font-size: 14px;
+    color: var(--onyx);
+    transition: all 0.2s;
+    text-transform: none;
+    letter-spacing: 0;
+    margin-bottom: 0;
+  }
+  .options label:hover { background: var(--whisper); }
+  .options input[type="radio"]:checked + label {
+    background: var(--onyx);
+    color: var(--white);
+  }
+  .options.stacked {
+    flex-direction: column;
+    gap: 8px;
+  }
+  .options.stacked label {
+    width: 100%;
+    text-align: left;
+  }
+
+  .consent-box {
+    background: var(--white);
+    border: 1px solid var(--line);
+    padding: 24px;
+    margin: 24px 0;
+    border-radius: 4px;
+  }
+  .checkbox-line {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    margin-top: 20px;
+    padding-top: 20px;
+    border-top: 1px solid var(--line);
+    cursor: pointer;
+  }
+  .checkbox-line input[type="checkbox"] {
+    margin-top: 4px;
+    accent-color: var(--oxblood);
+    cursor: pointer;
+  }
+  .checkbox-line span {
+    font-size: 15px;
+  }
+
+  .nav {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 56px;
+    padding-top: 32px;
+    border-top: 1px solid var(--line);
+  }
+  .nav button {
+    font-family: 'Lato', sans-serif;
+    font-size: 14px;
+    letter-spacing: 0.04em;
+    cursor: pointer;
+    padding: 14px 28px;
+    border-radius: 999px;
+    transition: all 0.2s;
+    border: 1px solid transparent;
+  }
+  .nav .back {
+    background: transparent;
+    color: var(--granite);
+    border: none;
+    padding-left: 0;
+  }
+  .nav .back:hover { color: var(--onyx); }
+  .nav .next {
+    background: var(--onyx);
+    color: var(--white);
+    border-color: var(--onyx);
+  }
+  .nav .next:hover {
+    background: var(--oxblood);
+    border-color: var(--oxblood);
+  }
+
+  .fechamento {
+    padding: 60px 0;
+  }
+  .fechamento h1 {
+    margin-bottom: 32px;
+  }
+  .fechamento .signature {
+    margin-top: 48px;
+    font-family: 'Fraunces', serif;
+    font-style: italic;
+  }
+
+  @media (max-width: 600px) {
+    .app { padding: 64px 24px 100px; }
+    h1 { font-size: 26px; }
+    .header { margin-bottom: 40px; }
+    .demo-toggle { top: 8px; right: 8px; }
+    .demo-toggle .label { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<div class="demo-toggle">
+  <span class="label">Simular</span>
+  <button id="modeNew" class="active" onclick="setMode('new')">Novo</button>
+  <button id="modeReturning" onclick="setMode('returning')">Recorrente</button>
+</div>
+
+<div class="app">
+
+  <header class="header">
+    <div class="brand">Flag Haus</div>
+    <div class="step-counter" id="stepCounter">—</div>
+  </header>
+
+  <main id="form">
+
+    <!-- STEP 0: ABERTURA -->
+    <section class="step abertura active" data-step="0">
+      <h1>Oi.</h1>
+      <p>Tô organizando aqui o cadastro de quem já passou pela Flag Haus, pra manter teu histórico bem feito e melhorar como a gente conversa daqui pra frente.</p>
+      <p>Leva menos de 3 minutos. Tudo que você não quiser preencher pode pular.</p>
+      <div class="signature">— Julio</div>
+      <div class="nav">
+        <span></span>
+        <button class="next" onclick="nextStep()">Bora</button>
+      </div>
+    </section>
+
+    <!-- STEP 1: TELEFONE (chave) -->
+    <section class="step" data-step="1">
+      <h2>Pra eu te achar no cadastro: qual o seu WhatsApp?</h2>
+      <div class="field">
+        <label>WhatsApp com DDD</label>
+        <input type="tel" id="phone" placeholder="11 99999 9999">
+      </div>
+      <div class="nav">
+        <button class="back" onclick="prevStep()">Voltar</button>
+        <button class="next" onclick="nextStep()">Continuar</button>
+      </div>
+    </section>
+
+    <!-- STEP 2: RECONHECIMENTO -->
+    <section class="step" data-step="2">
+      <div id="recogReturning" style="display:none;">
+        <h1>Julio, que bom — já te encontrei aqui.</h1>
+        <p>Vou confirmar o que tenho e perguntar só o que falta.</p>
+      </div>
+      <div id="recogNew">
+        <h1>Não te encontrei na base ainda — vamos começar então.</h1>
+        <p>Algumas perguntas rápidas pra te cadastrar direito.</p>
+      </div>
+      <div class="nav">
+        <button class="back" onclick="prevStep()">Voltar</button>
+        <button class="next" onclick="nextStep()">Seguir</button>
+      </div>
+    </section>
+
+    <!-- STEP 3: Nome -->
+    <section class="step" data-step="3">
+      <div class="new-only">
+        <h2>Como você se chama?</h2>
+        <p class="muted">Pra confirmar do jeito certo no cadastro.</p>
+        <div class="field">
+          <label>Nome completo</label>
+          <input type="text" id="fullName">
+        </div>
+      </div>
+      <div class="returning-only" style="display:none;">
+        <h2>Você é Julio Bandeiras, certo?</h2>
+        <div class="options">
+          <input type="radio" name="nameConfirm" id="nameok" value="ok">
+          <label for="nameok">Confirmar</label>
+          <input type="radio" name="nameConfirm" id="nameedit" value="edit">
+          <label for="nameedit">Corrigir</label>
+        </div>
+      </div>
+      <div class="nav">
+        <button class="back" onclick="prevStep()">Voltar</button>
+        <button class="next" onclick="nextStep()">Continuar</button>
+      </div>
+    </section>
+
+    <!-- STEP 4: E-mail -->
+    <section class="step" data-step="4">
+      <div class="new-only">
+        <h2>Seu e-mail.</h2>
+        <p class="muted">Pra alguma comunicação mais formal eventualmente.</p>
+        <div class="field">
+          <label>E-mail</label>
+          <input type="email" id="email">
+        </div>
+      </div>
+      <div class="returning-only" style="display:none;">
+        <h2>Teu e-mail continua sendo julio.bandeiras@gmail.com?</h2>
+        <div class="options">
+          <input type="radio" name="emailConfirm" id="emailok" value="ok">
+          <label for="emailok">Confirmar</label>
+          <input type="radio" name="emailConfirm" id="emailedit" value="edit">
+          <label for="emailedit">Atualizar</label>
+        </div>
+      </div>
+      <div class="nav">
+        <button class="back" onclick="prevStep()">Voltar</button>
+        <button class="next" onclick="nextStep()">Continuar</button>
+      </div>
+    </section>
+
+    <!-- STEP 5: Data nascimento -->
+    <section class="step" data-step="5">
+      <div class="new-only">
+        <h2>Quando você nasceu?</h2>
+        <p class="muted">Pra eu mandar um abraço no dia certo, entre outras coisas.</p>
+        <div class="field">
+          <label>Data de nascimento (opcional)</label>
+          <input type="date" id="dob">
+        </div>
+      </div>
+      <div class="returning-only" style="display:none;">
+        <h2>Você nasceu em 14 de março de 1992, certo?</h2>
+        <div class="options">
+          <input type="radio" name="dobConfirm" id="dobok" value="ok">
+          <label for="dobok">Confirmar</label>
+          <input type="radio" name="dobConfirm" id="dobedit" value="edit">
+          <label for="dobedit">Corrigir</label>
+        </div>
+      </div>
+      <div class="nav">
+        <button class="back" onclick="prevStep()">Voltar</button>
+        <button class="next" onclick="nextStep()">Continuar</button>
+      </div>
+    </section>
+
+    <!-- STEP 6: Bairro/cidade -->
+    <section class="step" data-step="6">
+      <div class="new-only">
+        <h2>Em que bairro você mora?</h2>
+        <p class="muted">Pode permitir a localização se preferir — preenche sozinho.</p>
+        <div class="field">
+          <label>Bairro</label>
+          <input type="text" id="neighborhood" placeholder="Vila Mariana">
+        </div>
+        <div class="field">
+          <label>Cidade</label>
+          <input type="text" id="city" value="São Paulo">
+        </div>
+        <button class="next" style="background: transparent; color: var(--onyx); border: 1px solid var(--onyx); margin-top: 8px;" onclick="alert('Demo: usaria geolocalização do navegador no form real.')">📍 Usar minha localização</button>
+      </div>
+      <div class="returning-only" style="display:none;">
+        <h2>Você mora em Vila Mariana, São Paulo?</h2>
+        <div class="options">
+          <input type="radio" name="locConfirm" id="locok" value="ok">
+          <label for="locok">Confirmar</label>
+          <input type="radio" name="locConfirm" id="locedit" value="edit">
+          <label for="locedit">Atualizar</label>
+        </div>
+      </div>
+      <div class="nav">
+        <button class="back" onclick="prevStep()">Voltar</button>
+        <button class="next" onclick="nextStep()">Continuar</button>
+      </div>
+    </section>
+
+    <!-- STEP 7: Instagram -->
+    <section class="step" data-step="7">
+      <div class="new-only">
+        <h2>Seu @ no Instagram, se você usa.</h2>
+        <p class="muted">Sem obrigação. É bom pra a gente trocar ideia por lá quando rolar.</p>
+        <div class="field">
+          <label>@ (opcional)</label>
+          <input type="text" id="instagram" placeholder="seu.handle">
+        </div>
+      </div>
+      <div class="returning-only" style="display:none;">
+        <h2>Teu Instagram: @julio.bandeiras. Continua?</h2>
+        <div class="options">
+          <input type="radio" name="instaConfirm" id="ig-ok" value="ok">
+          <label for="ig-ok">Confirmar</label>
+          <input type="radio" name="instaConfirm" id="ig-edit" value="edit">
+          <label for="ig-edit">Atualizar</label>
+          <input type="radio" name="instaConfirm" id="ig-rm" value="rm">
+          <label for="ig-rm">Remover</label>
+        </div>
+      </div>
+      <div class="nav">
+        <button class="back" onclick="prevStep()">Voltar</button>
+        <button class="next" onclick="nextStep()">Continuar</button>
+      </div>
+    </section>
+
+    <!-- STEP 8: Como conheceu -->
+    <section class="step" data-step="8">
+      <h2>Você lembra como chegou até a Flag Haus na primeira vez?</h2>
+      <p class="muted">Indicação, Google, Instagram, viu na rua — qualquer caminho serve.</p>
+      <div class="options stacked">
+        <input type="radio" name="source" id="src-indic" value="indic"><label for="src-indic">Indicação</label>
+        <input type="radio" name="source" id="src-google" value="google"><label for="src-google">Google</label>
+        <input type="radio" name="source" id="src-insta" value="insta"><label for="src-insta">Instagram</label>
+        <input type="radio" name="source" id="src-rua" value="rua"><label for="src-rua">Vi na rua / na vitrine</label>
+        <input type="radio" name="source" id="src-social" value="social"><label for="src-social">Outra rede social</label>
+        <input type="radio" name="source" id="src-forgot" value="forgot"><label for="src-forgot">Não lembro mais</label>
+        <input type="radio" name="source" id="src-other" value="other"><label for="src-other">Outro — me conta</label>
+      </div>
+      <div class="nav">
+        <button class="back" onclick="prevStep()">Voltar</button>
+        <button class="next" onclick="nextStep()">Continuar</button>
+      </div>
+    </section>
+
+    <!-- STEP 9: Estilos / temas -->
+    <section class="step" data-step="9">
+      <h2>Que tipo de tatuagem te atrai mais hoje?</h2>
+      <p class="muted">Pode ser estilo (fineline, traço, ornamental, autoral livre), tema (natureza, escrita, geometria, retrato), parte do corpo que você ainda quer trabalhar, ou só uma vibe que tem rondado.</p>
+      <div class="field">
+        <textarea id="interests" placeholder="Solta aí — opcional."></textarea>
+      </div>
+      <div class="nav">
+        <button class="back" onclick="prevStep()">Voltar</button>
+        <button class="next" onclick="nextStep()">Continuar</button>
+      </div>
+    </section>
+
+    <!-- STEP 10: Canal preferido -->
+    <section class="step" data-step="10">
+      <h2>Quando eu precisar te avisar de algo — agenda, retorno, novidade — qual canal você prefere?</h2>
+      <div class="options">
+        <input type="radio" name="channel" id="ch-wa" value="wa"><label for="ch-wa">WhatsApp</label>
+        <input type="radio" name="channel" id="ch-email" value="email"><label for="ch-email">E-mail</label>
+        <input type="radio" name="channel" id="ch-ig" value="ig"><label for="ch-ig">Instagram</label>
+        <input type="radio" name="channel" id="ch-any" value="any"><label for="ch-any">Tanto faz</label>
+      </div>
+      <div class="nav">
+        <button class="back" onclick="prevStep()">Voltar</button>
+        <button class="next" onclick="nextStep()">Continuar</button>
+      </div>
+    </section>
+
+    <!-- STEP 11: Opt-in -->
+    <section class="step" data-step="11">
+      <h2>Posso te avisar quando abrir agenda nova, flash drops, ou alguma novidade do estúdio?</h2>
+      <p class="muted">Você pode mudar isso a qualquer momento, claro.</p>
+      <div class="options">
+        <input type="radio" name="optin" id="opt-yes" value="yes">
+        <label for="opt-yes">Sim, pode</label>
+        <input type="radio" name="optin" id="opt-no" value="no">
+        <label for="opt-no">Prefiro não</label>
+      </div>
+      <div class="nav">
+        <button class="back" onclick="prevStep()">Voltar</button>
+        <button class="next" onclick="nextStep()">Continuar</button>
+      </div>
+    </section>
+
+    <!-- STEP 12: Motivação -->
+    <section class="step" data-step="12">
+      <h2>O que te fez tatuar comigo, ou voltar?</h2>
+      <p class="muted">Curiosidade minha. Se quiser contar, gosto de saber.</p>
+      <div class="field">
+        <textarea id="motivation" placeholder="Opcional."></textarea>
+      </div>
+      <div class="nav">
+        <button class="back" onclick="prevStep()">Voltar</button>
+        <button class="next" onclick="nextStep()">Continuar</button>
+      </div>
+    </section>
+
+    <!-- STEP 13: Onde circula -->
+    <section class="step" data-step="13">
+      <h2>Por onde você costuma circular em São Paulo?</h2>
+      <p class="muted">Bairros, regiões, lugares que você frequenta. Me ajuda a pensar futuras presenças e parcerias.</p>
+      <div class="field">
+        <textarea id="circulation" placeholder="Opcional."></textarea>
+      </div>
+      <div class="nav">
+        <button class="back" onclick="prevStep()">Voltar</button>
+        <button class="next" onclick="nextStep()">Continuar</button>
+      </div>
+    </section>
+
+    <!-- STEP 14: LGPD -->
+    <section class="step" data-step="14">
+      <h2>Pra fechar — uma confirmação rápida sobre seus dados.</h2>
+      <div class="consent-box">
+        <p>Eles ficam comigo pra manter seu cadastro, te avisar das coisas que você autorizou, e cumprir o que a lei pede. Você pode pedir acesso, correção ou apagamento quando quiser.</p>
+        <label class="checkbox-line">
+          <input type="checkbox" id="consentLgpd">
+          <span>Entendi e concordo.</span>
+        </label>
+      </div>
+      <div class="nav">
+        <button class="back" onclick="prevStep()">Voltar</button>
+        <button class="next" onclick="nextStep()">Continuar</button>
+      </div>
+    </section>
+
+    <!-- STEP 15: FECHAMENTO -->
+    <section class="step fechamento" data-step="15">
+      <h1>Pronto. Cadastro atualizado.</h1>
+      <p>Agora consigo te avisar com mais precisão sobre agenda, retornos e o que a gente for soltando por aqui.</p>
+      <p>Obrigado pelo tempo — significa que a casa continua sua.</p>
+      <div class="signature">— Julio</div>
+      <div class="nav">
+        <button class="back" onclick="prevStep()">Voltar</button>
+        <button class="next" onclick="alert('Demo: aqui o form seria submetido ao backend.')">Concluir</button>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<script>
+  const stepOrder = [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15];
+  let currentIdx = 0;
+  let mode = 'new';
+
+  const stepsTotal = stepOrder.length - 1;
+
+  function showStep(idx) {
+    document.querySelectorAll('.step').forEach(s => s.classList.remove('active'));
+    const target = document.querySelector(`[data-step="${stepOrder[idx]}"]`);
+    if (target) target.classList.add('active');
+    updateCounter();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  function updateCounter() {
+    const counter = document.getElementById('stepCounter');
+    if (stepOrder[currentIdx] === 0) {
+      counter.textContent = 'Início';
+    } else if (stepOrder[currentIdx] === 15) {
+      counter.textContent = 'Fim';
+    } else {
+      counter.textContent = `${currentIdx} de ${stepsTotal}`;
+    }
+  }
+
+  function nextStep() {
+    if (currentIdx < stepOrder.length - 1) {
+      currentIdx++;
+      showStep(currentIdx);
+    }
+  }
+
+  function prevStep() {
+    if (currentIdx > 0) {
+      currentIdx--;
+      showStep(currentIdx);
+    }
+  }
+
+  function setMode(newMode) {
+    mode = newMode;
+    document.getElementById('modeNew').classList.toggle('active', newMode === 'new');
+    document.getElementById('modeReturning').classList.toggle('active', newMode === 'returning');
+
+    document.querySelectorAll('.new-only').forEach(el => {
+      el.style.display = newMode === 'new' ? '' : 'none';
+    });
+    document.querySelectorAll('.returning-only').forEach(el => {
+      el.style.display = newMode === 'returning' ? '' : 'none';
+    });
+
+    document.getElementById('recogNew').style.display = newMode === 'new' ? '' : 'none';
+    document.getElementById('recogReturning').style.display = newMode === 'returning' ? '' : 'none';
+  }
+
+  document.addEventListener('keydown', e => {
+    if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+    if (e.key === 'ArrowRight') nextStep();
+    if (e.key === 'ArrowLeft') prevStep();
+  });
+
+  updateCounter();
+</script>
+
+</body>
+</html>
