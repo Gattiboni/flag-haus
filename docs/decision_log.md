@@ -890,4 +890,83 @@ caminhos de pasta.
 
 ---
 
+## Decision #020 — 2026-06-17
+
+### RLS com deny explícito + acesso aos dados exclusivamente via Server Actions com service_role
+
+**Contexto.** Spec #2 fechou em produção (Next.js + Vercel + Supabase + domínio
+`cadastro.flaghaus.art`). A rota `/__health` confirmou conexão Vercel ↔ Supabase
+usando a publishable key (`anon`), retornando `count: 0` em `people`. O
+comportamento atual — RLS habilitada sem policies — é equivalente a deny-all
+implícito para `anon` e `authenticated`. Funciona, mas é ambíguo: o Supabase
+Advisor sinaliza "tabela com RLS mas sem policies" como warning, e qualquer
+agente futuro (humano ou IA) pode "consertar" criando policy errada por
+bem-querer.
+
+Spec #3 vai precisar de leitura e escrita real nas tabelas
+(`SELECT * FROM people WHERE phone = :input`, INSERTs em `people`,
+`clinical_records`, `consents`, `motivations`). Duas formas honestas de fazer
+isso foram avaliadas:
+
+- **(A)** Policy ampla na publishable key — qualquer um com a URL + anon key
+  lista clientes. Simples, mas viola LGPD na prática.
+- **(B)** Acesso aos dados exclusivamente server-side, via Server Actions
+  Next.js usando `SUPABASE_SERVICE_ROLE_KEY` (privada, nunca exposta ao
+  browser). RLS continua deny-all pra `anon` e `authenticated`. Cliente browser
+  nunca lê/escreve direto no Supabase.
+
+**Decisão.**
+
+Adotada a **opção (B)**:
+
+- Acesso a dados de cliente acontece **somente via Server Actions** server-side
+  com `SUPABASE_SERVICE_ROLE_KEY`.
+- Cliente browser **nunca** consulta Supabase direto. Cliente browser fala com
+  Next.js (Server Action), Next.js fala com Supabase.
+- RLS configurada com **deny explícito** pra `anon` e `authenticated`. Migration
+  `explicit_deny_anon_authenticated` aplicada — 40 policies (4 por tabela × 10
+  tabelas) com regra `false`. Mudança de forma, não de comportamento.
+- `service_role` continua com bypass nativo (configuração padrão Supabase).
+- Env var `SUPABASE_SERVICE_ROLE_KEY` adicionada em `.env.local` (gitignored) e
+  Vercel (Production, Preview, Development).
+- A `SUPABASE_SERVICE_ROLE_KEY` **nunca** recebe prefixo `NEXT_PUBLIC_` — esse
+  prefixo expõe a var no browser, e essa key não pode chegar lá.
+
+**Justificativa.**
+
+- **LGPD.** Dados pessoais não podem ser listados por qualquer um com a
+  publishable key (que é pública por design). Manter `anon` em deny-all garante
+  isso.
+- **Auditabilidade.** Toda leitura/escrita passa por Server Action, onde dá pra
+  logar, validar, e aplicar regras de negócio antes da query. Cliente browser
+  não consegue burlar.
+- **Zero dívida.** Policies explícitas de deny silenciam advisors e protegem
+  contra modificações equivocadas futuras. Quando o admin do Julio existir
+  (Bloco 4), as policies de `authenticated` serão substituídas por regras reais
+  — momento em que essa substituição vai ser deliberada e versionada.
+- **Princípios respeitados.** Incremental (não muda nada existente), modular
+  (Server Actions separadas por domínio), zero dívida (intenção explícita, nada
+  implícito).
+
+**Implicação prática para Spec #3.**
+
+- Server Actions ficam em `src/app/actions/` ou similar — server-only, sem
+  `'use client'`.
+- Cliente Supabase server-side passa a usar `SUPABASE_SERVICE_ROLE_KEY` em vez
+  de `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` quando a operação envolver dados de
+  cliente.
+- `src/lib/supabase/server.ts` permanece pra operações públicas; cria
+  `src/lib/supabase/admin.ts` (ou similar) pra operações privilegiadas com
+  service_role.
+- Rota `/__health` será migrada na Spec #3a pra usar o cliente privilegiado
+  (pequena melhoria de coerência).
+
+**Fonte de verdade.**
+
+Policies vivas no Supabase. Migration registrada via MCP em 17/06/2026. Mudanças
+futuras seguem o mesmo padrão: dryrun → aprovação → apply_migration →
+verificação.
+
+---
+
 _(Novas entradas devem seguir este mesmo formato.)_

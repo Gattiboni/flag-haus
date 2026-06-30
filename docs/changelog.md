@@ -124,3 +124,36 @@
 - Revisão de `npm audit` após Spec #3
 
 ---
+
+## 2026-06-17 — RLS: deny explícito para anon e authenticated (migration 0007)
+
+### Adicionado
+
+- Migration `explicit_deny_anon_authenticated` aplicada no Supabase
+  (`inuboxnkbtkvtxbupmqb`)
+- 40 policies criadas (4 por tabela × 10 tabelas):
+  - `deny_anon_select` — deny SELECT pra role `anon`
+  - `deny_anon_write` — deny ALL (insert/update/delete) pra role `anon`
+  - `deny_authenticated_select` — deny SELECT pra role `authenticated`
+  - `deny_authenticated_write` — deny ALL pra role `authenticated`
+- Tabelas cobertas: `people`, `jobs`, `lifecycle_transitions`, `identity_links`,
+  `events`, `user_roles`, `customer_segments_snapshot`, `clinical_records`,
+  `consents`, `motivations`
+
+### Comportamento
+
+- **Não mudou** — RLS habilitada sem policies já era deny-all implícito.
+- **Mudou** — intenção agora é explícita, advisors silenciados, protegido contra
+  "consertos" futuros equivocados.
+- `service_role` continua com acesso total (bypass nativo Supabase, não precisa
+  de policy).
+- `/__health` em produção continua respondendo `Status: ok` / `People count: 0`.
+
+### Pendente
+
+- Substituir policies de `authenticated` por regras reais quando admin do Julio
+  existir (Bloco 4)
+- Auth Hook com `app_role` no JWT (Leva 3 do schema, ainda adiada)
+- Spec #3a: Server Actions com service_role pra leitura/escrita server-side
+
+---
