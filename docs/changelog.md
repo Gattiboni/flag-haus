@@ -157,3 +157,45 @@
 - Spec #3a: Server Actions com service_role pra leitura/escrita server-side
 
 ---
+
+## 2026-06-17 — CRM: leitura privilegiada via Server Action findPersonByPhone (Spec #3a)
+
+### Adicionado
+
+- `src/lib/supabase/admin.ts` — cliente Supabase com service_role, protegido por
+  `import 'server-only'`
+- `src/lib/utils/phone.ts` — `normalizePhone()` e `isValidBrazilianPhone()`,
+  funções puras
+- `src/app/actions/people.ts` — Server Action `findPersonByPhone(rawPhone)` com
+  discriminated union `FindPersonResult` (found / not_found / invalid_phone /
+  error)
+- `src/app/%5F%5Fhealth/HealthClient.tsx` — Client Component com input + botão
+  pra testar busca por telefone
+- Validação Zod no input + normalização BR + filtro `deleted_at IS NULL`
+- Logs server-side com prefixo `[findPersonByPhone]`
+
+### Modificado
+
+- `src/app/%5F%5Fhealth/page.tsx` — migrado de cliente público pra
+  `createAdminClient`. Coerência com decisão #020.
+- `.env.example` — adicionado `SUPABASE_SERVICE_ROLE_KEY=`
+
+### Validado
+
+- α (textual): arquivos no lugar, `docs/` intocado, env vars corretas
+- β (executável): 11/11 verdes
+  - Local: build limpo (`server-only` honrado), 3 cenários de busca respondem
+    JSON correto
+  - Produção: deploy Vercel verde, 3 cenários respondem em
+    `cadastro.flaghaus.art/__health`, log `[__health] supabase ok` visível no
+    build da Vercel — service_role confirmada em produção
+
+### Pendente
+
+- Spec #3b: form `/` (renovação retroativa) completo, usando
+  `findPersonByPhone` + Server Actions de upsert
+- Spec #3c: form `/antes-da-sessao` (anamnese) completo
+- Migrar `/__health` pra rota dinâmica (ou remover) quando houver dado real no
+  banco — hoje está prerenderizada como estática durante build
+
+---
