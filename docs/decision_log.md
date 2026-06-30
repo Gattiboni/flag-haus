@@ -537,4 +537,357 @@ mitigado: arquitetura atual já comporta os dois sem refator.
 
 ---
 
+# Decision #015 — 2026-06-17
+
+## Stack de aplicação migra para Next.js + Vercel; WordPress entra em modo legado
+
+### Contexto
+
+A decisão #014 (08/12/2025) consolidou Elementor + Hello Elementor como engine
+de layout do site Flag Haus, rodando em WordPress hospedado na Hostinger. A
+decisão #006 (anterior) reservou Supabase para fases avançadas e CRM leve via
+FluentCRM/Jetpack.
+
+Entre janeiro e maio/2026, três coisas aconteceram em paralelo:
+
+1. **O tema real divergiu da decisão.** Audit do servidor (10/02/2026,
+   `system-info-flaghaus.art-10-02-2026.txt`) confirmou Astra 4.12.1 rodando em
+   produção, não Hello Elementor. A decisão #014 não foi executada.
+2. **O CRM avançou em Supabase nativo.** Entre 27/05 e 31/05, foi construído
+   schema completo (10 tabelas + ENUMs + RLS habilitada) no Supabase hosted
+   `inuboxnkbtkvtxbupmqb` — não em FluentCRM. Decision_log dessa fase documenta
+   o avanço.
+3. **Os formulários `/antes-da-sessao` e `/cadastro` precisam de UX que
+   WordPress + plugins não entregam sem hack.** Lógica "telefone como chave +
+   pula o que já tem" exige lookup server-side em Supabase, validação Zod, e
+   fluxo multi-step com state — combinação que Fluent Forms ou similar não
+   comporta sem solução paliativa.
+
+A decisão #014 está superada na prática. Mantê-la como vigente é dívida
+documental.
+
+### Decisão
+
+A partir desta entrada:
+
+- **Aplicação canônica = Next.js 15 (App Router, TypeScript) deployed via
+  Vercel.**
+- **Domínio operacional do CRM = `cadastro.flaghaus.art`** (subdomínio Vercel
+  via CNAME no DNS Hostinger).
+- **WordPress (`flaghaus.art`) entra em modo legado.** Permanece no ar como hoje
+  (Astra + Elementor + plugins atuais), sem refator, sem migração forçada. Será
+  substituído incrementalmente quando cada peça migrada justificar o esforço.
+- **Tema "Hello Elementor" sai do plano.** Astra fica como está enquanto
+  WordPress estiver no ar; nenhuma migração de tema vai ser feita.
+- **Decisão #014 fica registrada como histórica e superada.** Não é apagada — o
+  histórico importa pra entender por que chegamos aqui.
+
+### Implicação prática
+
+- Repo `Gattiboni/flag-haus` passa a hospedar aplicação Next.js além da
+  documentação.
+- DNS Hostinger ganha CNAME `cadastro` apontando pra Vercel.
+- WordPress continua editável pelo Julio/Alan via painel, sem mudança.
+- Migração progressiva do site institucional pra Next.js é pauta aberta, sem
+  prazo. Cada peça que justifique migrar (página de captura, blog, portfólio
+  dinâmico) vira decisão própria quando chegar a hora.
+
+### Custo aceito
+
+- Manter duas "casas" técnicas (WordPress + Next.js) durante a transição.
+- Gerenciar dois deploys distintos (Hostinger pra WP, Vercel pra app).
+
+Mitigação: a separação física protege uma casa quando a outra mexer. Quando o
+WordPress for ser substituído de vez, Next.js já estará maduro pra absorver
+tudo.
+
+### Fonte de verdade
+
+Aplicação: `src/` do repo `Gattiboni/flag-haus`. Documentação operacional:
+`readme.md` do repo (atualizado nessa mesma data).
+
+---
+
+# Decision #016 — 2026-06-17
+
+## CRM canônico é Supabase nativo; FluentCRM/Jetpack sai do plano
+
+### Contexto
+
+A decisão #006 (08/12/2025) escolheu CRM leve via WordPress (FluentCRM ou
+Jetpack CRM), com Supabase reservado para "etapas avançadas". O racional na
+época era evitar complexidade prematura.
+
+Entre 26/05 e 31/05/2026, o CRM avançou em Supabase nativo, não em FluentCRM.
+Foram construídas 10 tabelas (people, jobs, lifecycle_transitions,
+identity_links, events, user_roles, customer_segments_snapshot,
+clinical_records, consents, motivations) com ENUMs, função UUIDv7 SQL pura,
+PostGIS, triggers de updated_at, e RLS habilitada (sem policies, adiadas
+conscientemente pra fase do admin).
+
+A motivação foi:
+
+- **Modelagem rica do domínio.** Cliente recorrente, anamnese por sessão,
+  consentimentos por categoria, ativação de base por RFM, snapshot mensal da
+  carteira — nada disso cabe em FluentCRM sem hack significativo.
+- **Auditabilidade LGPD.** Dados clínicos em tabela separada
+  (`clinical_records`), consentimentos append-only (`consents`) — estrutura que
+  protege o estúdio juridicamente. Plugin CRM em WordPress não entrega essa
+  separação física.
+- **Integração futura com Google Ads.** O schema comporta resolução
+  `anonymous_id ↔ person_id` via `identity_links`, preparando ETL futuro do
+  Google Ads. FluentCRM não tem essa arquitetura de identidade frouxa.
+
+### Decisão
+
+A partir desta entrada:
+
+- **CRM canônico do Flag Haus = banco Postgres em Supabase hosted
+  (`inuboxnkbtkvtxbupmqb`).**
+- **FluentCRM, Jetpack CRM, e similares saem definitivamente do plano.** Mesmo
+  no curto prazo.
+- **Decisão #006 fica registrada como histórica e superada.** Mantida no log pra
+  contexto.
+
+### Implicação prática
+
+- Qualquer dado de cliente (cadastro, anamnese, consentimento, motivação, job)
+  vive no Supabase.
+- Página admin do Julio (Bloco 4 do plano de junho) será aplicação web própria
+  conectada ao Supabase via RLS — não plugin WordPress.
+- Reativação de base, automações, e features futuras (voucher aniversário,
+  fidelidade) serão construídas como camadas sobre o Supabase, não como
+  funcionalidades de plugin.
+
+### Sobre o site institucional
+
+WordPress continua sendo o que é hoje (vitrine institucional). Eventual captura
+de leads pelo site WordPress não precisa virar dado FluentCRM — pode disparar
+webhook pra endpoint Next.js que escreve no Supabase. Decisão de como/quando
+ligar essa ponte fica em aberto até justificar.
+
+### Fonte de verdade
+
+Schema: `docs/schema_supabase_*.md` (dumps datados). Documentação de tabelas:
+comentários SQL nas próprias tabelas + `changelog.md`.
+
+---
+
+# Decision #017 — 2026-06-17
+
+## Supabase é estado presente do projeto, não fase futura
+
+### Contexto
+
+Documentos de stack e arquitetura redigidos em dezembro/2025 (`docs/stack.md`
+§8.3, `docs/arquitetura.md` §9) tratam Supabase como "fase futura, fora do MVP".
+Esses textos ficaram desatualizados após a construção do schema CRM (27/05/2026
+em diante).
+
+O graphify rodado em 17/06/2026 detectou essa contradição como AMBIGUIDADE entre
+documentos:
+
+- `stack.md` e `arquitetura.md` (dez/2025): Supabase como horizonte
+- `decision_log.md` e `changelog.md` (mai/2026): Supabase como sistema
+  operacional, com 10 tabelas construídas e RLS habilitada
+
+Mantém-se a documentação desatualizada e o projeto cresce com duas versões da
+verdade.
+
+### Decisão
+
+A partir desta entrada:
+
+- **Supabase é estado presente do projeto, não fase futura.**
+- **`docs/stack.md` e `docs/arquitetura.md` serão revisados** para refletir o
+  estado real. A revisão pode ser feita em PR específico, sem urgência, mas
+  precisa acontecer antes do próximo onboarding de qualquer pessoa (humana ou
+  IA) ao projeto.
+- **Quando houver conflito entre `stack.md`/`arquitetura.md` (dez/2025) e
+  `decision_log.md` (mai/2026 em diante), o decision_log prevalece** até a
+  revisão dos primeiros.
+
+### Implicação prática
+
+- Onboarding de qualquer novo agente (Claudinho-arquiteto em nova sessão,
+  contratado, etc.) começa por `decision_log.md` e `changelog.md`, não pelos
+  docs antigos de stack.
+- Próxima revisão substancial de `stack.md` deve incluir: seção "Banco e
+  backend" cobrindo Supabase, seção "Aplicação" cobrindo Next.js (decisão #015),
+  e remoção/atualização de §8.3.
+- README do projeto (já atualizado nessa data) já reflete a realidade — usar
+  como referência rápida.
+
+### Custo aceito
+
+- Documentos antigos ficam desatualizados temporariamente, com aviso explícito
+  (esta entrada serve como aviso oficial).
+- Risco mitigado: agentes que consultem o decision_log antes dos docs de stack
+  vão pegar a versão correta.
+
+### Fonte de verdade
+
+Estado real: `docs/decision_log.md` + `docs/changelog.md` + `readme.md` raiz.
+Estado documentado a revisar: `docs/stack.md`, `docs/arquitetura.md`.
+
+---
+
+# Decision log — entradas novas
+
+**Cola no topo de `docs/decision_log.md`, abaixo do header existente, na ordem
+em que aparecem aqui.**
+
+---
+
+## Decision #015 — 2026-06-17
+
+### Stack de aplicação migra para Next.js + Vercel; WordPress entra em modo legado
+
+**Contexto.** A decisão #014 (08/12/2025) consolidou Elementor + Hello Elementor
+como engine de layout, rodando em WordPress hospedado na Hostinger. Entre
+janeiro e maio/2026, três coisas aconteceram em paralelo: (1) audit do servidor
+(10/02/2026) confirmou Astra 4.12.1 rodando, não Hello Elementor — decisão #014
+não foi executada; (2) o CRM avançou em Supabase nativo entre 27/05 e 31/05 (10
+tabelas + RLS); (3) os formulários `/antes-da-sessao` e `/cadastro` precisam de
+UX que WordPress + plugins não entregam sem hack (lookup server-side em
+Supabase, validação Zod, multi-step com state). Decisão #014 está superada na
+prática.
+
+**Decisão.**
+
+- Aplicação canônica = Next.js 15+ (App Router, TypeScript) deployed via Vercel.
+- Domínio operacional do CRM = `cadastro.flaghaus.art` (subdomínio Vercel via
+  CNAME no DNS Hostinger).
+- WordPress (`flaghaus.art`) entra em modo legado: permanece no ar como hoje
+  (Astra + Elementor + plugins atuais), sem refator, sem migração forçada.
+  Substituído incrementalmente quando cada peça migrada justificar o esforço.
+- Tema "Hello Elementor" sai do plano. Astra fica enquanto WordPress estiver no
+  ar.
+- Decisão #014 fica registrada como histórica e superada. Não é apagada.
+
+**Implicação prática.** Repo `Gattiboni/flag-haus` passa a hospedar aplicação
+Next.js além da documentação. DNS Hostinger ganha CNAME `cadastro` apontando pra
+Vercel. Migração progressiva do site institucional pra Next.js é pauta aberta,
+sem prazo.
+
+**Custo aceito.** Duas "casas" técnicas (WordPress + Next.js) durante a
+transição. Mitigação: separação física protege uma casa quando a outra mexer.
+
+**Fonte de verdade.** Aplicação: `src/` do repo. Documentação operacional:
+`readme.md`.
+
+---
+
+## Decision #016 — 2026-06-17
+
+### CRM canônico é Supabase nativo; FluentCRM/Jetpack sai do plano
+
+**Contexto.** A decisão #006 escolheu CRM leve via WordPress (FluentCRM ou
+Jetpack CRM), com Supabase reservado para "etapas avançadas". Entre 26/05 e
+31/05/2026, o CRM avançou em Supabase nativo, não em FluentCRM — 10 tabelas com
+ENUMs, função UUIDv7 SQL pura, PostGIS, RLS habilitada. Motivações: modelagem
+rica do domínio (lifecycle stages, anamnese por job, consentimentos por
+categoria, RFM), auditabilidade LGPD (dados clínicos em tabela separada,
+consentimentos append-only), e preparação pra integração futura com Google Ads
+(resolução `anonymous_id ↔ person_id` via `identity_links`).
+
+**Decisão.**
+
+- CRM canônico do Flag Haus = banco Postgres em Supabase hosted
+  (`inuboxnkbtkvtxbupmqb`).
+- FluentCRM, Jetpack CRM, e similares saem definitivamente do plano.
+- Decisão #006 fica registrada como histórica e superada.
+
+**Implicação prática.** Qualquer dado de cliente vive no Supabase. Página admin
+do Julio será aplicação web própria conectada via RLS — não plugin WordPress.
+Reativação de base, automações, e features futuras (voucher aniversário,
+fidelidade) serão camadas sobre o Supabase.
+
+**Sobre o site institucional.** WordPress continua vitrine institucional.
+Eventual captura de leads pelo site WP pode disparar webhook pra endpoint
+Next.js que escreve no Supabase — decisão de quando ligar essa ponte fica em
+aberto.
+
+**Fonte de verdade.** Schema: `docs/schema_supabase_*.md`. Documentação de
+tabelas: comentários SQL + `changelog.md`.
+
+---
+
+## Decision #017 — 2026-06-17
+
+### Supabase é estado presente do projeto, não fase futura
+
+**Contexto.** `docs/stack.md` §8.3 e `docs/arquitetura.md` §9 (ambos de
+dez/2025) tratam Supabase como "fase futura, fora do MVP". Esses textos ficaram
+desatualizados após a construção do schema CRM (27/05/2026 em diante). Graphify
+rodado em 17/06/2026 detectou a contradição.
+
+**Decisão.**
+
+- Supabase é estado presente do projeto, não fase futura.
+- `docs/stack.md` e `docs/arquitetura.md` serão revisados pra refletir o estado
+  real. Sem urgência, mas antes do próximo onboarding de qualquer pessoa (humana
+  ou IA) ao projeto.
+- Quando houver conflito entre `stack.md`/`arquitetura.md` (dez/2025) e
+  `decision_log.md` (mai/2026 em diante), o decision_log prevalece até a
+  revisão.
+
+**Implicação prática.** Onboarding começa por `decision_log.md` e
+`changelog.md`, não pelos docs antigos. Próxima revisão de `stack.md` inclui:
+seção "Banco e backend" (Supabase), seção "Aplicação" (Next.js, decisão #015),
+remoção/atualização de §8.3.
+
+**Fonte de verdade.** Estado real: `decision_log.md` + `changelog.md` +
+`readme.md` raiz. A revisar: `stack.md`, `arquitetura.md`.
+
+---
+
+## Decision #018 — 2026-06-17
+
+### Tailwind v4 adotado (em vez de v3 da spec literal)
+
+**Contexto.** Spec #2 (T6) escreveu `globals.css` com sintaxe Tailwind v3
+(`@tailwind base/components/utilities` + `@layer base`).
+`create-next-app@latest` instalou Tailwind v4 — estável corrente, alinhado com
+pedido da spec ("usar a estável corrente"). Códigos v3 e v4 são incompatíveis na
+linha de import. Codinho topou na divergência durante execução e parou pra
+decisão.
+
+**Decisão.** Adaptar `globals.css` pra v4: primeira linha vira
+`@import "tailwindcss";`. CSS vars, paleta, fontes, e estilos base dentro de
+`@layer base { ... }` ficam idênticos em conteúdo. Resultado visual idêntico ao
+planejado.
+
+**Justificativa.** Coerência com a spec (estável corrente), zero dívida de
+upgrade futuro, sem impacto visual. Erro estava na sintaxe literal da spec —
+corrigido aqui sem alterar arquitetura.
+
+**Anotação de processo.** Para Spec #3 em diante, validar versão atual de cada
+dependência antes de escrever sintaxe específica.
+
+---
+
+## Decision #019 — 2026-06-17
+
+### Rota `/__health` implementada via pasta `%5F%5Fhealth`
+
+**Contexto.** Spec #2 (T7) definiu rota `/__health` com pasta de mesmo nome.
+Next.js App Router trata pasta com underscore inicial como _private folder_
+(excluída do roteamento) — resultando em 404. Codinho topou na execução e parou
+pra decisão.
+
+**Decisão.** Pasta no disco renomeada para `%5F%5Fhealth` (URL-encode do
+underscore literal — mecanismo oficial Next.js). URL pública continua exatamente
+`/__health`. DNS, critério de aceite, e documentação não mudam.
+
+**Justificativa.** Mantém URL acordada na spec, sem retrabalho em documentação.
+Sinalização "rota técnica" via duplo underscore é preservada. Resolução é
+mecanismo documentado, não hack.
+
+**Anotação de processo.** Para Spec #3 em diante, validar convenções de
+roteamento do Next.js (underscores, parênteses, colchetes) antes de escrever
+caminhos de pasta.
+
+---
+
 _(Novas entradas devem seguir este mesmo formato.)_

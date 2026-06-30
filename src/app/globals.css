@@ -1,0 +1,30 @@
+@import "tailwindcss";
+
+@layer base {
+  :root {
+    --onyx: #2D2C2A;
+    --oxblood: #8B0000;
+    --terracota: #A8643D;
+    --granite: #6B6B6B;
+    --whisper: #F4F4F4;
+    --white: #FFFFFF;
+    --paper: #FAF8F5;
+    --line: rgba(45, 44, 42, 0.12);
+  }
+
+  html, body {
+    background: var(--paper);
+    color: var(--onyx);
+    font-family: var(--font-lato), 'Lato', sans-serif;
+    font-weight: 300;
+    font-size: 17px;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  h1, h2, h3 {
+    font-family: var(--font-fraunces), 'Fraunces', serif;
+    font-weight: 400;
+    letter-spacing: -0.01em;
+  }
+}

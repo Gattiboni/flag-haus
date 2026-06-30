@@ -76,3 +76,51 @@
 **Responsável:** Gattiboni
 
 ---
+
+## 2026-06-17 — Setup inicial Next.js + Supabase + Vercel (Spec #2)
+
+### Adicionado
+
+- Projeto Next.js 16.2.9 inicializado na raiz do repo (TypeScript, App Router,
+  Tailwind, src/, ESLint, sem Turbopack)
+- Dependências: `@supabase/supabase-js`, `@supabase/ssr`, `zod`, `@types/node`
+- Estrutura de pastas:
+  - `src/app/(cadastro)/page.tsx` — placeholder da renovação de cadastro
+  - `src/app/antes-da-sessao/page.tsx` — placeholder da anamnese pré-sessão
+  - `src/app/%5F%5Fhealth/page.tsx` — health check técnico (URL pública
+    `/__health`)
+  - `src/lib/supabase/client.ts` — cliente browser
+  - `src/lib/supabase/server.ts` — cliente server (Server Components/Actions)
+  - `src/lib/supabase/types.ts` — placeholder
+  - `src/components/.gitkeep`
+- Design system base: CSS variables (paleta Flag Haus), fontes Fraunces + Lato
+  via `next/font`, `globals.css` com `@layer base`
+- Env vars: `.env.local` (gitignored) + `.env.example` (commitável)
+- `readme.md` raiz substituído — reflete Next.js + Vercel + Supabase como stack
+  canônica
+
+### Validado
+
+- α (textual): arquivos no lugar, `docs/` intacto, env vars corretas,
+  `.gitignore` cobre `.env.local`
+- β (executável): 8/8 verdes
+  - `npm install` sem erro (2 vulns moderadas transitivas — não bloqueante,
+    anotado pra revisar)
+  - `npm run dev` sobe em `:3000`
+  - `/` HTTP 200 com "Oi." em Fraunces
+  - `/antes-da-sessao` HTTP 200 com título correto
+  - `/__health` HTTP 200 com `Status: ok` e `People count: 0`
+  - Fontes self-hosted via `next/font` (não fallback)
+  - Paleta correta no CSS compilado
+  - `npm run build` exit 0
+
+### Pendente
+
+- Deploy Vercel + configuração DNS Hostinger (CNAME `cadastro` → Vercel)
+- Confirmação de `cadastro.flaghaus.art/__health` em produção
+- RLS policy mínima de SELECT em `people` (necessária pra Spec #3, ainda não
+  criada)
+- Implementação real dos formulários (Spec #3)
+- Revisão de `npm audit` após Spec #3
+
+---
