@@ -86,3 +86,7 @@ temp/
 *.bak
 *.backup
 *.log
+
+
+# --- TypeScript build cache ---
+*.tsbuildinfo

@@ -1,0 +1,450 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>WIREFRAME — /cadastro (Spec #3b)</title>
+<!--
+  WIREFRAME TÉCNICO — não é peça visual.
+  Objetivo: validar MECÂNICA do form antes da implementação.
+  Toggle Novo/Recorrente simula o resultado de findPersonByPhone.
+  Caixas amarelas = anotações de backend (não aparecem na versão real).
+  Telas cinza "PULADO" = steps que o modo returning não mostra
+  (no app real a pessoa nem vê; aqui ficam visíveis pra validação).
+-->
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, Segoe UI, Roboto, sans-serif; }
+  body { background: #e8e8e8; color: #222; font-size: 15px; line-height: 1.5; }
+  .topbar { position: fixed; top: 0; left: 0; right: 0; background: #222; color: #fff; padding: 8px 16px; display: flex; gap: 16px; align-items: center; z-index: 50; font-size: 13px; flex-wrap: wrap; }
+  .topbar button { padding: 4px 12px; border: 1px solid #888; background: #444; color: #fff; cursor: pointer; border-radius: 4px; font-size: 12px; }
+  .topbar button.on { background: #fff; color: #222; font-weight: bold; }
+  .wrap { max-width: 480px; margin: 70px auto 60px; }
+  .frame { background: #fff; border: 2px solid #999; border-radius: 8px; padding: 24px; margin-bottom: 8px; min-height: 320px; display: none; position: relative; }
+  .frame.active { display: block; }
+  .frame.skipped { background: #f0f0f0; border-style: dashed; min-height: 120px; }
+  .stepnum { position: absolute; top: 8px; right: 12px; font-size: 11px; color: #999; }
+  h2 { font-size: 19px; margin-bottom: 10px; }
+  p { margin-bottom: 10px; color: #444; }
+  .hint { font-size: 13px; color: #888; }
+  .note { background: #fff8c4; border: 1px solid #d4c86a; padding: 8px 10px; font-size: 12px; margin: 12px 0; border-radius: 4px; color: #5a5220; }
+  .note b { color: #3d3810; }
+  input[type=text], input[type=tel], input[type=email], input[type=date], textarea { width: 100%; padding: 10px; border: 1px solid #aaa; border-radius: 4px; font-size: 15px; margin: 8px 0; }
+  textarea { min-height: 60px; }
+  .opts { display: flex; flex-wrap: wrap; gap: 8px; margin: 10px 0; }
+  .opts label { border: 1px solid #666; padding: 8px 14px; border-radius: 20px; cursor: pointer; font-size: 14px; background: #fafafa; }
+  .opts input { display: none; }
+  .opts input:checked + span { font-weight: bold; }
+  .opts label:has(input:checked) { background: #222; color: #fff; }
+  .confirm-box { border: 1px solid #bbb; background: #f7f7f7; padding: 12px; border-radius: 6px; margin: 10px 0; }
+  .confirm-box .val { font-weight: bold; }
+  .nav { display: flex; justify-content: space-between; margin-top: 20px; padding-top: 14px; border-top: 1px solid #ddd; }
+  .nav button { padding: 10px 22px; border-radius: 20px; border: 1px solid #222; cursor: pointer; font-size: 14px; }
+  .nav .next { background: #222; color: #fff; }
+  .nav .back { background: transparent; border: none; color: #888; }
+  .err { color: #b00020; font-size: 13px; display: none; margin-top: 4px; }
+  .loading { color: #666; font-size: 13px; display: none; }
+  .skipbadge { display: inline-block; background: #ccc; color: #333; font-size: 11px; padding: 2px 8px; border-radius: 3px; margin-bottom: 8px; }
+  .inline-edit { display: none; }
+  .geo-sim { border: 1px dashed #666; background: #fafafa; padding: 8px 14px; border-radius: 4px; cursor: pointer; font-size: 14px; margin-bottom: 8px; }
+  .minimap { font-size: 11px; color: #666; background: #f4f4f4; border: 1px solid #ddd; padding: 8px 10px; margin-bottom: 12px; border-radius: 4px; line-height: 1.9; }
+  .minimap s { color: #aaa; }
+  .checkline { display: flex; gap: 8px; align-items: flex-start; margin-top: 8px; font-size: 14px; }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <span><b>WIREFRAME /cadastro</b></span>
+  <span>Simular busca:</span>
+  <button id="btnNew" class="on" onclick="setMode('new')">NOVO (não achou)</button>
+  <button id="btnRet" onclick="setMode('returning')">RECORRENTE (achou)</button>
+  <span id="stepLabel" style="margin-left:auto">—</span>
+</div>
+
+<div class="wrap">
+
+<div class="minimap" id="minimap"></div>
+
+<!-- 1 ABERTURA -->
+<div class="frame active" data-s="1">
+  <span class="stepnum">1/18</span>
+  <h2>Oi.</h2>
+  <p>Tô organizando aqui o cadastro de quem já passou pela Flag Haus, pra manter teu histórico bem feito e melhorar como a gente conversa daqui pra frente.</p>
+  <p class="hint">Leva menos de 3 minutos. Tudo que você não quiser preencher pode pular. — Julio</p>
+  <div class="nav"><span></span><button class="next" onclick="go(1)">Bora</button></div>
+</div>
+
+<!-- 2 TELEFONE -->
+<div class="frame" data-s="2">
+  <span class="stepnum">2/18</span>
+  <h2>Pra eu te achar no cadastro: qual o seu WhatsApp?</h2>
+  <input type="tel" id="phoneInput" placeholder="11 99999 9999">
+  <div class="err" id="phoneErr">Telefone precisa ter 10 ou 11 dígitos (DDD + número)</div>
+  <div class="loading" id="phoneLoading">Buscando…</div>
+  <div class="note"><b>→ Server Action findPersonByPhone(phone)</b><br>
+  Normaliza (remove máscara, +55) → SELECT em people → decide modo.<br>
+  <b>found</b> → modo returning · <b>not_found</b> → modo new · <b>invalid</b> → erro inline acima.<br>
+  Teste os estados: digite <code>abc</code> (erro) ou nº válido (busca ok).</div>
+  <div class="nav"><button class="back" onclick="go(-1)">Voltar</button><button class="next" onclick="phoneNext()">Continuar</button></div>
+</div>
+
+<!-- 3 RECONHECIMENTO -->
+<div class="frame" data-s="3">
+  <span class="stepnum">3/18</span>
+  <div class="new-only">
+    <h2>Não te encontrei na base ainda — vamos começar então.</h2>
+    <p>Algumas perguntas rápidas pra te cadastrar direito.</p>
+  </div>
+  <div class="ret-only" style="display:none">
+    <h2>Julio, que bom — já te encontrei aqui.</h2>
+    <p>Vou confirmar o que tenho e perguntar só o que falta.</p>
+    <div class="note"><b>Dados mock do modo returning:</b> nome, e-mail, nascimento, bairro, Instagram, opt-in e consent LGPD (há 3 meses) já existem no banco. "Como conheceu", "primeira tatuagem", "profissão" e "onde circula" já respondidos → somem. Estilos tem histórico → mostra resumo.</div>
+  </div>
+  <div class="nav"><button class="back" onclick="go(-1)">Voltar</button><button class="next" onclick="go(1)">Seguir</button></div>
+</div>
+
+<!-- 4 NOME -->
+<div class="frame" data-s="4">
+  <span class="stepnum">4/18</span>
+  <div class="new-only">
+    <h2>Como você se chama?</h2>
+    <input type="text" placeholder="Nome completo">
+  </div>
+  <div class="ret-only" style="display:none">
+    <h2>Você é Julio Bandeiras, certo?</h2>
+    <div class="opts">
+      <label><input type="radio" name="nm"><span>Confirmar</span></label>
+      <label onclick="show('nmEdit')"><input type="radio" name="nm"><span>Corrigir</span></label>
+    </div>
+    <div class="inline-edit" id="nmEdit"><input type="text" value="Julio Bandeiras"></div>
+    <div class="note">"Corrigir" abre input inline no mesmo step — sem tela extra.</div>
+  </div>
+  <div class="nav"><button class="back" onclick="go(-1)">Voltar</button><button class="next" onclick="go(1)">Continuar</button></div>
+</div>
+
+<!-- 5 EMAIL -->
+<div class="frame" data-s="5">
+  <span class="stepnum">5/18</span>
+  <div class="new-only">
+    <h2>Seu e-mail.</h2>
+    <p class="hint">Opcional.</p>
+    <input type="email" placeholder="voce@email.com">
+    <div class="err" id="emailErr">Formato de e-mail inválido</div>
+  </div>
+  <div class="ret-only" style="display:none">
+    <h2>Teu e-mail continua sendo julio@gmail.com?</h2>
+    <div class="opts">
+      <label><input type="radio" name="em"><span>Confirmar</span></label>
+      <label onclick="show('emEdit')"><input type="radio" name="em"><span>Atualizar</span></label>
+    </div>
+    <div class="inline-edit" id="emEdit"><input type="email" value="julio@gmail.com"></div>
+  </div>
+  <div class="nav"><button class="back" onclick="go(-1)">Voltar</button><button class="next" onclick="go(1)">Continuar</button></div>
+</div>
+
+<!-- 6 NASCIMENTO -->
+<div class="frame" data-s="6">
+  <span class="stepnum">6/18</span>
+  <div class="new-only">
+    <h2>Quando você nasceu?</h2>
+    <p class="hint">Pra eu mandar um abraço no dia certo. Opcional.</p>
+    <input type="date">
+  </div>
+  <div class="ret-only" style="display:none">
+    <h2>Você nasceu em 14/03/1992, certo?</h2>
+    <div class="opts">
+      <label><input type="radio" name="dob"><span>Confirmar</span></label>
+      <label onclick="show('dobEdit')"><input type="radio" name="dob"><span>Corrigir</span></label>
+    </div>
+    <div class="inline-edit" id="dobEdit"><input type="date" value="1992-03-14"></div>
+  </div>
+  <div class="nav"><button class="back" onclick="go(-1)">Voltar</button><button class="next" onclick="go(1)">Continuar</button></div>
+</div>
+
+<!-- 7 BAIRRO -->
+<div class="frame" data-s="7">
+  <span class="stepnum">7/18</span>
+  <div class="new-only">
+    <h2>Em que bairro você mora?</h2>
+    <div class="geo-sim" onclick="simGeo()">📍 Usar minha localização</div>
+    <input type="text" id="geoBairro" placeholder="Bairro">
+    <input type="text" id="geoCidade" placeholder="Cidade" value="São Paulo">
+    <div class="note"><b>Geoloc = progressive enhancement.</b> Campos manuais SEMPRE visíveis. Botão: navigator.geolocation → lat/lng guardados invisíveis → reverse geocode client-side (BigDataCloud, grátis, sem key) preenche os campos. Negou/falhou? Digita manual, lat/lng ficam null. Clique no botão pra simular.</div>
+  </div>
+  <div class="ret-only" style="display:none">
+    <h2>Você mora em Vila Mariana, São Paulo?</h2>
+    <div class="opts">
+      <label><input type="radio" name="loc"><span>Confirmar</span></label>
+      <label onclick="show('locEdit')"><input type="radio" name="loc"><span>Atualizar</span></label>
+    </div>
+    <div class="inline-edit" id="locEdit">
+      <div class="geo-sim" onclick="simGeo2()">📍 Usar minha localização</div>
+      <input type="text" id="geoBairro2" value="Vila Mariana"><input type="text" id="geoCidade2" value="São Paulo">
+    </div>
+  </div>
+  <div class="nav"><button class="back" onclick="go(-1)">Voltar</button><button class="next" onclick="go(1)">Continuar</button></div>
+</div>
+
+<!-- 8 COMO CONHECEU -->
+<div class="frame" data-s="8">
+  <span class="stepnum">8/18</span>
+  <div class="new-only">
+    <h2>Você lembra como chegou até a Flag Haus?</h2>
+    <div class="opts">
+      <label><input type="radio" name="src"><span>Indicação</span></label>
+      <label><input type="radio" name="src"><span>Google</span></label>
+      <label><input type="radio" name="src"><span>Instagram</span></label>
+      <label><input type="radio" name="src"><span>Vi na rua</span></label>
+      <label><input type="radio" name="src"><span>Outra rede</span></label>
+      <label><input type="radio" name="src"><span>Não lembro</span></label>
+      <label><input type="radio" name="src"><span>Outro</span></label>
+    </div>
+  </div>
+  <div class="ret-only skipstub" style="display:none">
+    <span class="skipbadge">⏭ PULADO no modo recorrente</span>
+    <p class="hint">acquisition_source já registrado — não se pergunta duas vezes. (No app real esta tela nem aparece.)</p>
+  </div>
+  <div class="nav"><button class="back" onclick="go(-1)">Voltar</button><button class="next" onclick="go(1)">Continuar</button></div>
+</div>
+
+<!-- 9 PRIMEIRA TATTOO -->
+<div class="frame" data-s="9">
+  <span class="stepnum">9/18</span>
+  <div class="new-only">
+    <h2>Essa foi/é sua primeira tatuagem na vida?</h2>
+    <div class="opts">
+      <label><input type="radio" name="ft"><span>Sim, primeira</span></label>
+      <label><input type="radio" name="ft"><span>Não, já tenho outras</span></label>
+    </div>
+  </div>
+  <div class="ret-only skipstub" style="display:none">
+    <span class="skipbadge">⏭ PULADO no modo recorrente</span>
+    <p class="hint">is_first_tattoo já respondido — imutável depois da primeira resposta.</p>
+  </div>
+  <div class="nav"><button class="back" onclick="go(-1)">Voltar</button><button class="next" onclick="go(1)">Continuar</button></div>
+</div>
+
+<!-- 10 INSTAGRAM -->
+<div class="frame" data-s="10">
+  <span class="stepnum">10/18</span>
+  <div class="new-only">
+    <h2>Seu @ no Instagram, se você usa.</h2>
+    <p class="hint">Opcional.</p>
+    <input type="text" placeholder="@seu.handle">
+  </div>
+  <div class="ret-only" style="display:none">
+    <h2>Teu Instagram: @julio.bandeiras. Continua?</h2>
+    <div class="opts">
+      <label><input type="radio" name="ig"><span>Confirmar</span></label>
+      <label onclick="show('igEdit')"><input type="radio" name="ig"><span>Atualizar</span></label>
+      <label><input type="radio" name="ig"><span>Remover</span></label>
+    </div>
+    <div class="inline-edit" id="igEdit"><input type="text" value="@julio.bandeiras"></div>
+  </div>
+  <div class="nav"><button class="back" onclick="go(-1)">Voltar</button><button class="next" onclick="go(1)">Continuar</button></div>
+</div>
+
+<!-- 11 PROFISSÃO -->
+<div class="frame" data-s="11">
+  <span class="stepnum">11/18</span>
+  <div class="new-only">
+    <h2>O que você faz?</h2>
+    <p class="hint">Profissão, estudo, atividade — opcional.</p>
+    <input type="text">
+  </div>
+  <div class="ret-only skipstub" style="display:none">
+    <span class="skipbadge">⏭ PULADO no modo recorrente</span>
+    <p class="hint">occupation já registrada.</p>
+  </div>
+  <div class="nav"><button class="back" onclick="go(-1)">Voltar</button><button class="next" onclick="go(1)">Continuar</button></div>
+</div>
+
+<!-- 12 ESTILOS -->
+<div class="frame" data-s="12">
+  <span class="stepnum">12/18</span>
+  <div class="new-only">
+    <h2>Que tipo de tatuagem te atrai mais hoje?</h2>
+    <p class="hint">Estilo, tema, parte do corpo, vibe. Opcional.</p>
+    <textarea></textarea>
+  </div>
+  <div class="ret-only" style="display:none">
+    <h2>Da última vez você falou: "fineline, natureza".</h2>
+    <p>Algo mudou ou quer adicionar?</p>
+    <div class="opts">
+      <label><input type="radio" name="st"><span>Manter</span></label>
+      <label onclick="show('stEdit')"><input type="radio" name="st"><span>Adicionar / atualizar</span></label>
+    </div>
+    <div class="inline-edit" id="stEdit"><textarea>fineline, natureza</textarea></div>
+  </div>
+  <div class="nav"><button class="back" onclick="go(-1)">Voltar</button><button class="next" onclick="go(1)">Continuar</button></div>
+</div>
+
+<!-- 13 CANAL -->
+<div class="frame" data-s="13">
+  <span class="stepnum">13/18</span>
+  <h2>Quando eu precisar te avisar de algo, qual canal você prefere?</h2>
+  <div class="opts">
+    <label><input type="radio" name="ch"><span>WhatsApp</span></label>
+    <label><input type="radio" name="ch"><span>E-mail</span></label>
+    <label><input type="radio" name="ch"><span>Instagram</span></label>
+    <label><input type="radio" name="ch"><span>Tanto faz</span></label>
+  </div>
+  <div class="note">Sempre aparece nos dois modos — preferência pode mudar a qualquer momento.</div>
+  <div class="nav"><button class="back" onclick="go(-1)">Voltar</button><button class="next" onclick="go(1)">Continuar</button></div>
+</div>
+
+<!-- 14 OPT-IN -->
+<div class="frame" data-s="14">
+  <span class="stepnum">14/18</span>
+  <div class="new-only">
+    <h2>Posso te avisar quando abrir agenda nova, flash drops, novidades?</h2>
+    <div class="opts">
+      <label><input type="radio" name="opt"><span>Sim, pode</span></label>
+      <label><input type="radio" name="opt"><span>Prefiro não</span></label>
+    </div>
+  </div>
+  <div class="ret-only" style="display:none">
+    <h2>Sua preferência atual: receber novidades. Continua?</h2>
+    <div class="opts">
+      <label><input type="radio" name="opt2"><span>Confirmar</span></label>
+      <label><input type="radio" name="opt2"><span>Mudar</span></label>
+    </div>
+    <div class="note">Mudança gera linha NOVA em consents (marketing, granted=true/false) — append-only, nunca sobrescreve.</div>
+  </div>
+  <div class="nav"><button class="back" onclick="go(-1)">Voltar</button><button class="next" onclick="go(1)">Continuar</button></div>
+</div>
+
+<!-- 15 MOTIVAÇÃO -->
+<div class="frame" data-s="15">
+  <span class="stepnum">15/18</span>
+  <h2>O que te fez tatuar comigo, ou voltar?</h2>
+  <p class="hint">Curiosidade minha. Opcional.</p>
+  <textarea></textarea>
+  <div class="note">Sempre aparece nos dois modos — cada resposta vira linha nova em <b>motivations</b> (histórico acumula).</div>
+  <div class="nav"><button class="back" onclick="go(-1)">Voltar</button><button class="next" onclick="go(1)">Continuar</button></div>
+</div>
+
+<!-- 16 CIRCULA -->
+<div class="frame" data-s="16">
+  <span class="stepnum">16/18</span>
+  <div class="new-only">
+    <h2>Por onde você costuma circular em São Paulo?</h2>
+    <p class="hint">Bairros, regiões. Opcional.</p>
+    <textarea></textarea>
+  </div>
+  <div class="ret-only skipstub" style="display:none">
+    <span class="skipbadge">⏭ PULADO no modo recorrente</span>
+    <p class="hint">circulation_areas já registrado.</p>
+  </div>
+  <div class="nav"><button class="back" onclick="go(-1)">Voltar</button><button class="next" onclick="go(1)">Continuar</button></div>
+</div>
+
+<!-- 17 LGPD -->
+<div class="frame" data-s="17">
+  <span class="stepnum">17/18</span>
+  <div class="new-only">
+    <h2>Pra fechar — uma confirmação rápida sobre seus dados.</h2>
+    <p class="hint">Eles ficam comigo pra manter seu cadastro, te avisar do que você autorizou, e cumprir o que a lei pede. Você pode pedir acesso, correção ou apagamento quando quiser.</p>
+    <div class="checkline"><input type="checkbox" id="lgpdChk"><label for="lgpdChk">Entendi e concordo.</label></div>
+    <div class="err" id="lgpdErr">Precisa concordar pra concluir</div>
+    <div class="note"><b>Único step bloqueante do form.</b> Sem check → não submete.</div>
+  </div>
+  <div class="ret-only skipstub" style="display:none">
+    <span class="skipbadge">⏭ PULADO no modo recorrente (mock: consentiu há 3 meses)</span>
+    <p class="hint">Regra: pula se consent lgpd granted &lt; 12 meses. Se &gt; 12 meses ou inexistente → step aparece igual ao modo novo.</p>
+  </div>
+  <div class="nav"><button class="back" onclick="go(-1)">Voltar</button><button class="next" onclick="lgpdNext()">Continuar</button></div>
+</div>
+
+<!-- 18 FECHAMENTO -->
+<div class="frame" data-s="18">
+  <span class="stepnum">18/18</span>
+  <h2 id="doneTitle">Revisar e concluir</h2>
+  <p class="hint">Ao clicar Concluir, o form submete tudo de uma vez.</p>
+  <div class="note"><b>→ Server Action submitCadastro(payload) → RPC transacional no Postgres</b><br>
+  Numa transação única: upsert <b>people</b> (base + extra_data merge) · insert <b>consents</b> (lgpd; marketing) · insert <b>motivations</b> (se preenchida) · insert <b>events</b> (profile.updated).<br>
+  Tudo grava ou nada grava — sem registro pela metade.<br>
+  <label><input type="checkbox" id="simFail"> simular falha de rede/servidor</label></div>
+  <div class="loading" id="subLoading">Enviando…</div>
+  <div class="err" id="subErr">Algo deu errado ao salvar. Suas respostas continuam aqui — tenta de novo?</div>
+  <div id="successBox" style="display:none; border:2px solid #2e7d32; background:#eaf5ea; padding:16px; border-radius:6px; margin-top:10px">
+    <h2>Pronto. Cadastro atualizado.</h2>
+    <p>Agora consigo te avisar com mais precisão sobre agenda, retornos e o que a gente for soltando por aqui.</p>
+    <p class="hint">Obrigado pelo tempo — significa que a casa continua sua. — Julio</p>
+  </div>
+  <div class="nav"><button class="back" onclick="go(-1)">Voltar</button><button class="next" id="btnSubmit" onclick="submitSim()">Concluir</button></div>
+</div>
+
+</div>
+
+<script>
+const ORDER = [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18];
+const SKIP_RET = [8,9,11,16,17]; // steps que somem no returning (aqui viram stubs cinza)
+let idx = 0, mode = 'new';
+
+const NAMES = {1:'abertura',2:'telefone',3:'reconhecimento',4:'nome',5:'email',6:'nascimento',7:'bairro',8:'como conheceu',9:'1ª tattoo',10:'instagram',11:'profissão',12:'estilos',13:'canal',14:'opt-in',15:'motivação',16:'circula',17:'LGPD',18:'concluir'};
+
+function render() {
+  document.querySelectorAll('.frame').forEach(f => f.classList.remove('active'));
+  const s = ORDER[idx];
+  const fr = document.querySelector(`[data-s="${s}"]`);
+  fr.classList.add('active');
+  fr.classList.toggle('skipped', mode==='returning' && SKIP_RET.includes(s));
+  document.getElementById('stepLabel').textContent = `${NAMES[s]} (${s}/18)`;
+  // minimap
+  let mm = '';
+  ORDER.forEach(n => {
+    const skip = mode==='returning' && SKIP_RET.includes(n);
+    const cur = n === s;
+    mm += (cur?'<b>▶ ':'') + (skip?`<s>${n}.${NAMES[n]}</s>`:`${n}.${NAMES[n]}`) + (cur?'</b>':'') + ' · ';
+  });
+  document.getElementById('minimap').innerHTML = 'Fluxo (' + (mode==='new'?'NOVO':'RECORRENTE — riscados = pulados') + '): ' + mm;
+  window.scrollTo({top:0});
+}
+function go(d){ idx = Math.max(0, Math.min(ORDER.length-1, idx+d)); render(); }
+function setMode(m){
+  mode = m;
+  document.getElementById('btnNew').classList.toggle('on', m==='new');
+  document.getElementById('btnRet').classList.toggle('on', m==='returning');
+  document.querySelectorAll('.new-only').forEach(e=>e.style.display = m==='new'?'':'none');
+  document.querySelectorAll('.ret-only').forEach(e=>e.style.display = m==='returning'?'':'none');
+  render();
+}
+function show(id){ document.getElementById(id).style.display='block'; }
+function phoneNext(){
+  const v = document.getElementById('phoneInput').value.replace(/\D/g,'');
+  const err = document.getElementById('phoneErr'), ld = document.getElementById('phoneLoading');
+  err.style.display='none';
+  if (v.length < 10 || v.length > 13){ err.style.display='block'; return; }
+  ld.style.display='block';
+  setTimeout(()=>{ ld.style.display='none'; go(1); }, 700); // simula findPersonByPhone
+}
+function lgpdNext(){
+  if (mode==='new' && !document.getElementById('lgpdChk').checked){
+    document.getElementById('lgpdErr').style.display='block'; return;
+  }
+  document.getElementById('lgpdErr').style.display='none';
+  go(1);
+}
+function simGeo(){
+  document.getElementById('geoBairro').value='Vila Mariana';
+  document.getElementById('geoCidade').value='São Paulo';
+  alert('Simulado: lat/lng capturados invisíveis (-23.589, -46.634) + reverse geocode preencheu os campos. No app real: navigator.geolocation + BigDataCloud.');
+}
+function simGeo2(){
+  document.getElementById('geoBairro2').value='Pinheiros';
+}
+function submitSim(){
+  const ld=document.getElementById('subLoading'), er=document.getElementById('subErr'),
+        ok=document.getElementById('successBox'), bt=document.getElementById('btnSubmit');
+  er.style.display='none'; ld.style.display='block'; bt.disabled=true;
+  setTimeout(()=>{
+    ld.style.display='none'; bt.disabled=false;
+    if (document.getElementById('simFail').checked){ er.style.display='block'; }
+    else { ok.style.display='block'; bt.style.display='none'; document.getElementById('doneTitle').style.display='none'; }
+  }, 900);
+}
+render();
+</script>
+</body>
+</html>

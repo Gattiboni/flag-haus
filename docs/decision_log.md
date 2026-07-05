@@ -969,4 +969,77 @@ verificação.
 
 ---
 
+## Decision #021 — 2026-07-05
+
+### Escrita do form /cadastro é atômica via RPC transacional no Postgres
+
+**Contexto.** O submit do `/cadastro` grava em 4 tabelas: `people` (upsert),
+`consents` (insert), `motivations` (insert condicional) e `events` (insert).
+Fazer isso como 4 chamadas sequenciais do client Supabase abre janela para
+estado parcial — pessoa atualizada sem consentimento LGPD gravado, por exemplo,
+se a terceira chamada falhar. Isso é dívida técnica direta.
+
+**Decisão.** Toda a escrita acontece numa única função Postgres,
+`submit_cadastro(payload jsonb)`, aplicada via migration. A função roda em
+transação implícita (bloco plpgsql): ou grava tudo, ou nada. A Server Action
+`submitCadastro` valida com Zod, monta o payload e faz uma única chamada
+`supabase.rpc('submit_cadastro', ...)`. Nenhum insert direto do client.
+
+**Semântica cravada.** Campo `null` no payload preserva o valor existente.
+`extra_data` faz merge (só chaves enviadas atualizam). `identified_at` recebe
+`now()` no primeiro cadastro (se null). `lifecycle_stage` não é tocado pelo form
+(assunto do admin, Bloco 4). Consentimentos são append-only. Evento gravado:
+`form.cadastro_submitted` com `mode` (new/returning) no payload.
+
+**Segurança.** `revoke execute ... from public, anon, authenticated` +
+`grant execute ... to service_role`. Só a Server Action (que usa o admin client)
+chama a função. Coerente com a decisão #020 (acesso a dados exclusivamente
+server-side).
+
+**Justificativa.** Zero dívida (sem estado parcial possível), auditável (um
+ponto de escrita), modular (a Server Action não conhece a estrutura das 4
+tabelas, só o contrato do payload). Testada via MCP antes da implementação:
+insert, upsert com null-preserva e extra_data-merge, consents append-only,
+trigger PostGIS sincronizando.
+
+---
+
+## Decision #022 — 2026-07-05
+
+### Telefone canônico é E.164 internacional; primeira dependência de terceiro (libphonenumber-js)
+
+**Contexto.** A #3a normalizava telefone para dígitos BR puros (`^\d{10,11}$`),
+assumindo base 100% brasileira. Dois fatos quebram a premissa: (1) a base do
+Julio inclui clientes internacionais, e o disparo retroativo precisa alcançá-los
+— BR-only os barra no step do telefone; (2) a validação por contagem de dígitos
+aceitava números inválidos (ex. `1198334157`, 10 dígitos, passava). Corrigir
+depois exigiria migração de dados com risco de duplicata (`11983340447` vs
+`+5511983340447` como duas pessoas).
+
+**Decisão.** Formato canônico do telefone passa a ser E.164 (`+5511983340447`).
+A validação e a formatação usam `libphonenumber-js` — primeira dependência de
+terceiro do projeto. O import é feito pelo subpath `/max` (metadata completa com
+padrões nacionais); a metadata `min` valida só comprimento e foi a causa de
+números inválidos passarem. `toE164(input, country)` substitui as funções
+BR-only. As Server Actions ganham parâmetro `country` (default `BR`). A RPC foi
+migrada para aceitar `^\+[1-9]\d{7,14}$`. Seeds migrados para E.164.
+
+**Por que uma dependência.** Validação de telefone por país é um problema
+resolvido e cheio de casos-limite (padrões nacionais, tipos de linha,
+comprimentos variáveis por país). Reimplementar seria gambiarra com cobertura
+pior. O princípio "zero dívida" aqui aponta para usar a lib madura, não contra.
+
+**UI.** Componente `PhoneField` com seletor de país (BR primeiro e default). A
+bandeira do país está como emoji derivado do código ISO (sem asset), mas **não
+renderiza no Windows/Chrome** — mostra "BR" em vez de 🇧🇷. Substituição por
+bandeiras SVG fica anotada para a Spec #3c (junto do refinamento visual). Não é
+bloqueante — o seletor funciona, só está feio.
+
+**Justificativa.** Feito agora porque o custo é mínimo (banco só com seeds) e
+adiar criaria migração + duplicatas. Incremental (não quebra o que existe —
+`findPersonByPhone` segue retrocompatível), modular (PhoneField/toE164 reusáveis
+na 3c), zero dívida (formato correto desde o primeiro dado real).
+
+---
+
 _(Novas entradas devem seguir este mesmo formato.)_

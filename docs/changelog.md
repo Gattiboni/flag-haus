@@ -199,3 +199,100 @@
   banco — hoje está prerenderizada como estática durante build
 
 ---
+
+## 2026-07-05 — CRM: form /cadastro completo — wizard 18 steps + E.164 (Spec #3b)
+
+### Adicionado
+
+- `src/app/(cadastro)/CadastroForm.tsx` — orquestrador client do wizard (18
+  steps, estado único via `useState`, submit imperativo com `useTransition`)
+- `src/app/(cadastro)/page.tsx` — Server Component passa
+  `getPersonProfileByPhone` e `submitCadastro` como props (padrão #3a)
+- `src/components/form/StepShell.tsx` — moldura do step (header, contador
+  renumerado por steps visíveis, nav)
+- `src/components/form/OptionPills.tsx` — grupo de opções estilo pill,
+  controlado
+- `src/components/form/ConfirmField.tsx` — confirmação leve com edição inline
+  (confirmar/corrigir sem tela extra)
+- `src/components/form/GeoFields.tsx` — bairro/cidade sempre editáveis + botão
+  de geolocalização
+- `src/components/form/PhoneField.tsx` — seletor de país (BR default/primeiro) +
+  input de telefone com validação por país
+- `src/lib/utils/geo.ts` — `reverseGeocode()` client-side via BigDataCloud (sem
+  API key); bairro extraído de `administrative.adminLevel >= 9`, city de
+  `adminLevel === 8`, guard bairro ≠ cidade
+- Server Actions em `src/app/actions/people.ts` (mesmo arquivo, padrão #3a
+  preservado):
+  - `getPersonProfileByPhone(rawPhone, country='BR')` — perfil completo +
+    `extra_data` + estado dos consentimentos (lgpd vigente? opt-in atual?),
+    decide o que pular/confirmar/perguntar
+  - `submitCadastro(payload)` — valida com Zod, monta payload, chama a RPC
+    transacional
+
+### Modificado
+
+- `src/lib/utils/phone.ts` — substituído:
+  `normalizePhone`/`isValidBrazilianPhone` removidos; agora
+  `toE164(input, country)` via `libphonenumber-js/max`. Todos os call sites
+  atualizados
+- `findPersonByPhone` — ganhou parâmetro `country='BR'`, usa E.164
+  (retrocompatível com chamada de 1 argumento em `/__health`)
+
+### Banco (via MCP — migrations e seeds)
+
+- Migration `rpc_submit_cadastro` — função transacional
+  `submit_cadastro(payload jsonb)`: upsert `people` (null preserva, `extra_data`
+  merge) + insert `consents` + insert `motivations` (se houver) + insert
+  `events`, tudo-ou-nada. Execução restrita a `service_role`
+- Migration `rpc_submit_cadastro_e164` — regex do phone de `^\d{10,11}$` para
+  `^\+[1-9]\d{7,14}$` (formato canônico E.164)
+- Seeds de teste: `+5511900000001` (perfil completo, returning com pulos
+  máximos) e `+5511900000003` (perfil parcial, testa regra por-campo). Marcados
+  `extra_data.seed = true`
+
+### Dependência nova
+
+- `libphonenumber-js@^1.13.8` — primeira dependência de terceiro do projeto.
+  Import via subpath `/max` (metadata completa com padrões nacionais; a `min`
+  valida só comprimento)
+
+### Decisões de mecânica
+
+- Telefone canônico E.164 internacional (base do Julio inclui clientes de fora
+  do BR)
+- Submit único no final via RPC transacional (1 leitura no telefone + 1 escrita
+  no fechamento; zero insert direto do client)
+- Regra de pulo é por campo, não por modo: returning com campo vazio pergunta
+  normalmente
+- LGPD do `/cadastro` usa versão curta (sem a frase de saúde — o form não coleta
+  saúde; a frase pertence ao `/antes-da-sessao`)
+- Geolocalização é progressive enhancement: campos manuais sempre visíveis;
+  lat/lng invisível; falha/negação segue para digitação manual
+
+### Validado
+
+- α: arquivos no lugar, `findPersonByPhone` intacta, escrita só via RPC, `docs/`
+  intocado
+- β (local): build limpo; fluxo novo completo grava nas 4 tabelas em E.164;
+  returning completo (`...001`) renumera para 13 steps e conclui; returning
+  parcial (`...003`) pergunta tudo incl. LGPD; validações de telefone por país
+  (`1198334157` rejeitado, `11983340447` → `+5511983340447`, US →
+  `+12025550123`); geo com bairro ≠ cidade (Vila Mariana ok, centro SP → bairro
+  vazio + city São Paulo); offline/retry preserva respostas
+- Banco (via MCP): submits confirmados nas 4 tabelas, formato 100% E.164, seeds
+  preservados, registros de teste limpos
+
+### Pendente
+
+- Spec #3c: form `/antes-da-sessao` (anamnese) — nasce com
+  PhoneField/GeoFields/pipeline prontos
+- Refinamento visual (branding book + wireframe pra aprovação) — combinado para
+  a 3c
+- Bandeiras SVG no PhoneField (emoji não renderiza no Windows/Chrome — mostra
+  "BR")
+- Remover `console.debug` do geo.ts na 3c
+- Endurecer validação BR para exigir celular de 11 dígitos? (aberto — a lib
+  aceita fixo de 10 dígitos como válido)
+- Migrar `/__health` para dinâmica ou remover antes do lançamento
+
+---
