@@ -1141,4 +1141,95 @@ para clientes reais.
 
 ---
 
+## Decision #024 — 2026-07-13
+
+### O banco passa a ser versionado por autodescoberta (MOAS); índice único de idempotência em `jobs`
+
+**Contexto.** Ao preparar a Spec #3c, foi preciso consultar o DDL de
+`clinical_records` e `jobs` — e não havia onde. O repo não descrevia o banco. A
+consulta a `supabase_migrations.schema_migrations` revelou apenas 4 entradas,
+todas posteriores a 30/06: o schema base (10 tabelas, 4 enums, PostGIS,
+`uuid_generate_v7()`), criado em 27/05, **não existe como migration em lugar
+nenhum**. Vive apenas dentro do projeto Supabase.
+
+Some-se a isso que SQL rodado pelo SQL Editor não entra no `schema_migrations` —
+só o que passa pelo CLI. Ou seja: cada correção pontual no banco aumentava a
+distância entre o repo e a realidade, em silêncio.
+
+**Decisão — MOAS.** Um script Node (`scripts/moas.mjs`) conecta no Postgres,
+consulta `pg_catalog`/`information_schema` e emite dois artefatos: `schema.md`
+(para ler) e `schema.sql` (para executar). **Zero hardcoding**: o script não
+conhece o nome de nenhuma tabela, coluna, função ou tipo — ele pergunta ao banco
+o que existe. Tabela nova aparece nos snapshots sem tocar no script.
+
+Um hook de `pre-push` regenera e compara; se divergir, barra o push. Ele **não
+commita sozinho** — hook que commita tira do humano o controle do que entra no
+repo.
+
+**Determinismo é requisito duro, não detalhe.** Nada de timestamp de geração,
+tamanho de tabela, contagem de linhas ou estatística de vacuum nos snapshots.
+Tudo isso muda sozinho, sujaria o diff a cada push, e um hook que dispara sempre
+é um hook que todos aprendem a ignorar. Só entra o que muda quando **alguém
+altera o schema**. Comprovado por hash em runs consecutivos.
+
+**Decisão — `.mjs`, não `.ts`.** TypeScript exigiria uma segunda dependência
+(`tsx`) ou type-stripping experimental. O script vive fora do app e não
+compartilha tipo nenhum com `src/`. Uma dependência (`pg`), em
+`devDependencies`, e só.
+
+**Decisão — TLS verificado (`verify-full`).** O que trafega é a senha do
+superuser do banco. `sslmode=no-verify` encripta mas não verifica a identidade
+do servidor — aceitar MITM invisível para economizar cinco linhas não passa em
+"zero dívida". A CA (`certs/prod-ca-2021.crt`, pública) é pinada via
+`ssl: { ca }`. CA ausente é **erro fatal, sem fallback**: degradar segurança em
+silêncio é a gambiarra clássica.
+
+_Achado técnico:_ incluir `?sslmode=require` na connection string faz o `pg`
+construir um objeto `ssl` próprio que **sobrepõe** o `{ ca }` passado em código,
+caindo nas CAs do sistema — onde a raiz do Supabase não está. O parâmetro que
+deveria reforçar a verificação, na prática a enfraquecia. O script remove os
+parâmetros de SSL da URL em runtime e deixa o `{ ca }` mandar sozinho.
+
+**Decisão — índice único de idempotência.** A Spec #3c cria um `job` a cada
+submit da anamnese. Sem chave de idempotência, um reenvio (retry de rede, aba
+reaberta) criaria job duplicado, `clinical_record` duplicado e consent
+`procedure` duplicado — e o lock síncrono do client (#023) só cobre
+duplo-clique.
+
+Descartada a heurística "reusa job em `quoted` das últimas 24h" (constante
+mágica = gambiarra). Adotado `submission_id`: uuid gerado no mount do
+formulário, gravado em `jobs.extra_data.submission_id`, com índice único parcial
+(`jobs_submission_id_unique`,
+`where extra_data ? 'submission_id' and deleted_at
+is null`). Mesmo formulário
+reenviado → mesmo id → mesmo job. Link reaberto de propósito → id novo → job
+novo, que é o comportamento correto.
+
+O índice é a **garantia**; o **comportamento** (`on conflict do nothing` +
+recuperar o job existente) vem na RPC da #3c.
+
+**Alvo do `schema.sql`.** Não é um Postgres vanilla — os `grant` referenciam
+`anon`, `authenticated` e `service_role`, e as extensões vêm do catálogo
+Supabase. O alvo é **um projeto Supabase novo e vazio**, que é o cenário real de
+desastre. O cabeçalho do arquivo declara isso.
+
+**Custo aceito — o `schema.sql` nunca foi executado.** O teste de replay foi
+dispensado: num projeto sem massa de dado, o custo operacional não se paga.
+Consequência assumida: o **gerador de DDL não tem prova de correção**. A
+reconstrução de `create table`, `create policy` e dos grants a partir do
+catálogo é código plausível, não código verificado. O arquivo declara isso no
+cabeçalho ("NÃO TESTADO"), e a pendência está aberta no changelog. Quando houver
+dado real no banco — ou antes de qualquer migração de projeto — o replay deixa
+de ser opcional.
+
+**Justificativa.** Incremental: o script vive fora do app, não é importado por
+`src/`, não entra no build; removê-lo é deletar dois arquivos e uma linha do
+`package.json`. Modular: coleta, emissão e gatilho são camadas independentes, e
+adicionar uma seção ao inventário é adicionar um objeto numa lista, sem tocar no
+motor. Zero dívida: o snapshot é determinístico, o TLS é verificado, o índice
+resolve idempotência sem constante mágica — e a única lacuna (o replay não
+testado) está declarada em vez de escondida.
+
+---
+
 _(Novas entradas devem seguir este mesmo formato.)_

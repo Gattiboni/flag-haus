@@ -1,0 +1,5 @@
+# Snapshot do banco: LF fixo em qualquer plataforma.
+# Sem isto, core.autocrlf=true converteria para CRLF no checkout e o gerador
+# (que escreve LF) divergiria sempre — moas:check viraria alarme falso.
+docs/db/schema.sql text eol=lf
+docs/db/schema.md  text eol=lf

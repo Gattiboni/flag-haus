@@ -437,3 +437,49 @@
   não é necessário no volume atual
 
 ---
+
+## 2026-07-13 — MOAS: inventário e snapshot do banco (autodescoberta)
+
+### Adicionado
+
+- `scripts/moas.mjs` — script Node que se conecta ao Postgres do Supabase,
+  descobre o schema por autodescoberta (zero hardcoding de nomes de tabela,
+  coluna, função ou tipo) e emite dois artefatos versionados
+- `docs/db/schema.md` — inventário legível do schema `public`: extensões, enums,
+  tabelas com colunas/constraints/índices/triggers/policies/grants, funções com
+  corpo completo, migrations registradas
+- `docs/db/schema.sql` — DDL executável, ordenado por dependência, para recriar
+  o schema `public` num projeto Supabase novo
+- `.githooks/pre-push` — bloqueia o push quando o schema do banco diverge do
+  snapshot commitado. Não commita sozinho: avisa e barra
+- `.gitattributes` — fixa `eol=lf` nos dois snapshots. Sem isso, o
+  `core.autocrlf` do Windows reescreveria os arquivos no checkout e o hook
+  divergiria em todo push, virando alarme falso
+- `certs/prod-ca-2021.crt` — CA do Supabase (público), usada para verificação
+  TLS completa (cadeia + hostname)
+- `npm run moas` e `npm run moas:check`
+- `pg@^8.22.0` em `devDependencies` — única dependência nova
+
+### Corrigido
+
+- `submission_id` em `jobs.extra_data` ganhou índice único parcial
+  (`jobs_submission_id_unique`), impedindo job duplicado por reenvio do
+  formulário. Aplicado no banco e registrado em `schema_migrations`
+
+### Validado
+
+- β 13/13 verdes pelo comando real (sem wrapper): determinismo por hash em runs
+  consecutivos, `moas:check` exit 0/1 correto, CA ausente = erro fatal sem
+  fallback, zero vazamento de credencial nos snapshots, `submit_cadastro` com
+  corpo completo, 40 policies, 10 tabelas, PostGIS filtrado, `npm run build`
+  passando
+
+### Pendente
+
+- **Teste 14 — replay do `schema.sql` contra um banco vazio: NÃO EXECUTADO.**
+  Dispensado por decisão do Alan (custo/benefício não fecha num projeto sem
+  massa de dado). O `schema.sql` é **presumido, não verificado** — o próprio
+  arquivo declara isso no cabeçalho. Enquanto não for executado, o gerador de
+  DDL não tem prova de correção.
+
+---
