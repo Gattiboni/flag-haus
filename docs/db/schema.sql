@@ -68,18 +68,18 @@ begin
   )
   on conflict (phone) where (deleted_at is null)
   do update set
-    name       = coalesce(nullif(excluded.name, ''), people.name),
-    email      = coalesce(nullif(excluded.email, ''), people.email),
-    birth_date = coalesce(excluded.birth_date, people.birth_date),
-    lat        = coalesce(excluded.lat, people.lat),
-    lng        = coalesce(excluded.lng, people.lng),
-    extra_data = people.extra_data || coalesce(excluded.extra_data, '{}'::jsonb),
+    name          = coalesce(nullif(excluded.name, ''), people.name),
+    email         = coalesce(nullif(excluded.email, ''), people.email),
+    birth_date    = coalesce(excluded.birth_date, people.birth_date),
+    lat           = coalesce(excluded.lat, people.lat),
+    lng           = coalesce(excluded.lng, people.lng),
+    extra_data    = people.extra_data || coalesce(excluded.extra_data, '{}'::jsonb),
     identified_at = coalesce(people.identified_at, now())
   returning id into v_person_id;
 
   for v_consent in select * from jsonb_array_elements(coalesce(payload->'consents', '[]'::jsonb))
   loop
-    insert into public.consents (person_id, consent_type, granted, valid_until, source)
+    insert into public.consents (person_id, consent_type, granted, valid_until, source, policy_version)
     values (
       v_person_id,
       (v_consent->>'type')::public.consent_type,
@@ -87,7 +87,10 @@ begin
       case when v_consent ? 'valid_months'
            then now() + make_interval(months => (v_consent->>'valid_months')::int)
            else null end,
-      coalesce(payload->>'source', 'form_cadastro')
+      coalesce(payload->>'source', 'form_cadastro'),
+      -- fallback: o form ainda não envia policy_version. Quando a #3d
+      -- atualizar o /cadastro, ele passa a enviar e o coalesce vira no-op.
+      coalesce(v_consent->>'policy_version', 'cadastro-v1-2026-07')
     );
   end loop;
 
