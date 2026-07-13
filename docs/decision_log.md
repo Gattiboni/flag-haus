@@ -1232,4 +1232,36 @@ testado) está declarada em vez de escondida.
 
 ---
 
+## Decision #025 — 2026-07-13
+
+### Decisão: Spec #3c — formulário `/antes-da-sessao` (anamnese) implementado, testado e fechado
+
+**Contexto**
+Segundo formulário público do CRM. Cobre gate de idade, anamnese de saúde, consentimentos e cadastro, e cria um `job` por submissão. O copy v2 (27/05) e a spec original foram escritos antes das tabelas dedicadas (`clinical_records`, `consents`, `motivations`) e antes das pesquisas de LGPD — ambos estavam parcialmente vencidos no momento da implementação.
+
+**Decisões consolidadas**
+
+1. **Copy v3 substitui o v2.** O v2 contradizia a implementação em 8 pontos (rota, gate de idade, região do corpo, gravidez com 5 opções, documento CPF/RG/CNH, consentimento de saúde, mapeamento de tabelas, `policy_version`). Arquivo renomeado para `_VENCIDO`.
+2. **Rota real: `src/app/(anamnese)/antes-da-sessao/page.tsx`.** A spec pedia `(anamnese)/page.tsx`, mas route group não vira segmento de URL e colidiria com o `/cadastro` na raiz. Divergência identificada pelo executor, aprovada pelo arquiteto.
+3. **O job nasce vazio.** `status` default (`quoted`), `body_region`, `extra_data.submission_id`; preços e timestamps null. `quoted_at = now()` seria mentira (o orçamento ocorreu no WhatsApp). Preenchimento posterior é do admin (Bloco 4).
+4. **`body_region` coletado** — obrigação da vigilância sanitária de SP (registro do procedimento com local do corpo) e contexto para a pergunta de pele.
+5. **Consentimento de dados de saúde é step próprio e destacado** (`consent_type = 'health'`, borda de destaque). Tatuador não é profissional de saúde → Art. 11, II, "f" não se aplica; a única base legal é consentimento específico e destacado (Art. 11, I). Cláusula embutida no LGPD genérico não satisfaz a lei.
+6. **Todo consent grava `policy_version`** (Art. 8º, §2º — ônus do controlador de provar qual texto foi aceito). Texto congelado em `docs/legal/consentimento_anamnese_v1.md` (`anamnese-v1-2026-07`); constante única em `src/lib/legal/policy.ts`. Mudança de texto = v2 do documento, nunca edição.
+7. **Escopo dos consents:** `procedure` e `health` são por sessão (gravam `job_id`, nunca pulados); `lgpd` (12 meses), `image` e `marketing` são da pessoa (`job_id` null, pulados/confirmados se já respondidos).
+8. **Idempotência por `submission_id`** gerado no mount (`crypto.randomUUID()`), gravado em `jobs.extra_data`, com índice único parcial. Reenvio da mesma instância → `duplicate: true`, zero escrita. F5/reabertura → uuid novo → job novo (correto: repreencher 31 steps é ato intencional). `sessionStorage` rejeitado — complexidade sem cenário que a justifique.
+9. **Leitura de estado em tabelas append-only:** sempre `order by created_at desc limit 1`. Validado por armadilha deliberada no seed (7 linhas de `marketing`, a mais recente `granted = false`) — o formulário exibiu o estado correto.
+10. **Steps de cadastro para recorrente: confirmação leve, não sumiço** (precedente do `/cadastro`); saúde (steps 4–11) e consents de sessão nunca são pulados. `submit_cadastro` ganhou `coalesce` de `policy_version` como ponte (dívida rastreada: o form `/cadastro` ainda não envia a versão).
+
+**Validação**
+- RPC `submit_anamnese`: 9/9 verde, incluindo idempotência, antes de qualquer código de front.
+- β §14: testes 1–14 verdes — UI executada por agente de navegador (Comet) com transcrição literal + verificação SQL por `source`/`submission_id`. Execução acidental de 5 ciclos pelo agente funcionou como stress test: consents de pessoa gravados 1× em 5, consents de sessão 5× em 5, sem exceção.
+- Teste 7 (duplo-clique, visual): aceito por camadas — RPC idempotente + lock síncrono do padrão #3b-fix. Sem re-verificação visual.
+- Testes 15 e 17 (Enter/autocomplete + celular real em produção): **pendentes, não-impeditivos.**
+
+**Impacto**
+- Bloco 3 funcionalmente completo: dois formulários públicos escrevendo nas 6 tabelas via RPCs transacionais.
+- Bloco 4 (admin) vira o próximo passo de código e entra no caminho crítico: listas e templates só vão ao Julio com o admin navegável em produção.
+
+---
+
 _(Novas entradas devem seguir este mesmo formato.)_

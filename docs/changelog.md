@@ -484,4 +484,22 @@
 
 ---
 
-mudança
+## 2026-07-13 — CRM: form /antes-da-sessao (anamnese) — wizard 31 steps (Spec #3c)
+
+- Wizard de 31 steps + tela de bloqueio de menor: gate de idade, anamnese de saúde (região do corpo, alergias, medicação, diabetes, pele, gravidez com 5 opções, saúde geral, últimas 24h), consentimentos e cadastro com "pula o que já tem" por campo.
+- Rota via route group: `src/app/(anamnese)/antes-da-sessao/page.tsx`; placeholder antigo removido.
+- Server Action `submitAnamnese` (Zod + `service_role`) e leitura de perfil `getAnamneseProfileByPhone` — estado de consents append-only lido sempre pela linha mais recente.
+- RPC transacional `submit_anamnese` (escrita atômica em `people`, `jobs`, `clinical_records`, `consents`, `motivations`, `events`) — testada 9/9 antes do front, com idempotência por `submission_id` e índice único parcial.
+- Consentimento de dados de saúde como step destacado (`consent_type = 'health'`, LGPD Art. 11, I); `policy_version` obrigatório em todo consent; textos congelados em `docs/legal/consentimento_anamnese_v1.md`; constante única `POLICY_VERSION_ANAMNESE` em `src/lib/legal/policy.ts`.
+- Copy v3 substitui o v2 (renomeado `_VENCIDO`); job nasce vazio (status default `quoted`, preços/timestamps null).
+- Componentes 100% herdados do `/cadastro` sem fork; zero dependência nova; `/cadastro` intocado.
+- β §14: 1–14 verdes (agente de navegador + verificação SQL; 5 execuções acidentais serviram de stress test do skip). Teste 7 visual aceito por camadas. **Pendente não-impeditivo:** testes 15/17 (Enter/autocomplete + celular real em produção).
+- Docs: decisão #025, plano consolidado v4.
+
+**Impacto:**
+- Bloco 3 funcionalmente completo — os dois formulários públicos no ar escrevendo no Supabase.
+- Caminho crítico passa ao Bloco 4 (admin): pré-condição definida para envolver o Julio (admin navegável em produção).
+
+**Responsável:** Gattiboni (validação) · Claudinho (spec/arquitetura) · Codinho (implementação)
+
+---
