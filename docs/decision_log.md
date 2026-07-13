@@ -1042,4 +1042,103 @@ na 3c), zero dívida (formato correto desde o primeiro dado real).
 
 ---
 
+## Decision #023 — 2026-07-13
+
+### Geocoding vira cadeia de providers plugáveis; gate de idade obrigatório no `/cadastro`; cidade obrigatória, bairro opcional
+
+**Contexto.** Três problemas apareceram juntos no teste da #3b em produção, e os
+três tinham a mesma raiz — dado geográfico e etário sendo tratado como
+acessório.
+
+1. **A geolocalização nunca funcionou.** O campo cidade nascia com default
+   `'São Paulo'` no state, e `GeoFields` só gravava a cidade retornada pelo
+   `reverseGeocode` quando `!city.trim()`. Como `city` nunca estava vazio, o
+   retorno do geocoder era descartado silenciosamente. O `"São Paulo"` que
+   aparecia na tela era o default, não o resultado da geolocalização. Efeito
+   colateral já materializado no banco: o seed `+5511900000003` tinha
+   `neighborhood = "São Paulo"` gravado.
+2. **A fonte de bairro era incompleta.** Teste empírico sobre 5 coordenadas: a
+   BigDataCloud devolve `adminLevel >= 9` apenas para bairros que também são
+   subprefeituras (Vila Mariana, Pinheiros). Para República, Sé/Centro e
+   Copacabana, não devolve nada nesse nível. O código estava correto — a fonte é
+   que não cobria. O Nominatim (OSM) resolveu 5/5 no mesmo teste.
+3. **Data de nascimento era opcional.** Insustentável em três eixos: legal
+   (tatuagem é maior de 18), LGPD (consentimento de menor é inválido) e produto
+   (CRM sem data de nascimento não faz reativação por aniversário nem análise
+   etária da base).
+
+**Decisão — geocoding.** `reverseGeocode` passa a ser um orquestrador sobre uma
+lista ordenada de providers que implementam a interface `GeoProvider`. Nominatim
+é o primário; BigDataCloud, o fallback. Cada provider tem timeout próprio (5s
+via `AbortController`); erro ou timeout de um nunca propaga — loga e passa ao
+seguinte. O guard `bairro ≠ cidade` é aplicado sobre o resultado de cada
+provider, não dentro deles. Trocar, adicionar ou remover fonte não toca em
+nenhum componente de UI.
+
+**Decisão — autocomplete.** Bairro e cidade ganham autocomplete via **Photon**
+(`photon.komoot.io`), não via Nominatim. A política de uso do Nominatim
+desencoraja `search-as-you-type`, e um bloqueio por abuso derrubaria também o
+reverse geocoding, que depende do mesmo serviço — providers separados garantem
+falhas isoladas. O Photon é feito para type-ahead, usa os mesmos dados OSM
+(logo, resultados coerentes com o reverse geocoding) e não exige API key. Google
+Places foi descartado: resolveria, mas exige key exposta no client e billing
+ativo, para um ganho que o Photon já entrega.
+
+O resultado cru do Photon é inutilizável — `"Repúb"` devolve cinco países,
+`"Camp"` devolve um condado do Texas. O filtro por `osm_value` (whitelist
+separada para bairro e cidade) é parte obrigatória do adaptador, não um detalhe
+de UI. Autocomplete nunca é gate: digitação livre é sempre aceita.
+
+**Decisão — gate de idade.** `birth_date` passa a ser **obrigatório na
+aplicação** (front + Zod server-side, com `refine` de idade ≥ 18) e permanece
+**nullable no banco**. O step entra logo **após o telefone e o reconhecimento**,
+não antes.
+
+- _Por que depois do telefone:_ o eixo do design é "pula o que já tem". Gate
+  antes do telefone forçaria todo returning a redigitar uma data que já está no
+  banco, quebrando o princípio central por ganho zero. Depois do telefone, o
+  returning com data válida passa em silêncio; só quem não tem data é
+  perguntado.
+- _Por que "sem capturar dado" continua verdadeiro:_ o submit é único, no final,
+  via RPC. Ler o telefone (`findPersonByPhone`) não grava nada. Menor de 18
+  abandona no gate e o banco nunca soube que ele existiu — comprovado em β (seed
+  `...005`: 0 eventos, 0 consentimentos, `updated_at = created_at`).
+- _Por que nullable no banco:_ `lifecycle_stage` já nasce como `'lead'` por
+  default, e a finalidade do CRM é fechar o loop contato → orçamento → job. Um
+  lead vindo de clique de WhatsApp tem telefone e nada mais. `NOT NULL` em
+  `birth_date` proibiria o banco de registrar exatamente o lead que ele foi
+  construído para rastrear. O gate garante que ninguém _completa o formulário_
+  sem data; o banco continua podendo guardar um lead cru.
+
+**Decisão — cidade obrigatória, bairro opcional.** Cidade é a unidade analítica
+mínima da base: bairro sem cidade é ambíguo (há homônimos), e a pergunta de
+negócio — quem é de perto, quem vem de longe — se responde na cidade. Bairro é
+refinamento dentro dela, e nenhuma fonte de geocoding garante bairro em 100% dos
+casos; exigir o que a fonte não entrega convida o usuário a inventar.
+
+**Nota sobre LGPD.** Cogitou-se justificar a obrigatoriedade da cidade pela
+LGPD. Não se sustenta, e o argumento é o inverso: a LGPD governa se o dado _pode
+ser tratado_ (resolvido pela tabela `consents`), não se ele _deve ser
+fornecido_. O princípio da necessidade (Art. 6º, III) empurra para coletar o
+mínimo necessário à finalidade, e condicionar o cadastro a um dado dispensável
+enfraqueceria a própria validade do consentimento — que precisa ser livre. A
+obrigatoriedade da cidade se justifica por **necessidade de produto**, não por
+lei.
+
+**Custo aceito.** Nominatim e Photon são serviços comunitários, gratuitos e sem
+SLA. O volume atual (uma chamada por preenchimento de formulário, disparada por
+clique) está dentro das políticas de uso. Se houver bloqueio, a arquitetura de
+adaptadores permite trocar a fonte sem tocar em UI, e o caminho de contingência
+é proxiar via Server Action (que permite `User-Agent` identificável). Não é
+necessário agora.
+
+**Justificativa.** Incremental — nenhuma migration, nenhuma dependência nova,
+`reverseGeocode` mantém a assinatura de consumo. Modular — providers de reverse
+geocoding e de autocomplete são adaptadores plugáveis e independentes entre si.
+Zero dívida — o dado geográfico e etário nasce correto antes do primeiro
+registro real; corrigir depois exigiria limpeza de base e reenvio de formulário
+para clientes reais.
+
+---
+
 _(Novas entradas devem seguir este mesmo formato.)_

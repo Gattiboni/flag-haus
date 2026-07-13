@@ -296,3 +296,144 @@
 - Migrar `/__health` para dinâmica ou remover antes do lançamento
 
 ---
+
+## 2026-07-13 — CRM: gate de idade + cadeia de geocoding + autocomplete (Spec #3b-fix)
+
+### Adicionado
+
+- `src/lib/utils/age.ts` — funções puras `calculateAge()` (anos completos,
+  `today` injetável, `null` em data inexistente) e `isEligibleAge()` (data real,
+  não-futura, ≤ 120 anos, ≥ 18 anos). Sem biblioteca de data nova — `Date`
+  nativo
+- `src/lib/utils/geo.ts` — arquitetura de adaptadores plugáveis:
+  - Tipos `GeoResult` e `GeoProvider` exportados
+  - Provider `nominatim` (**primário**) —
+    `suburb ?? neighbourhood ??
+    city_district` para bairro;
+    `city ?? town ?? municipality` para cidade
+  - Provider `bigdatacloud` (**fallback**) — lógica anterior preservada na
+    íntegra (`adminLevel >= 9` / `=== 8`)
+  - `reverseGeocode()` orquestra em ordem, aplica o guard `bairro ≠ cidade` em
+    cada resultado, retorna o primeiro com bairro; senão o primeiro com cidade;
+    senão `{null, null}`. Erro/timeout de um provider vira `console.warn` e
+    passa ao próximo — nunca propaga. Timeout de 5s por provider via
+    `AbortController`
+- `src/lib/utils/geo.ts` — `searchPlaces(query, kind, bias?, signal?)` +
+  `PlaceSuggestion`: autocomplete via **Photon** (`photon.komoot.io`, dados OSM,
+  sem API key). Filtro client-side por `osm_value` (whitelist separada para
+  bairro e cidade), dedupe por `(name + state + country)`, cap de 5 sugestões,
+  viés geográfico (lat/lng do geo, ou São Paulo por padrão), timeout 4s, falha →
+  array vazio
+- `src/components/form/GeoFields.tsx` — subcomponente `AutocompleteInput`
+  reutilizado nos dois campos: debounce de 300ms a partir de 3 caracteres,
+  `AbortController` por tecla, dropdown na paleta Flag Haus, navegação por
+  teclado (↑ ↓ Enter Esc), clique-fora fecha, indicador de carregamento, zero
+  resultados não abre dropdown. Digitação livre sempre permitida — autocomplete
+  nunca é gate
+- `src/app/(cadastro)/CadastroForm.tsx` — step de **gate de idade** (data de
+  nascimento obrigatória) posicionado logo após o telefone e o reconhecimento;
+  tela de bloqueio terminal para menores de 18 (sem avançar, sem voltar, sem
+  escrita)
+- Tecla **Enter avança o step**, reutilizando os mesmos handlers do botão
+  (`handleNext`, `handlePhoneNext`, `handleGateNext`, `handleLocationNext`) —
+  zero duplicação de validação. Ignorado em `<textarea>`. Não avança quando o
+  dropdown do autocomplete está aberto (coordenação via `e.defaultPrevented`)
+
+### Modificado
+
+- `src/app/(cadastro)/CadastroForm.tsx`:
+  - O step de data de nascimento (antes opcional, posicionado adiante no wizard)
+    **migrou** para logo após o reconhecimento. Não duplicou — o antigo foi
+    removido, junto de `formatDateBR` e `isFilled(6)`, que só serviam a ele
+  - Campo cidade nasce **vazio** (antes tinha default `'São Paulo'` no state)
+  - Hidratação do returning: `city: p.extra.city ?? ''` (antes injetava
+    `'São Paulo'`)
+  - `isFilled(7)` passa a exigir bairro **e** cidade para usar o atalho de
+    confirmação
+  - `buildPayload` envia `extra.city` incondicionalmente
+  - Estado ganha `birthError`, `cityError`, `blocked`; `submitLockRef`
+    (síncrono) protege contra submit duplo
+- `src/components/form/GeoFields.tsx` — placeholder do bairro deixa de ser
+  `"Vila Mariana"` (um bairro real, que parecia campo preenchido) e passa a ser
+  `"Seu bairro"`; campo cidade ganha placeholder `"Sua cidade"` e atributo
+  `required`
+- `src/app/actions/people.ts`:
+  - `birth_date` deixa de ser `.nullable()` no `cadastroPayloadSchema` e ganha
+    `.refine(isEligibleAge)` — obrigatório, com gate de idade ≥ 18 validado
+    **server-side**
+  - `extra_data` ganha `.refine()` exigindo `city` não-vazia. `neighborhood`
+    permanece opcional
+- `src/lib/utils/geo.ts` — removidos todos os `console.debug` (pendência herdada
+  da #3b)
+
+### Banco
+
+- Nenhuma migration. `birth_date` permanece **nullable** no schema (obrigatório
+  apenas na aplicação — ver decision #023)
+- Seeds de teste adicionados: `+5511900000004` (sem `birth_date`, exercita o
+  gate) e `+5511900000005` (16 anos, exercita o bloqueio). Marcados
+  `extra_data.seed = true`
+- Correção de dado: `extra_data.neighborhood` do seed `+5511900000003` estava
+  gravado como `"São Paulo"` — efeito do default de cidade que impedia o
+  geocoding de escrever. Removido
+
+### Bugs corrigidos
+
+- **Geolocalização nunca preencheu cidade.** O campo nascia com default
+  `'São Paulo'` no state, e `GeoFields` só gravava a cidade do `reverseGeocode`
+  quando `!city.trim()`. Como `city` nunca estava vazio, o retorno do geocoder
+  era descartado silenciosamente. O "São Paulo" visível na tela era o default,
+  não o resultado da geolocalização
+- **Bairro não era resolvido em boa parte de São Paulo.** A BigDataCloud não
+  devolve `adminLevel >= 9` para República, Sé/Centro nem Copacabana — só para
+  bairros que também são subprefeituras (Vila Mariana, Pinheiros). O código
+  estava correto; a fonte é que era incompleta
+- **`cityError` era invisível.** O `<GeoFields>` tem dois locais de
+  renderização. A prop `cityError` chegava apenas no ramo `isFilled(7)` —
+  justamente aquele em que a validação nunca dispara. O ramo do formulário
+  completo, onde a validação sempre roda, recebia `undefined`, e
+  `{cityError && <p>…}` era sempre falso. O avanço era barrado sem nenhuma
+  mensagem na tela
+
+### Validado
+
+- α (textual): `reverseGeocode` e providers existentes intactos; escrita segue
+  só via RPC; nenhuma migration; nenhuma dependência nova; `docs/` intocado
+- β (executável): 6/6 verdes
+  - Returning completo (`...001`) — gate pulado, submit conclui, `birth_date`
+    intacto, `updated_at` avança, eventos incrementam
+  - Returning sem `birth_date` (`...004`) — gate aparece, data capturada e
+    gravada
+  - Returning menor (`...005`) — bloqueio dispara logo após o telefone;
+    `updated_at = created_at`, **0 eventos, 0 consentimentos** (nada gravado)
+  - **Cadastro novo do zero** (`+5511983340484`) — registro criado, bairro
+    `"República"`, cidade `"São Paulo"`, 1 evento
+  - Cidade vazia — não avança **e o erro aparece na tela**
+  - Enter avança em campo de texto; quebra linha em `<textarea>`; seleciona
+    sugestão (sem avançar) com o dropdown aberto
+  - Autocomplete: `"rep"` → `"República — São Paulo"`; seleção de bairro
+    preenche a cidade quando vazia
+  - Geo negado — campos vazios com placeholder, sem `"São Paulo"` fantasma
+- Nota de teste: geolocalização em desktop tem precisão de ±2000m (Wi-Fi/IP, não
+  GPS). Coordenadas da República resolveram para Glicério — o provider está
+  correto; a coordenada é que está torta. Validação com GPS real depende de
+  teste em celular, em produção
+
+### Pendente
+
+- Teste de geolocalização em celular (GPS real) em `cadastro.flaghaus.art`
+- Limpar registros de teste do banco (`+5511983340484`) — seeds `...001`,
+  `...003`, `...004`, `...005` devem ser mantidos
+- Spec #3c: form `/antes-da-sessao` (anamnese) — nasce com `PhoneField`,
+  `GeoFields` (agora com autocomplete), gate de idade e pipeline E.164 prontos
+- Refinamento visual (branding book + wireframe para aprovação) — combinado para
+  a 3c
+- Bandeiras SVG no `PhoneField` (emoji não renderiza no Windows/Chrome)
+- Endurecer validação BR para exigir celular de 11 dígitos? (aberto)
+- Migrar `/__health` para rota dinâmica ou remover antes do lançamento
+- `npm audit` — 2 vulns moderadas transitivas, revisar
+- Nominatim e Photon são serviços comunitários sem SLA. Em caso de bloqueio por
+  volume, o caminho é proxiar via Server Action (permite `User-Agent` próprio) —
+  não é necessário no volume atual
+
+---

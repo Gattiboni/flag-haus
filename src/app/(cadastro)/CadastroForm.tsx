@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useTransition } from 'react'
+import { useEffect, useRef, useState, useTransition } from 'react'
 import { isValidPhoneNumber, type CountryCode } from 'libphonenumber-js/max'
 import type {
   GetProfileResult,
@@ -8,6 +8,7 @@ import type {
   CadastroPayload,
   SubmitCadastroResult,
 } from '@/app/actions/people'
+import { calculateAge } from '@/lib/utils/age'
 import { StepShell } from '@/components/form/StepShell'
 import { OptionPills } from '@/components/form/OptionPills'
 import { ConfirmField } from '@/components/form/ConfirmField'
@@ -33,8 +34,10 @@ type FormState = {
   email: string
   emailError: string | null
   birth_date: string
+  birthError: string | null
   neighborhood: string
   city: string
+  cityError: string | null
   lat: number | null
   lng: number | null
   acquisition_source: string
@@ -51,9 +54,14 @@ type FormState = {
 
   submitError: string | null
   done: boolean
+  blocked: boolean // gate de idade: menor de 18 → tela terminal, sem escrita
 }
 
-const ALL_STEPS = Array.from({ length: 18 }, (_, i) => i + 1)
+// Ordem EXPLÍCITA dos steps (não é a ordem numérica). O gate de idade
+// (step 6, data de nascimento) é obrigatório e foi movido pra logo após o
+// reconhecimento (step 3), antes de qualquer outra pergunta. O antigo step 6
+// "opcional" foi removido — migrou pra cá, não duplicou.
+const ALL_STEPS = [1, 2, 3, 6, 4, 5, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18]
 
 /** Lista de steps visíveis: por campo, não por modo (Spec #3b). */
 function computeVisible(
@@ -63,6 +71,11 @@ function computeVisible(
   if (mode === 'new' || !profile) return ALL_STEPS
   return ALL_STEPS.filter((s) => {
     switch (s) {
+      case 6:
+        // gate de idade: pula só quem já tem nascimento válido de maior de 18.
+        // Sem data (ou data inválida/menor) → renderiza (perguntar ou bloquear).
+        if (!profile.birth_date) return true
+        return (calculateAge(profile.birth_date) ?? -1) < 18
       case 8:
         return !profile.extra.acquisition_source
       case 9:
@@ -79,12 +92,6 @@ function computeVisible(
   })
 }
 
-function formatDateBR(iso: string): string {
-  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso)
-  if (!m) return iso
-  return `${m[3]}/${m[2]}/${m[1]}`
-}
-
 const initialState: FormState = {
   stepIndex: 0,
   visibleSteps: ALL_STEPS,
@@ -97,8 +104,10 @@ const initialState: FormState = {
   email: '',
   emailError: null,
   birth_date: '',
+  birthError: null,
   neighborhood: '',
-  city: 'São Paulo',
+  city: '',
+  cityError: null,
   lat: null,
   lng: null,
   acquisition_source: '',
@@ -114,6 +123,7 @@ const initialState: FormState = {
   lgpdError: null,
   submitError: null,
   done: false,
+  blocked: false,
 }
 
 const inputCls =
@@ -137,6 +147,35 @@ export function CadastroForm({ getProfileAction, submitAction }: Props) {
     if (typeof window !== 'undefined') window.scrollTo({ top: 0 })
   }, [state.stepIndex, state.done])
 
+  // Guarda contra submit duplo (Enter dobrado / Enter + clique). Ver handleSubmit.
+  const submitLockRef = useRef(false)
+
+  // Enter avança o step chamando o MESMO handler do botão. Refs mantêm o handler
+  // e as guardas sempre frescos sem re-anexar o listener a cada render.
+  const handleNextRef = useRef<() => void>(() => {})
+  const guardRef = useRef({ isPending, blocked: state.blocked, done: state.done })
+  handleNextRef.current = handleNext
+  guardRef.current = { isPending, blocked: state.blocked, done: state.done }
+
+  useEffect(() => {
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key !== 'Enter') return
+      // Dropdown de autocomplete aberto chama preventDefault ao selecionar:
+      // nesse caso NÃO avançamos o step (coordenação com o Item 3).
+      if (e.defaultPrevented) return
+      // <textarea>: Enter é quebra de linha, nunca avanço.
+      const t = e.target as HTMLElement | null
+      if (t && t.tagName === 'TEXTAREA') return
+      const g = guardRef.current
+      // Telas terminais (bloqueio/sucesso) e enquanto uma ação está em voo: nada.
+      if (g.blocked || g.done || g.isPending) return
+      e.preventDefault()
+      handleNextRef.current()
+    }
+    document.addEventListener('keydown', onKeyDown)
+    return () => document.removeEventListener('keydown', onKeyDown)
+  }, [])
+
   const set = (patch: Partial<FormState>) =>
     setState((s) => ({ ...s, ...patch }))
 
@@ -157,10 +196,10 @@ export function CadastroForm({ getProfileAction, submitAction }: Props) {
         return !!p.name
       case 5:
         return !!p.email
-      case 6:
-        return !!p.birth_date
       case 7:
-        return !!p.extra.neighborhood
+        // confirma só quando já temos bairro E cidade. Sem cidade (obrigatória),
+        // cai no form completo pra exigir o preenchimento — não pode pular.
+        return !!p.extra.neighborhood && !!p.extra.city
       case 10:
         return !!p.extra.instagram
       case 12:
@@ -186,17 +225,21 @@ export function CadastroForm({ getProfileAction, submitAction }: Props) {
       if (r.status === 'found') {
         const p = r.profile
         const visible = computeVisible('returning', p)
+        // gate de idade: returning já cadastrado como menor → bloqueio imediato.
+        const age = p.birth_date ? calculateAge(p.birth_date) : null
+        const minor = age !== null && age < 18
         setState((s) => ({
           ...s,
           mode: 'returning',
           profile: p,
           visibleSteps: visible,
           stepIndex: visible.indexOf(3),
+          blocked: minor,
           name: p.name ?? '',
           email: p.email ?? '',
           birth_date: p.birth_date ?? '',
           neighborhood: p.extra.neighborhood ?? '',
-          city: p.extra.city ?? 'São Paulo',
+          city: p.extra.city ?? '',
           instagram: p.extra.instagram ?? '',
           interests: p.extra.interests ?? '',
           acquisition_source: p.extra.acquisition_source ?? '',
@@ -234,6 +277,36 @@ export function CadastroForm({ getProfileAction, submitAction }: Props) {
     })
   }
 
+  function handleGateNext() {
+    const v = state.birth_date
+    if (!v) {
+      set({ birthError: 'Precisa preencher pra seguir.' })
+      return
+    }
+    const age = calculateAge(v)
+    if (age === null || age < 0 || age > 120) {
+      set({ birthError: 'Data inválida — confere aí?' })
+      return
+    }
+    if (age < 18) {
+      // menor de 18: tela terminal, nenhuma escrita (submit é único no final).
+      set({ birthError: null, blocked: true })
+      return
+    }
+    set({ birthError: null })
+    advance()
+  }
+
+  function handleLocationNext() {
+    // cidade é obrigatória (unidade analítica mínima da base); bairro é opcional.
+    if (!state.city.trim()) {
+      set({ cityError: 'Precisa preencher pra seguir.' })
+      return
+    }
+    set({ cityError: null })
+    advance()
+  }
+
   function handleEmailNext() {
     const v = state.email.trim()
     if (v && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)) {
@@ -257,9 +330,9 @@ export function CadastroForm({ getProfileAction, submitAction }: Props) {
     const visible = (s: number) => state.visibleSteps.includes(s)
     const extra: Record<string, string | boolean> = {}
 
-    // step 7 (sempre visível)
+    // step 7 (sempre visível): bairro opcional, cidade obrigatória (sempre vai)
     if (state.neighborhood.trim()) extra.neighborhood = state.neighborhood.trim()
-    if (state.city.trim()) extra.city = state.city.trim()
+    extra.city = state.city.trim()
     // step 8
     if (visible(8) && state.acquisition_source)
       extra.acquisition_source = state.acquisition_source
@@ -290,7 +363,9 @@ export function CadastroForm({ getProfileAction, submitAction }: Props) {
       mode: state.mode,
       name: state.name.trim() || null,
       email: state.email.trim() || null,
-      birth_date: state.birth_date || null,
+      // sempre presente e válido ao chegar no submit: o gate obrigatório
+      // (step 6) barra o avanço sem data >= 18.
+      birth_date: state.birth_date,
       lat: state.lat,
       lng: state.lng,
       extra_data: extra,
@@ -306,10 +381,16 @@ export function CadastroForm({ getProfileAction, submitAction }: Props) {
   }
 
   function handleSubmit() {
+    // Guarda síncrona contra duplo disparo: dois Enter em sequência (ou Enter +
+    // clique) podem cair aqui antes de `isPending` virar no próximo render.
+    // O lock fecha na hora e só reabre quando a Server Action responde.
+    if (submitLockRef.current) return
+    submitLockRef.current = true
     const payload = buildPayload()
     set({ submitError: null })
     startTransition(async () => {
       const r = await submitAction(payload)
+      submitLockRef.current = false
       if (r.status === 'ok') {
         setState((s) => ({ ...s, done: true, submitError: null }))
       } else {
@@ -325,6 +406,10 @@ export function CadastroForm({ getProfileAction, submitAction }: Props) {
     switch (currentStep) {
       case 2:
         return handlePhoneNext()
+      case 6:
+        return handleGateNext()
+      case 7:
+        return handleLocationNext()
       case 5:
         return handleEmailNext()
       case 17:
@@ -334,6 +419,34 @@ export function CadastroForm({ getProfileAction, submitAction }: Props) {
       default:
         return advance()
     }
+  }
+
+  // ── Tela de bloqueio (menor de 18) ──
+  // Terminal: sem avançar, sem voltar, NENHUMA escrita (não chama submit,
+  // não dispara Server Action, não registra evento).
+  if (state.blocked) {
+    return (
+      <main className="max-w-[560px] mx-auto px-6 sm:px-8 pt-16 sm:pt-20 pb-[120px] min-h-screen">
+        <header className="flex justify-between items-baseline pb-8 border-b border-[color:var(--line)] mb-14">
+          <span className="font-[family-name:var(--font-fraunces)] text-lg tracking-[0.02em]">
+            Flag Haus
+          </span>
+        </header>
+        <div className="py-10">
+          <h1 className={h1Cls}>Obrigado pela honestidade.</h1>
+          <p className="mb-4">
+            Ainda não posso te cadastrar — a gente não tatua menores de 18, sem
+            exceção.
+          </p>
+          <p className="mb-4">
+            Quando você completar 18, a gente vai estar aqui.
+          </p>
+          <p className="mt-10 font-[family-name:var(--font-fraunces)] italic">
+            — Julio
+          </p>
+        </div>
+      </main>
+    )
   }
 
   // ── Tela de sucesso (substitui o step 18) ──
@@ -505,35 +618,24 @@ export function CadastroForm({ getProfileAction, submitAction }: Props) {
           </div>
         )
 
-      // 6 — Nascimento
+      // 6 — Gate de idade (obrigatório, logo após o reconhecimento)
       case 6:
-        return isFilled(6) ? (
-          <ConfirmField
-            label={`Você nasceu em ${formatDateBR(state.profile?.birth_date ?? '')}, certo?`}
-            value={state.birth_date}
-            onChange={(v) => set({ birth_date: v })}
-            editLabel="Corrigir"
-            renderEditor={(val, onChange) => (
-              <input
-                type="date"
-                value={val}
-                onChange={(e) => onChange(e.target.value)}
-                className={inputCls}
-              />
-            )}
-          />
-        ) : (
+        return (
           <div>
             <h2 className={h2Cls}>Sua data de nascimento.</h2>
-            <p className={mutedCls}>Pra confirmar tudo certinho.</p>
+            <p className={mutedCls}>
+              Só tatuamos maiores de 18. Essa é a única que não dá pra pular.
+            </p>
             <div className="my-8">
-              <label className={labelCls}>Data de nascimento (opcional)</label>
+              <label className={labelCls}>Data de nascimento</label>
               <input
                 type="date"
+                required
                 value={state.birth_date}
-                onChange={(e) => set({ birth_date: e.target.value })}
+                onChange={(e) => set({ birth_date: e.target.value, birthError: null })}
                 className={inputCls}
               />
+              {state.birthError && <p className={errCls}>{state.birthError}</p>}
             </div>
           </div>
         )
@@ -553,8 +655,11 @@ export function CadastroForm({ getProfileAction, submitAction }: Props) {
                 neighborhood={state.neighborhood}
                 city={state.city}
                 onNeighborhood={(v) => set({ neighborhood: v })}
-                onCity={(v) => set({ city: v })}
+                onCity={(v) => set({ city: v, cityError: null })}
                 onCoords={(lat, lng) => set({ lat, lng })}
+                lat={state.lat}
+                lng={state.lng}
+                cityError={state.cityError}
               />
             )}
           />
@@ -569,8 +674,11 @@ export function CadastroForm({ getProfileAction, submitAction }: Props) {
               neighborhood={state.neighborhood}
               city={state.city}
               onNeighborhood={(v) => set({ neighborhood: v })}
-              onCity={(v) => set({ city: v })}
+              onCity={(v) => set({ city: v, cityError: null })}
               onCoords={(lat, lng) => set({ lat, lng })}
+              lat={state.lat}
+              lng={state.lng}
+              cityError={state.cityError}
             />
           </div>
         )

@@ -88,13 +88,13 @@ FRENTE 5 — Preparação A/B                       → aguarda volume
 
 | ✅ | Tarefa |
 |---|---|
-| [ ] | UI multi-step completa do fluxo `/cadastro` (16 steps, conforme copy v2 + preview HTML) |
-| [ ] | Server Actions de escrita: upsert `people`, insert `consents` (lgpd, marketing) |
-| [ ] | Lógica "pula o que já tem" (modo returning com confirmações leves) |
+| [x] | UI multi-step completa do fluxo `/cadastro` (16 steps, conforme copy v2 + preview HTML) |
+| [x] | Server Actions de escrita: upsert `people`, insert `consents` (lgpd, marketing) |
+| [x] | Lógica "pula o que já tem" (modo returning com confirmações leves) |
 | [ ] | Captação de geolocalização (autorização + fallback manual bairro/cidade) |
-| [ ] | Validações front (telefone, e-mail) + Zod server-side |
-| [ ] | Página/step de "obrigado" pós-submit |
-| [ ] | Teste com dados fake (10 submits) — dados chegando nas tabelas certas |
+| [x] | Validações front (telefone, e-mail) + Zod server-side |
+| [x] | Página/step de "obrigado" pós-submit |
+| [x] | Teste com dados fake (10 submits) — dados chegando nas tabelas certas |
 
 **Spec #3c — Form `/antes-da-sessao` (anamnese) — DEPOIS DA #3b:**
 

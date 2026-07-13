@@ -3,6 +3,7 @@
 import { z } from 'zod'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { toE164 } from '@/lib/utils/phone'
+import { isEligibleAge } from '@/lib/utils/age'
 
 const INVALID_PHONE_REASON =
   'Número inválido pra esse país — confere o DDD e a quantidade de dígitos?'
@@ -180,10 +181,22 @@ const cadastroPayloadSchema = z.object({
   mode: z.enum(['new', 'returning']),
   name: z.string().nullable(),
   email: z.string().email().nullable().or(z.literal('').transform(() => null)),
-  birth_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable(),
+  // OBRIGATÓRIO na aplicação (nullable só no banco). Gate de idade server-side:
+  // nunca confia no client. Data futura/implausível/menor de 18 → rejeitada.
+  birth_date: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/)
+    .refine((d) => isEligibleAge(d), {
+      message: 'Cadastro exige 18 anos completos.',
+    }),
   lat: z.number().nullable(),
   lng: z.number().nullable(),
-  extra_data: z.record(z.string(), z.union([z.string(), z.boolean()])),
+  // city obrigatória (unidade analítica mínima da base); neighborhood opcional.
+  extra_data: z
+    .record(z.string(), z.union([z.string(), z.boolean()]))
+    .refine((e) => typeof e.city === 'string' && e.city.trim().length > 0, {
+      message: 'Cidade é obrigatória.',
+    }),
   lgpd_accepted: z.boolean().nullable(),      // null = step não exibido (pulado)
   marketing_opt_in: z.boolean().nullable(),   // null = step não exibido
   motivation: z.string().nullable(),
