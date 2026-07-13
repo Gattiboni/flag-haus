@@ -24,7 +24,7 @@ create extension if not exists "supabase_vault" with schema "vault";
 create extension if not exists "uuid-ossp" with schema "extensions";
 
 -- 2. enums
-create type "public"."consent_type" as enum ('procedure', 'lgpd', 'image', 'marketing');
+create type "public"."consent_type" as enum ('procedure', 'lgpd', 'image', 'marketing', 'health');
 create type "public"."job_status" as enum ('quoted', 'confirmed', 'executed', 'cancelled', 'no_response');
 create type "public"."lifecycle_stage" as enum ('lead', 'prospect', 'opportunity', 'customer', 'recurring', 'dormant', 'lost');
 create type "public"."user_role" as enum ('admin', 'viewer');
@@ -175,7 +175,8 @@ create table "public"."consents" (
   "source" text,
   "notes" text,
   "granted_at" timestamp with time zone default now() not null,
-  "created_at" timestamp with time zone default now() not null
+  "created_at" timestamp with time zone default now() not null,
+  "policy_version" text not null
 );
 
 create table "public"."customer_segments_snapshot" (
@@ -202,7 +203,8 @@ create table "public"."events" (
   "source" text,
   "payload" jsonb default '{}'::jsonb not null,
   "occurred_at" timestamp with time zone default now() not null,
-  "created_at" timestamp with time zone default now() not null
+  "created_at" timestamp with time zone default now() not null,
+  "actor_id" uuid
 );
 
 create table "public"."identity_links" (

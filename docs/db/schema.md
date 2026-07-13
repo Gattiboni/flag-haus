@@ -16,7 +16,7 @@
 
 ## Enums
 
-- **consent_type**: `procedure`, `lgpd`, `image`, `marketing`
+- **consent_type**: `procedure`, `lgpd`, `image`, `marketing`, `health`
 - **job_status**: `quoted`, `confirmed`, `executed`, `cancelled`, `no_response`
 - **lifecycle_stage**: `lead`, `prospect`, `opportunity`, `customer`, `recurring`, `dormant`, `lost`
 - **user_role**: `admin`, `viewer`
@@ -128,6 +128,7 @@ Registro append-only de consentimentos. Cada renovação/revogação é uma linh
 | 8 | notes | text | sim |  |  |
 | 9 | granted_at | timestamp with time zone | não | now() |  |
 | 10 | created_at | timestamp with time zone | não | now() |  |
+| 11 | policy_version | text | não |  | Versão do texto de consentimento aceito. Ex: "anamnese-v1-2026-07". Texto em docs/legal/. |
 
 **Constraints**
 
@@ -289,6 +290,7 @@ Timeline unificada. Marcos do funil e interações de marketing convivem aqui. e
 | 7 | payload | jsonb | não | '{}'::jsonb | Atributos específicos do event_type. Ex: marketing.ad_click → {campaign_id, keyword, cost}. |
 | 8 | occurred_at | timestamp with time zone | não | now() |  |
 | 9 | created_at | timestamp with time zone | não | now() |  |
+| 10 | actor_id | uuid | sim |  | auth.users.id de quem executou a ação, quando originada do admin. Null quando originada de formulário público. |
 
 **Constraints**
 
@@ -990,3 +992,4 @@ _Referência — a fonte da verdade do DDL é `schema.sql`._
 | 20260705144518 | rpc_submit_cadastro |
 | 20260705154434 | rpc_submit_cadastro_e164 |
 | 20260713000000 | jobs_submission_id_unique |
+| 20260713010000 | consent_health_policy_version_event_actor |
