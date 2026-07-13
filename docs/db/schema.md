@@ -858,6 +858,156 @@ $function$
 
 Grants: anon → EXECUTE, authenticated → EXECUTE, postgres → EXECUTE, PUBLIC → EXECUTE, service_role → EXECUTE
 
+### submit_anamnese(payload jsonb)
+
+```sql
+CREATE OR REPLACE FUNCTION public.submit_anamnese(payload jsonb)
+ RETURNS jsonb
+ LANGUAGE plpgsql
+AS $function$
+declare
+  v_phone         text;
+  v_submission_id text;
+  v_birth_date    date;
+  v_person_id     uuid;
+  v_job_id        uuid;
+  v_consent       jsonb;
+  v_motivation    text;
+  v_clinical      jsonb;
+begin
+  v_phone := payload->>'phone';
+  if v_phone is null or v_phone !~ '^\+[1-9]\d{7,14}$' then
+    raise exception 'invalid_phone';
+  end if;
+
+  v_submission_id := payload->>'submission_id';
+  if v_submission_id is null or v_submission_id !~
+     '^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$' then
+    raise exception 'invalid_submission_id';
+  end if;
+
+  v_birth_date := (payload->>'birth_date')::date;
+  if v_birth_date is null then
+    raise exception 'birth_date_required';
+  end if;
+
+  if extract(year from age(current_date, v_birth_date)) < 18 then
+    raise exception 'minor_not_allowed';
+  end if;
+
+  insert into public.people (phone, name, email, birth_date, lat, lng, extra_data, identified_at)
+  values (
+    v_phone,
+    nullif(payload->>'name', ''),
+    nullif(payload->>'email', ''),
+    v_birth_date,
+    (payload->>'lat')::double precision,
+    (payload->>'lng')::double precision,
+    coalesce(payload->'extra_data', '{}'::jsonb),
+    now()
+  )
+  on conflict (phone) where (deleted_at is null)
+  do update set
+    name          = coalesce(nullif(excluded.name, ''), people.name),
+    email         = coalesce(nullif(excluded.email, ''), people.email),
+    birth_date    = coalesce(excluded.birth_date, people.birth_date),
+    lat           = coalesce(excluded.lat, people.lat),
+    lng           = coalesce(excluded.lng, people.lng),
+    extra_data    = people.extra_data || coalesce(excluded.extra_data, '{}'::jsonb),
+    identified_at = coalesce(people.identified_at, now())
+  returning id into v_person_id;
+
+  insert into public.jobs (person_id, body_region, extra_data)
+  values (
+    v_person_id,
+    nullif(trim(coalesce(payload->>'body_region', '')), ''),
+    jsonb_build_object('submission_id', v_submission_id, 'created_by', 'form_anamnese')
+  )
+  on conflict ((extra_data ->> 'submission_id'))
+    where (extra_data ? 'submission_id' and deleted_at is null)
+  do nothing
+  returning id into v_job_id;
+
+  if v_job_id is null then
+    select id into v_job_id
+    from public.jobs
+    where extra_data ->> 'submission_id' = v_submission_id
+      and deleted_at is null;
+
+    return jsonb_build_object(
+      'status', 'ok', 'person_id', v_person_id,
+      'job_id', v_job_id, 'duplicate', true
+    );
+  end if;
+
+  v_clinical := coalesce(payload->'clinical', '{}'::jsonb);
+
+  insert into public.clinical_records (
+    person_id, job_id,
+    has_allergies, allergies_detail,
+    takes_medication, medications_detail,
+    has_diabetes,
+    has_skin_condition, skin_condition_detail,
+    pregnancy_status, health_notes, recent_substances
+  )
+  values (
+    v_person_id, v_job_id,
+    (v_clinical->>'has_allergies')::boolean,
+    nullif(trim(coalesce(v_clinical->>'allergies_detail', '')), ''),
+    (v_clinical->>'takes_medication')::boolean,
+    nullif(trim(coalesce(v_clinical->>'medications_detail', '')), ''),
+    (v_clinical->>'has_diabetes')::boolean,
+    (v_clinical->>'has_skin_condition')::boolean,
+    nullif(trim(coalesce(v_clinical->>'skin_condition_detail', '')), ''),
+    nullif(v_clinical->>'pregnancy_status', ''),
+    nullif(trim(coalesce(v_clinical->>'health_notes', '')), ''),
+    nullif(v_clinical->>'recent_substances', '')
+  );
+
+  for v_consent in select * from jsonb_array_elements(coalesce(payload->'consents', '[]'::jsonb))
+  loop
+    if (v_consent->>'policy_version') is null then
+      raise exception 'consent_policy_version_required';
+    end if;
+
+    insert into public.consents (person_id, job_id, consent_type, granted, valid_until, source, policy_version)
+    values (
+      v_person_id,
+      case when (v_consent->>'type') in ('procedure', 'health') then v_job_id else null end,
+      (v_consent->>'type')::public.consent_type,
+      (v_consent->>'granted')::boolean,
+      case when v_consent ? 'valid_months'
+           then now() + make_interval(months => (v_consent->>'valid_months')::int)
+           else null end,
+      coalesce(payload->>'source', 'form_anamnese'),
+      v_consent->>'policy_version'
+    );
+  end loop;
+
+  v_motivation := nullif(trim(coalesce(payload->>'motivation', '')), '');
+  if v_motivation is not null then
+    insert into public.motivations (person_id, job_id, content, source)
+    values (v_person_id, v_job_id, v_motivation, coalesce(payload->>'source', 'form_anamnese'));
+  end if;
+
+  insert into public.events (person_id, job_id, event_type, source, payload)
+  values (
+    v_person_id, v_job_id,
+    'form.anamnese_submitted',
+    coalesce(payload->>'source', 'form_anamnese'),
+    jsonb_build_object('mode', coalesce(payload->>'mode', 'unknown'))
+  );
+
+  return jsonb_build_object(
+    'status', 'ok', 'person_id', v_person_id,
+    'job_id', v_job_id, 'duplicate', false
+  );
+end;
+$function$
+```
+
+Grants: postgres → EXECUTE, service_role → EXECUTE
+
 ### submit_cadastro(payload jsonb)
 
 ```sql
