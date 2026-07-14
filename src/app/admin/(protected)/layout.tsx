@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react'
+import Link from 'next/link'
 import { requireOperator } from '@/lib/auth/gate'
 import { signOutAdmin } from '@/app/actions/auth-admin'
 
@@ -18,11 +19,31 @@ export default async function AdminProtectedLayout({
 
   return (
     <div className="min-h-screen flex flex-col">
-      <header className="flex justify-between items-center px-6 sm:px-8 py-5 border-b border-[color:var(--line)]">
-        <span className="font-[family-name:var(--font-fraunces)] text-lg tracking-[0.02em]">
+      <header className="flex flex-wrap justify-between items-center gap-x-6 gap-y-3 px-6 sm:px-8 py-5 border-b border-[color:var(--line)]">
+        <Link
+          href="/admin"
+          className="font-[family-name:var(--font-fraunces)] text-lg tracking-[0.02em] hover:text-[color:var(--oxblood)] transition-colors"
+        >
           Flag Haus{' '}
           <span className="text-[color:var(--granite)]">— Admin</span>
-        </span>
+        </Link>
+
+        {/* Busca: form GET nativo, sem JS. O Julio digita e aperta Enter. */}
+        <form
+          action="/admin/buscar"
+          method="GET"
+          role="search"
+          className="order-last w-full sm:order-none sm:w-auto sm:flex-1 sm:max-w-xs"
+        >
+          <input
+            type="search"
+            name="q"
+            placeholder="Buscar por nome ou telefone…"
+            aria-label="Buscar pessoa"
+            className="w-full border-b border-[color:var(--line)] bg-transparent py-1.5 text-sm focus:outline-none focus:border-[color:var(--onyx)] transition-colors placeholder:text-[color:var(--granite)]"
+          />
+        </form>
+
         <div className="flex items-center gap-5 text-sm">
           <span className="text-[color:var(--granite)] hidden sm:inline tracking-[0.02em]">
             {email}
