@@ -1236,31 +1236,147 @@ testado) está declarada em vez de escondida.
 
 ### Decisão: Spec #3c — formulário `/antes-da-sessao` (anamnese) implementado, testado e fechado
 
-**Contexto**
-Segundo formulário público do CRM. Cobre gate de idade, anamnese de saúde, consentimentos e cadastro, e cria um `job` por submissão. O copy v2 (27/05) e a spec original foram escritos antes das tabelas dedicadas (`clinical_records`, `consents`, `motivations`) e antes das pesquisas de LGPD — ambos estavam parcialmente vencidos no momento da implementação.
+**Contexto** Segundo formulário público do CRM. Cobre gate de idade, anamnese de
+saúde, consentimentos e cadastro, e cria um `job` por submissão. O copy v2
+(27/05) e a spec original foram escritos antes das tabelas dedicadas
+(`clinical_records`, `consents`, `motivations`) e antes das pesquisas de LGPD —
+ambos estavam parcialmente vencidos no momento da implementação.
 
 **Decisões consolidadas**
 
-1. **Copy v3 substitui o v2.** O v2 contradizia a implementação em 8 pontos (rota, gate de idade, região do corpo, gravidez com 5 opções, documento CPF/RG/CNH, consentimento de saúde, mapeamento de tabelas, `policy_version`). Arquivo renomeado para `_VENCIDO`.
-2. **Rota real: `src/app/(anamnese)/antes-da-sessao/page.tsx`.** A spec pedia `(anamnese)/page.tsx`, mas route group não vira segmento de URL e colidiria com o `/cadastro` na raiz. Divergência identificada pelo executor, aprovada pelo arquiteto.
-3. **O job nasce vazio.** `status` default (`quoted`), `body_region`, `extra_data.submission_id`; preços e timestamps null. `quoted_at = now()` seria mentira (o orçamento ocorreu no WhatsApp). Preenchimento posterior é do admin (Bloco 4).
-4. **`body_region` coletado** — obrigação da vigilância sanitária de SP (registro do procedimento com local do corpo) e contexto para a pergunta de pele.
-5. **Consentimento de dados de saúde é step próprio e destacado** (`consent_type = 'health'`, borda de destaque). Tatuador não é profissional de saúde → Art. 11, II, "f" não se aplica; a única base legal é consentimento específico e destacado (Art. 11, I). Cláusula embutida no LGPD genérico não satisfaz a lei.
-6. **Todo consent grava `policy_version`** (Art. 8º, §2º — ônus do controlador de provar qual texto foi aceito). Texto congelado em `docs/legal/consentimento_anamnese_v1.md` (`anamnese-v1-2026-07`); constante única em `src/lib/legal/policy.ts`. Mudança de texto = v2 do documento, nunca edição.
-7. **Escopo dos consents:** `procedure` e `health` são por sessão (gravam `job_id`, nunca pulados); `lgpd` (12 meses), `image` e `marketing` são da pessoa (`job_id` null, pulados/confirmados se já respondidos).
-8. **Idempotência por `submission_id`** gerado no mount (`crypto.randomUUID()`), gravado em `jobs.extra_data`, com índice único parcial. Reenvio da mesma instância → `duplicate: true`, zero escrita. F5/reabertura → uuid novo → job novo (correto: repreencher 31 steps é ato intencional). `sessionStorage` rejeitado — complexidade sem cenário que a justifique.
-9. **Leitura de estado em tabelas append-only:** sempre `order by created_at desc limit 1`. Validado por armadilha deliberada no seed (7 linhas de `marketing`, a mais recente `granted = false`) — o formulário exibiu o estado correto.
-10. **Steps de cadastro para recorrente: confirmação leve, não sumiço** (precedente do `/cadastro`); saúde (steps 4–11) e consents de sessão nunca são pulados. `submit_cadastro` ganhou `coalesce` de `policy_version` como ponte (dívida rastreada: o form `/cadastro` ainda não envia a versão).
+1. **Copy v3 substitui o v2.** O v2 contradizia a implementação em 8 pontos
+   (rota, gate de idade, região do corpo, gravidez com 5 opções, documento
+   CPF/RG/CNH, consentimento de saúde, mapeamento de tabelas, `policy_version`).
+   Arquivo renomeado para `_VENCIDO`.
+2. **Rota real: `src/app/(anamnese)/antes-da-sessao/page.tsx`.** A spec pedia
+   `(anamnese)/page.tsx`, mas route group não vira segmento de URL e colidiria
+   com o `/cadastro` na raiz. Divergência identificada pelo executor, aprovada
+   pelo arquiteto.
+3. **O job nasce vazio.** `status` default (`quoted`), `body_region`,
+   `extra_data.submission_id`; preços e timestamps null. `quoted_at = now()`
+   seria mentira (o orçamento ocorreu no WhatsApp). Preenchimento posterior é do
+   admin (Bloco 4).
+4. **`body_region` coletado** — obrigação da vigilância sanitária de SP
+   (registro do procedimento com local do corpo) e contexto para a pergunta de
+   pele.
+5. **Consentimento de dados de saúde é step próprio e destacado**
+   (`consent_type = 'health'`, borda de destaque). Tatuador não é profissional
+   de saúde → Art. 11, II, "f" não se aplica; a única base legal é consentimento
+   específico e destacado (Art. 11, I). Cláusula embutida no LGPD genérico não
+   satisfaz a lei.
+6. **Todo consent grava `policy_version`** (Art. 8º, §2º — ônus do controlador
+   de provar qual texto foi aceito). Texto congelado em
+   `docs/legal/consentimento_anamnese_v1.md` (`anamnese-v1-2026-07`); constante
+   única em `src/lib/legal/policy.ts`. Mudança de texto = v2 do documento, nunca
+   edição.
+7. **Escopo dos consents:** `procedure` e `health` são por sessão (gravam
+   `job_id`, nunca pulados); `lgpd` (12 meses), `image` e `marketing` são da
+   pessoa (`job_id` null, pulados/confirmados se já respondidos).
+8. **Idempotência por `submission_id`** gerado no mount (`crypto.randomUUID()`),
+   gravado em `jobs.extra_data`, com índice único parcial. Reenvio da mesma
+   instância → `duplicate: true`, zero escrita. F5/reabertura → uuid novo → job
+   novo (correto: repreencher 31 steps é ato intencional). `sessionStorage`
+   rejeitado — complexidade sem cenário que a justifique.
+9. **Leitura de estado em tabelas append-only:** sempre
+   `order by created_at desc limit 1`. Validado por armadilha deliberada no seed
+   (7 linhas de `marketing`, a mais recente `granted = false`) — o formulário
+   exibiu o estado correto.
+10. **Steps de cadastro para recorrente: confirmação leve, não sumiço**
+    (precedente do `/cadastro`); saúde (steps 4–11) e consents de sessão nunca
+    são pulados. `submit_cadastro` ganhou `coalesce` de `policy_version` como
+    ponte (dívida rastreada: o form `/cadastro` ainda não envia a versão).
 
 **Validação**
-- RPC `submit_anamnese`: 9/9 verde, incluindo idempotência, antes de qualquer código de front.
-- β §14: testes 1–14 verdes — UI executada por agente de navegador (Comet) com transcrição literal + verificação SQL por `source`/`submission_id`. Execução acidental de 5 ciclos pelo agente funcionou como stress test: consents de pessoa gravados 1× em 5, consents de sessão 5× em 5, sem exceção.
-- Teste 7 (duplo-clique, visual): aceito por camadas — RPC idempotente + lock síncrono do padrão #3b-fix. Sem re-verificação visual.
-- Testes 15 e 17 (Enter/autocomplete + celular real em produção): **pendentes, não-impeditivos.**
+
+- RPC `submit_anamnese`: 9/9 verde, incluindo idempotência, antes de qualquer
+  código de front.
+- β §14: testes 1–14 verdes — UI executada por agente de navegador (Comet) com
+  transcrição literal + verificação SQL por `source`/`submission_id`. Execução
+  acidental de 5 ciclos pelo agente funcionou como stress test: consents de
+  pessoa gravados 1× em 5, consents de sessão 5× em 5, sem exceção.
+- Teste 7 (duplo-clique, visual): aceito por camadas — RPC idempotente + lock
+  síncrono do padrão #3b-fix. Sem re-verificação visual.
+- Testes 15 e 17 (Enter/autocomplete + celular real em produção): **pendentes,
+  não-impeditivos.**
 
 **Impacto**
-- Bloco 3 funcionalmente completo: dois formulários públicos escrevendo nas 6 tabelas via RPCs transacionais.
-- Bloco 4 (admin) vira o próximo passo de código e entra no caminho crítico: listas e templates só vão ao Julio com o admin navegável em produção.
+
+- Bloco 3 funcionalmente completo: dois formulários públicos escrevendo nas 6
+  tabelas via RPCs transacionais.
+- Bloco 4 (admin) vira o próximo passo de código e entra no caminho crítico:
+  listas e templates só vão ao Julio com o admin navegável em produção.
+
+---
+
+## Decision #026 — 2026-07-15
+
+### Decisão: modelo lápis/cadeado condicional para edição de pessoa no admin — leitura por padrão
+
+**Contexto** A primeira implementação do `<PersonEdit>` (§4c) renderizava 12
+campos editáveis simultaneamente, cada um com input aberto e ícone 🔒 (todos
+abertos, na maioria dos casos). Em uma pessoa sem `admin_locks`, isso significa
+12 cadeados abertos na tela — saturação total do sinal. A intenção do cadeado
+(marcar campo com autoridade humana, protegido de sobrescrita pelo form público)
+é justamente ser exceção; se aparece em tudo, para de significar nada.
+Adicionalmente, o Julio abre o admin `98% pra ler, 2% pra editar` — inputs
+abertos por default são ruído de UI para o caso 98%.
+
+**Decisão adotada** Modelo **leitura por padrão + ✎ pra editar + 🔒 só onde já
+travado**.
+
+1. **Página carrega em modo leitura.** Cada campo editável renderiza
+   `LABEL / valor formatado / ✎`. Nada de input aberto.
+2. **Formatação em leitura.** Data via `formatDateBR`, telefone via
+   `formatPhoneBR`, select mostra rótulo (não o valor cru), vazio vira `"—"` em
+   `--granite`. Manter valor cru na tela é pior que o input aberto.
+3. **Clique no ✎** vira aquele campo em edição inline com Salvar/Cancelar
+   naquela linha. Outros campos permanecem em leitura.
+4. **🔒 substitui o ✎** apenas em campos com entrada em
+   `people.extra_data.admin_locks`. Substitui, não coexiste — reforça o
+   significado do cadeado (raro, visível, significativo).
+5. **Clique no 🔒** abre menu dropdown (`role="menu"`, fecha em Esc e clique
+   fora) com **Editar** e **Destravar**. Editar entra no fluxo normal do ✎;
+   salvar mantém o lock intacto (backend só re-carimba lock em campo com valor
+   alterado, comportamento existente). Destravar mantém o `confirm()` idêntico.
+6. **Um editor por vez.** Clicar ✎ em outra linha fecha o anterior e descarta o
+   rascunho. Alternativa (`Set<PersonField>` para múltiplos editores
+   simultâneos) rejeitada — edição é rápida e um editor por vez é mais legível.
+7. **Salvar sem mudança não chama o servidor.** Se o rascunho é igual ao valor
+   atual, fecha o editor. Evita lock espúrio e evita `confirm()` do telefone
+   disparar à toa.
+
+**Não alterado**
+
+- Server Actions `updatePerson` e `unlockField` — assinatura e comportamento
+  idênticos
+- Regras de escrita da Emenda C (`submit_cadastro`/`submit_anamnese` respeitando
+  `admin_locks`)
+- Aviso do "fantasma do upsert" (telefone é chave do `on conflict`, edição pelo
+  admin é operação de risco) — mantido, dispara dentro do fluxo do ✎
+
+**Validação**
+
+- Build limpo: `tsc --noEmit`, `eslint`, `next build`
+- β manual 6/6 verdes na Marina (`/admin/people/{id}`): campos com ✎ na entrada,
+  ✎ vira input inline, salvar aparece 🔒 no lugar do ✎, menu do 🔒 com
+  Editar/Destravar, Destravar volta pra ✎, menu fecha em Esc e clique fora
+- β interativo NÃO executado pelo Codinho (sem browser automation na sessão;
+  classifier bloqueou query SQL de auditoria que dumparia PII dos seeds — o
+  executor parou e reportou, comportamento correto). Validação foi feita pelo
+  humano no navegador
+
+**Dívida rastreada** Ao salvar um telefone digitado como `"11 99999-8888"`, a
+linha exibe essa forma até o próximo carregamento, quando `revalidatePath` traz
+o E.164 normalizado do servidor. Correção exigiria sincronizar estado com props
+ou mexer no retorno da Server Action — proibido pela emenda. Aceito como dívida
+cosmética não-impeditiva.
+
+**Justificativa** Incremental: mudança de UI pura, zero alteração em Server
+Actions ou schema. Modular: `<PersonEdit>` continua sendo o único componente que
+conhece o modelo lápis/cadeado; `updatePerson`/`unlockField` continuam
+agnósticos a isso. Zero dívida: o modelo é apropriado à distribuição real de
+`admin_locks` (raro em pessoa real, frequente = sinal de que alguém
+sobre-travou), e a dívida cosmética do telefone está declarada.
 
 ---
 

@@ -486,20 +486,108 @@
 
 ## 2026-07-13 — CRM: form /antes-da-sessao (anamnese) — wizard 31 steps (Spec #3c)
 
-- Wizard de 31 steps + tela de bloqueio de menor: gate de idade, anamnese de saúde (região do corpo, alergias, medicação, diabetes, pele, gravidez com 5 opções, saúde geral, últimas 24h), consentimentos e cadastro com "pula o que já tem" por campo.
-- Rota via route group: `src/app/(anamnese)/antes-da-sessao/page.tsx`; placeholder antigo removido.
-- Server Action `submitAnamnese` (Zod + `service_role`) e leitura de perfil `getAnamneseProfileByPhone` — estado de consents append-only lido sempre pela linha mais recente.
-- RPC transacional `submit_anamnese` (escrita atômica em `people`, `jobs`, `clinical_records`, `consents`, `motivations`, `events`) — testada 9/9 antes do front, com idempotência por `submission_id` e índice único parcial.
-- Consentimento de dados de saúde como step destacado (`consent_type = 'health'`, LGPD Art. 11, I); `policy_version` obrigatório em todo consent; textos congelados em `docs/legal/consentimento_anamnese_v1.md`; constante única `POLICY_VERSION_ANAMNESE` em `src/lib/legal/policy.ts`.
-- Copy v3 substitui o v2 (renomeado `_VENCIDO`); job nasce vazio (status default `quoted`, preços/timestamps null).
-- Componentes 100% herdados do `/cadastro` sem fork; zero dependência nova; `/cadastro` intocado.
-- β §14: 1–14 verdes (agente de navegador + verificação SQL; 5 execuções acidentais serviram de stress test do skip). Teste 7 visual aceito por camadas. **Pendente não-impeditivo:** testes 15/17 (Enter/autocomplete + celular real em produção).
+- Wizard de 31 steps + tela de bloqueio de menor: gate de idade, anamnese de
+  saúde (região do corpo, alergias, medicação, diabetes, pele, gravidez com 5
+  opções, saúde geral, últimas 24h), consentimentos e cadastro com "pula o que
+  já tem" por campo.
+- Rota via route group: `src/app/(anamnese)/antes-da-sessao/page.tsx`;
+  placeholder antigo removido.
+- Server Action `submitAnamnese` (Zod + `service_role`) e leitura de perfil
+  `getAnamneseProfileByPhone` — estado de consents append-only lido sempre pela
+  linha mais recente.
+- RPC transacional `submit_anamnese` (escrita atômica em `people`, `jobs`,
+  `clinical_records`, `consents`, `motivations`, `events`) — testada 9/9 antes
+  do front, com idempotência por `submission_id` e índice único parcial.
+- Consentimento de dados de saúde como step destacado
+  (`consent_type = 'health'`, LGPD Art. 11, I); `policy_version` obrigatório em
+  todo consent; textos congelados em `docs/legal/consentimento_anamnese_v1.md`;
+  constante única `POLICY_VERSION_ANAMNESE` em `src/lib/legal/policy.ts`.
+- Copy v3 substitui o v2 (renomeado `_VENCIDO`); job nasce vazio (status default
+  `quoted`, preços/timestamps null).
+- Componentes 100% herdados do `/cadastro` sem fork; zero dependência nova;
+  `/cadastro` intocado.
+- β §14: 1–14 verdes (agente de navegador + verificação SQL; 5 execuções
+  acidentais serviram de stress test do skip). Teste 7 visual aceito por
+  camadas. **Pendente não-impeditivo:** testes 15/17 (Enter/autocomplete +
+  celular real em produção).
 - Docs: decisão #025, plano consolidado v4.
 
 **Impacto:**
-- Bloco 3 funcionalmente completo — os dois formulários públicos no ar escrevendo no Supabase.
-- Caminho crítico passa ao Bloco 4 (admin): pré-condição definida para envolver o Julio (admin navegável em produção).
 
-**Responsável:** Gattiboni (validação) · Claudinho (spec/arquitetura) · Codinho (implementação)
+- Bloco 3 funcionalmente completo — os dois formulários públicos no ar
+  escrevendo no Supabase.
+- Caminho crítico passa ao Bloco 4 (admin): pré-condição definida para envolver
+  o Julio (admin navegável em produção).
+
+**Responsável:** Gattiboni (validação) · Claudinho (spec/arquitetura) · Codinho
+(implementação)
+
+---
+
+## 2026-07-15 — CRM: emenda visual do `<PersonEdit>` — lápis/cadeado condicional
+
+### Alterado
+
+- `src/components/admin/PersonEdit.tsx` refatorado do modelo "12 inputs
+  abertos + 12 cadeados livres" para modelo **leitura por padrão**:
+  - Cada campo editável renderiza `LABEL / valor formatado / ✎`
+  - Clique no ✎ vira aquele campo em modo edição inline com Salvar/Cancelar;
+    outras linhas permanecem em leitura
+  - 🔒 (oxblood) substitui o ✎ **apenas** em campos com entrada em
+    `people.extra_data.admin_locks`
+  - Clique no 🔒 abre menu dropdown (`role="menu"`, fecha em Esc e clique fora)
+    com "Editar" e "Destravar"
+- Formatação em modo leitura: `formatDateBR` para data, `formatPhoneBR` para
+  telefone, rótulo do select (não o valor cru), `"—"` em `--granite` para vazio
+- Botão global "Salvar" no rodapé removido — Salvar/Cancelar vivem na linha em
+  edição
+- Um editor por vez: abrir ✎ em outro campo fecha o anterior e descarta o
+  rascunho
+- Salvar sem mudança não chama o servidor (evita lock espúrio + evita disparar
+  `confirm()` do telefone à toa)
+- `<label>` virou `<div>` + `<span>`; inputs em edição ganharam `aria-label`
+  para preservar nome acessível
+
+### Não alterado
+
+- Server Actions `updatePerson` e `unlockField` — comportamento e assinatura
+  idênticos
+- Server Action `submit_cadastro`/`submit_anamnese` (Emenda C, respeita
+  `admin_locks`)
+- Aviso do "fantasma do upsert" ao editar telefone — mantido, agora dispara
+  dentro do fluxo do ✎
+
+### Validado
+
+- Build limpo: `tsc --noEmit`, `eslint`, `next build` — todos sem erro
+- β manual (6/6 verdes) — Marina em `/admin/people/{id}`:
+  1. Todos os campos editáveis mostram ✎, nenhum 🔒 (Marina não tem
+     `admin_locks`)
+  2. Clicar ✎ do email → linha vira input + Salvar/Cancelar, outras linhas
+     permanecem em leitura
+  3. Salvar novo email → volta pra leitura, linha agora mostra 🔒 no lugar do ✎
+  4. Clicar 🔒 → menu com "Editar" e "Destravar" aparece corretamente
+  5. Clicar "Destravar" → `confirm()` dispara, aceita → linha volta a mostrar ✎
+  6. Menu do 🔒 fecha em Esc e clique fora — comportamento correto
+
+### Dívida técnica rastreada
+
+- Ao salvar telefone digitado como "11 99999-8888", a linha exibe essa forma até
+  o próximo carregamento, quando `revalidatePath` traz o E.164 do servidor.
+  Corrigir exigiria sincronizar estado com props ou mexer no retorno da Server
+  Action — proibido pela emenda. Aceito como dívida cosmética
+- Bloco 4 admin permanece em desenvolvimento; falta apenas #4d (job manual) para
+  fechar o bloco funcional; refatoração visual completa via design system entra
+  como spec seguinte
+
+**Impacto:**
+
+- Modelo de interação lápis/cadeado aprovado e em produção — modelo apropriado
+  para escala de `admin_locks` (raro em condição real; frequente = ruído)
+- Bloco 4 caminho crítico: #4d (job manual) + Spec #4c-visual (integração design
+  system)
+
+**Responsável:** Gattiboni (validação) · Claudinho (spec/arquitetura) · Codinho
+(implementação)
 
 ---
