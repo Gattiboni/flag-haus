@@ -874,7 +874,10 @@ declare
   v_consent       jsonb;
   v_motivation    text;
   v_clinical      jsonb;
+  v_locks         jsonb;
+  v_incoming_extra jsonb;
 begin
+  -- ── validações ────────────────────────────────────────────────────
   v_phone := payload->>'phone';
   if v_phone is null or v_phone !~ '^\+[1-9]\d{7,14}$' then
     raise exception 'invalid_phone';
@@ -895,6 +898,22 @@ begin
     raise exception 'minor_not_allowed';
   end if;
 
+  -- ── LER LOCKS EXISTENTES ─────────────────────────────────────────
+  select coalesce(extra_data->'admin_locks', '{}'::jsonb)
+  into v_locks
+  from public.people
+  where phone = v_phone and deleted_at is null;
+
+  v_locks := coalesce(v_locks, '{}'::jsonb);
+  v_incoming_extra := coalesce(payload->'extra_data', '{}'::jsonb);
+
+  v_incoming_extra := v_incoming_extra - array(
+    select jsonb_object_keys(v_locks)
+    intersect
+    select jsonb_object_keys(v_incoming_extra)
+  );
+
+  -- ── people (upsert com locks) ────────────────────────────────────
   insert into public.people (phone, name, email, birth_date, lat, lng, extra_data, identified_at)
   values (
     v_phone,
@@ -903,20 +922,34 @@ begin
     v_birth_date,
     (payload->>'lat')::double precision,
     (payload->>'lng')::double precision,
-    coalesce(payload->'extra_data', '{}'::jsonb),
+    v_incoming_extra,
     now()
   )
   on conflict (phone) where (deleted_at is null)
   do update set
-    name          = coalesce(nullif(excluded.name, ''), people.name),
-    email         = coalesce(nullif(excluded.email, ''), people.email),
-    birth_date    = coalesce(excluded.birth_date, people.birth_date),
-    lat           = coalesce(excluded.lat, people.lat),
-    lng           = coalesce(excluded.lng, people.lng),
-    extra_data    = people.extra_data || coalesce(excluded.extra_data, '{}'::jsonb),
+    name = case
+      when v_locks ? 'name' then people.name
+      else coalesce(nullif(excluded.name, ''), people.name)
+    end,
+    email = case
+      when v_locks ? 'email' then people.email
+      else coalesce(nullif(excluded.email, ''), people.email)
+    end,
+    birth_date = case
+      when v_locks ? 'birth_date' then people.birth_date
+      else coalesce(excluded.birth_date, people.birth_date)
+    end,
+    phone = case
+      when v_locks ? 'phone' then people.phone
+      else people.phone
+    end,
+    lat  = coalesce(excluded.lat, people.lat),
+    lng  = coalesce(excluded.lng, people.lng),
+    extra_data    = people.extra_data || excluded.extra_data,
     identified_at = coalesce(people.identified_at, now())
   returning id into v_person_id;
 
+  -- ── job (idempotente via submission_id) ───────────────────────────
   insert into public.jobs (person_id, body_region, extra_data)
   values (
     v_person_id,
@@ -940,6 +973,7 @@ begin
     );
   end if;
 
+  -- ── clinical_records ──────────────────────────────────────────────
   v_clinical := coalesce(payload->'clinical', '{}'::jsonb);
 
   insert into public.clinical_records (
@@ -964,6 +998,7 @@ begin
     nullif(v_clinical->>'recent_substances', '')
   );
 
+  -- ── consents ──────────────────────────────────────────────────────
   for v_consent in select * from jsonb_array_elements(coalesce(payload->'consents', '[]'::jsonb))
   loop
     if (v_consent->>'policy_version') is null then
@@ -984,18 +1019,23 @@ begin
     );
   end loop;
 
+  -- ── motivation ────────────────────────────────────────────────────
   v_motivation := nullif(trim(coalesce(payload->>'motivation', '')), '');
   if v_motivation is not null then
     insert into public.motivations (person_id, job_id, content, source)
     values (v_person_id, v_job_id, v_motivation, coalesce(payload->>'source', 'form_anamnese'));
   end if;
 
+  -- ── event ─────────────────────────────────────────────────────────
   insert into public.events (person_id, job_id, event_type, source, payload)
   values (
     v_person_id, v_job_id,
     'form.anamnese_submitted',
     coalesce(payload->>'source', 'form_anamnese'),
-    jsonb_build_object('mode', coalesce(payload->>'mode', 'unknown'))
+    jsonb_build_object(
+      'mode', coalesce(payload->>'mode', 'unknown'),
+      'locked_fields_ignored', (select array_agg(k) from jsonb_object_keys(v_locks) k)
+    )
   );
 
   return jsonb_build_object(
@@ -1016,38 +1056,97 @@ CREATE OR REPLACE FUNCTION public.submit_cadastro(payload jsonb)
  LANGUAGE plpgsql
 AS $function$
 declare
-  v_phone text;
-  v_person_id uuid;
-  v_consent jsonb;
-  v_motivation text;
+  v_phone         text;
+  v_submission_id text;
+  v_birth_date    date;
+  v_person_id     uuid;
+  v_locks         jsonb;
+  v_incoming_extra jsonb;
+  v_consent       jsonb;
+  v_motivation    text;
 begin
+  -- ── validações ────────────────────────────────────────────────────
   v_phone := payload->>'phone';
   if v_phone is null or v_phone !~ '^\+[1-9]\d{7,14}$' then
     raise exception 'invalid_phone';
   end if;
 
+  v_submission_id := payload->>'submission_id';
+  if v_submission_id is null or v_submission_id !~
+     '^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$' then
+    raise exception 'invalid_submission_id';
+  end if;
+
+  v_birth_date := nullif(payload->>'birth_date', '')::date;
+
+  if v_birth_date is not null then
+    if extract(year from age(current_date, v_birth_date)) < 18 then
+      raise exception 'minor_not_allowed';
+    end if;
+  end if;
+
+  -- ── LER LOCKS EXISTENTES ─────────────────────────────────────────
+  -- Se a pessoa já existe, precisamos saber quais chaves estão travadas
+  -- ANTES do upsert, pra remover do payload de entrada os campos que
+  -- devem ser mantidos como estão.
+  select coalesce(extra_data->'admin_locks', '{}'::jsonb)
+  into v_locks
+  from public.people
+  where phone = v_phone and deleted_at is null;
+
+  v_locks := coalesce(v_locks, '{}'::jsonb);
+  v_incoming_extra := coalesce(payload->'extra_data', '{}'::jsonb);
+
+  -- Remove do extra_data recebido as chaves que estão travadas.
+  -- Postgres suporta jsonb - text: remove uma chave. Iteramos.
+  v_incoming_extra := v_incoming_extra - array(
+    select jsonb_object_keys(v_locks)
+    intersect
+    select jsonb_object_keys(v_incoming_extra)
+  );
+
+  -- ── people (upsert com locks) ────────────────────────────────────
   insert into public.people (phone, name, email, birth_date, lat, lng, extra_data, identified_at)
   values (
     v_phone,
     nullif(payload->>'name', ''),
     nullif(payload->>'email', ''),
-    (payload->>'birth_date')::date,
+    v_birth_date,
     (payload->>'lat')::double precision,
     (payload->>'lng')::double precision,
-    coalesce(payload->'extra_data', '{}'::jsonb),
+    v_incoming_extra,
     now()
   )
   on conflict (phone) where (deleted_at is null)
   do update set
-    name          = coalesce(nullif(excluded.name, ''), people.name),
-    email         = coalesce(nullif(excluded.email, ''), people.email),
-    birth_date    = coalesce(excluded.birth_date, people.birth_date),
-    lat           = coalesce(excluded.lat, people.lat),
-    lng           = coalesce(excluded.lng, people.lng),
-    extra_data    = people.extra_data || coalesce(excluded.extra_data, '{}'::jsonb),
+    -- colunas diretas: CASE por chave de admin_locks
+    name = case
+      when v_locks ? 'name' then people.name
+      else coalesce(nullif(excluded.name, ''), people.name)
+    end,
+    email = case
+      when v_locks ? 'email' then people.email
+      else coalesce(nullif(excluded.email, ''), people.email)
+    end,
+    birth_date = case
+      when v_locks ? 'birth_date' then people.birth_date
+      else coalesce(excluded.birth_date, people.birth_date)
+    end,
+    -- phone não pode ser alterado pelo próprio upsert (é a chave do ON CONFLICT),
+    -- mas o CASE fica registrado por simetria; o valor é o mesmo.
+    phone = case
+      when v_locks ? 'phone' then people.phone
+      else people.phone
+    end,
+    -- lat/lng não são travados (não vieram na §5-bis) — comportamento antigo
+    lat  = coalesce(excluded.lat, people.lat),
+    lng  = coalesce(excluded.lng, people.lng),
+    -- extra_data: merge com o v_incoming_extra JÁ FILTRADO acima
+    extra_data    = people.extra_data || excluded.extra_data,
     identified_at = coalesce(people.identified_at, now())
   returning id into v_person_id;
 
+  -- ── consents (append-only) ───────────────────────────────────────
   for v_consent in select * from jsonb_array_elements(coalesce(payload->'consents', '[]'::jsonb))
   loop
     insert into public.consents (person_id, consent_type, granted, valid_until, source, policy_version)
@@ -1059,24 +1158,27 @@ begin
            then now() + make_interval(months => (v_consent->>'valid_months')::int)
            else null end,
       coalesce(payload->>'source', 'form_cadastro'),
-      -- fallback: o form ainda não envia policy_version. Quando a #3d
-      -- atualizar o /cadastro, ele passa a enviar e o coalesce vira no-op.
       coalesce(v_consent->>'policy_version', 'cadastro-v1-2026-07')
     );
   end loop;
 
+  -- ── motivation (append-only, job_id null pro /cadastro) ─────────
   v_motivation := nullif(trim(coalesce(payload->>'motivation', '')), '');
   if v_motivation is not null then
-    insert into public.motivations (person_id, content, source)
-    values (v_person_id, v_motivation, coalesce(payload->>'source', 'form_cadastro'));
+    insert into public.motivations (person_id, job_id, content, source)
+    values (v_person_id, null, v_motivation, coalesce(payload->>'source', 'form_cadastro'));
   end if;
 
+  -- ── event ────────────────────────────────────────────────────────
   insert into public.events (person_id, event_type, source, payload)
   values (
     v_person_id,
     'form.cadastro_submitted',
     coalesce(payload->>'source', 'form_cadastro'),
-    jsonb_build_object('mode', coalesce(payload->>'mode', 'unknown'))
+    jsonb_build_object(
+      'mode', coalesce(payload->>'mode', 'unknown'),
+      'locked_fields_ignored', (select array_agg(k) from jsonb_object_keys(v_locks) k)
+    )
   );
 
   return jsonb_build_object('status', 'ok', 'person_id', v_person_id);
