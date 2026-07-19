@@ -90,3 +90,6 @@ temp/
 
 # --- TypeScript build cache ---
 *.tsbuildinfo
+
+# --- Design System reference (fora do build) ---
+_reference/
