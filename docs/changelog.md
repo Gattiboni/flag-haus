@@ -815,3 +815,130 @@ Claudinho) · Claudinho (spec, correção dos bugs de SQL, execução das migrat
 via MCP, roteiros β) · Codinho (implementação código de aplicação)
 
 ---
+
+## 2026-07-20 — CRM: idempotência real no /cadastro (Emenda D) — fix de bug em produção
+
+### Contexto
+
+Bug em produção descoberto 2026-07-19 (~22:55 BRT): submits do `/cadastro`
+falhavam com "Não deu pra salvar" no step 18. Reportado pelo Julio (esposa dele
+tentou se cadastrar) e reproduzido pelo Alan. Log do Postgres apontou:
+`raise exception 'invalid_submission_id'` na `submit_cadastro` — validação órfã
+deixada pela Emenda C, que copiou a checagem da `submit_anamnese` sem que o
+front implementasse o campo. Rota decidida: implementar idempotência real
+espelhando a anamnese (decisão #023 estabeleceu idempotência como padrão para
+submits públicos). Alternativa descartada: remover a validação, que criaria
+exceção conceitual entre os dois forms.
+
+### Adicionado
+
+- **Banco (via MCP):** índice único parcial
+  `events_cadastro_submission_id_unique` em
+  `public.events ((payload->>'submission_id'))` filtrado por
+  `event_type = 'form.cadastro_submitted'`. NULL não colide; events antigos e
+  anamnese (event_type diferente) não são afetados.
+- **Front (`src/app/(cadastro)/CadastroForm.tsx`):**
+  `const [submissionId] = useState(() => crypto.randomUUID())` no mount,
+  injetado em `buildPayload()`. UUID preso ao mount → "tenta de novo" após erro
+  reusa o mesmo id; F5 gera novo (idem anamnese). `handleSubmit` passou a ler
+  `r.message`/`r.reason` com fallback pro texto genérico.
+- **Server Action (`src/app/actions/people.ts`):**
+  `submission_id: z.string().uuid()` no `cadastroPayloadSchema`, repassado no
+  payload da RPC. Dicionário `RPC_EXCEPTIONS` + `translateRpcError()` espelhando
+  `anamnese.ts:213-227`, aplicado no ramo de erro — `error.message` cru do
+  Postgres nunca mais vai direto pro client.
+
+### Alterado
+
+- **RPC `submit_cadastro` (via MCP):** curto-circuito idempotente após a
+  validação de `submission_id`, antes de qualquer write. Se já existe event
+  `form.cadastro_submitted` com aquele id, retorna
+  `{status:'ok', person_id, duplicate:true}` sem re-executar nada. INSERT final
+  em `events` inclui `submission_id` no payload.
+
+### Não alterado
+
+- `submit_anamnese`, `AnamneseForm`, `anamnese.ts` — intocados. O padrão
+  original é a referência; o cadastro se alinhou a ele.
+- Regras da Emenda C (`admin_locks`) — intocadas.
+- Schema das tabelas — intocado. Apenas RPC + índice.
+
+### Migrations aplicadas via MCP (histórico honesto — 4, não 1)
+
+1. `emenda_d_idempotencia_cadastro` — índice + RPC com idempotência. Dois erros
+   embutidos, descobertos nas etapas seguintes.
+2. `emenda_d_rename_idempotent_to_duplicate` — campo de retorno padronizado com
+   a anamnese (`duplicate`, não `idempotent`). Decisão do Alan durante o α do
+   Codinho: consistência entre os dois forms públicos.
+3. `emenda_d_fix_ambiguous_payload` — `payload->>'submission_id'` →
+   `events.payload->>'submission_id'` no SELECT de idempotência. `payload` é
+   simultaneamente parâmetro da função e coluna de `events`; Postgres rejeita a
+   ambiguidade. Descoberto no β Rodada 1 (log: "column reference payload is
+   ambiguous").
+4. `emenda_d_restore_original_header` — **remove o `SECURITY DEFINER` +
+   `SET search_path TO 'public','pg_temp'`** introduzidos indevidamente na
+   migration 1. O header foi inventado na reescrita sem ter visto o original (o
+   prosrc extraído do banco continha só o corpo). O search_path fixado excluía o
+   schema `extensions`, onde vive o tipo `geography` (postgis) — o trigger
+   `sync_people_location` explodia com "type geography does not exist" (42704)
+   sempre que lat/lng vinham preenchidos. Com lat/lng null (teste MCP sem
+   coordenada; Comet rápido demais pro geocoding resolver), o IF do trigger
+   pulava o cast e o bug ficava invisível — só apareceu no teste real em prod
+   com geocoding resolvido. Header restaurado ao estado do snapshot `5d663c4`
+   (invoker, sem search_path), idêntico à `submit_anamnese`. Diagnóstico fechado
+   por investigação dupla: Claude leu o estado do banco via MCP (`proconfig`,
+   schema do postgis), Codinho leu o histórico do repo
+   (`git log -S"search_path"` provou que a string nunca existiu no snapshot
+   antes do commit da Emenda D).
+
+### Validado
+
+- α (Codinho): `tsc --noEmit` limpo, `next build` 8.2s, lint com apenas os 2
+  erros pré-existentes de `CadastroForm.tsx`. Diff ~22 linhas líquidas. Grep: 6
+  → 11 ocorrências de `submission_id|submissionId`, simetria cadastro/anamnese.
+- β em 3 rodadas:
+  - Rodada 1 — cadastro normal (Comet, `localhost:3001`): PASS. 1 people + 1
+    event com submission_id + 2 consents, transação única.
+  - Rodada 2 — idempotência (Claude via MCP, 2 calls com mesmo submission_id):
+    PASS. Segunda chamada retorna `duplicate:true` + mesmo person_id; contagem
+    pós-teste 1/1/1/1 (zero duplicação).
+  - Rodada 3 — paralelismo (Comet, 2 abas): PASS. 2 person_id distintos, 2
+    submission_id distintos, nenhum duplicate.
+- Pós-fix do header (migration 4): submit com lat/lng preenchidos via MCP grava
+  e `location` é populado pelo trigger (`location_gravou=true`).
+- **Teste final em produção (Alan, `cadastro.flaghaus.art`, fluxo completo com
+  geocoding real): PASS — "Pronto. Cadastro atualizado."**
+
+### Limpeza
+
+Banco de produção zerado pós-validação pro início de uso real do Julio: 13
+people, 9 jobs, 21 events, 47 consents, 13 motivations, 4 clinical_records (tudo
+dummy de teste acumulado) + o registro do teste final. Deleção via MCP, ordem
+filhos → pais.
+
+### Dívidas rastreadas
+
+- Repo sem `supabase/migrations/` versionado. As 4 migrations da Emenda D
+  ficaram registradas no schema `supabase_migrations` do Supabase (via MCP), não
+  no repo. Divergência de versionamento a resolver.
+- **Corrigido registro anterior:** a "dívida do trigger `sync_people_location`
+  sem qualificar geography" apontada durante o β NÃO era dívida — o trigger
+  estava correto o tempo todo. O quebrado era o search_path inventado na
+  migration 1. Removida da lista.
+
+### Impacto
+
+- Bug crítico em produção resolvido, confirmado por teste real ponta-a-ponta.
+- `/cadastro` com idempotência real: duplo submit/refresh não duplica
+  consents/events/motivations.
+- Padrão único entre os dois forms públicos: mesmo campo de retorno
+  (`duplicate`), mesmo padrão de erro (`RPC_EXCEPTIONS` +
+  `translateRpcError()`), mesmo header de RPC (invoker, sem search_path).
+- Banco limpo pro uso real.
+
+**Responsável:** Gattiboni (validação, teste final em prod) · Claudinho (spec,
+migrations via MCP — incluindo os 3 erros próprios e suas correções —, roteiros
+β, limpeza) · Codinho (código de aplicação, investigação do repo que fechou o
+diagnóstico do header)
+
+---

@@ -1558,4 +1558,97 @@ Um commit único ao final.
 
 ---
 
+## Decision #028 — 2026-07-20
+
+### Decisão: Idempotência real no /cadastro (Emenda D)
+
+**Contexto** Bug crítico em produção descoberto 2026-07-19: submits do
+`/cadastro` falhavam com "invalid_submission_id". A Emenda C copiou a validação
+de `submission_id` da `submit_anamnese` pra `submit_cadastro` sem que o lado da
+aplicação jamais tivesse implementado o campo — validação órfã: declarada,
+exigida, nunca satisfeita. A esposa do Julio, primeira pessoa real a usar o form
+pós-liberação, encontrou o bug no step 18.
+
+**Duas rotas avaliadas:**
+
+- **A — Remover a validação órfã.** Fix de 1 linha. Custo: `/cadastro` sem
+  idempotência; duplo clique duplicaria linhas em `consents`, `events`,
+  `motivations` (`people` não duplica — ON CONFLICT por phone).
+- **B — Implementar idempotência real espelhando a anamnese.** Alinha os dois
+  submits públicos num padrão único.
+
+**Decisão adotada: rota B.** Decisão #023 estabeleceu idempotência como padrão
+para submits públicos. A rota A criaria exceção conceitual que ninguém lembraria
+em três meses. Zero dívida técnica é regra do projeto.
+
+**Padrão implementado (espelha anamnese):**
+
+1. UUID gerado no mount: `useState(() => crypto.randomUUID())`. Retry na mesma
+   sessão reusa o id (efeito desejado); F5 gera novo.
+2. Zod valida no server: `submission_id: z.string().uuid()`.
+3. RPC revalida formato (defense-in-depth).
+4. Curto-circuito idempotente antes de qualquer write: event
+   `form.cadastro_submitted` existente com o mesmo id → retorna
+   `duplicate: true` sem re-executar.
+5. Índice único parcial em `events((payload->>'submission_id'))` WHERE
+   `event_type='form.cadastro_submitted'` — O(log n) no SELECT e proteção contra
+   race de inserts concorrentes.
+
+**Decisões colaterais tomadas durante execução:**
+
+- **Campo de retorno: `duplicate`** (não `idempotent`). `idempotent` seria
+  semanticamente mais preciso, mas `duplicate` já era o padrão da anamnese. O
+  novo se ajusta ao velho. Zero exceção conceitual.
+- **Armazenamento do submission_id: `events.payload`**, não `people.extra_data`
+  (upsert por phone sobrescreveria histórico) nem `consents`/`motivations`
+  (múltiplos por submit). `events` é append-only e o `form.cadastro_submitted` é
+  o certificado natural da submissão.
+- **Header da RPC: invoker, sem search_path fixado** — idêntico à
+  `submit_anamnese` e ao estado pré-Emenda D (snapshot `5d663c4`). Esta decisão
+  foi na verdade uma _restauração_: a primeira migration da Emenda D introduziu
+  `SECURITY DEFINER + SET search_path TO 'public','pg_temp'` por suposição de
+  boa prática, sem ter visto o header original (o prosrc extraído continha só o
+  corpo da função). O search_path fixado excluía o schema `extensions`
+  (postgis), quebrando o trigger `sync_people_location` em todo submit com
+  lat/lng preenchidos — invisível nos testes (lat/lng null pula o cast no IF do
+  trigger), fatal em produção com geocoding real. Lição registrada: **replicar
+  header existente exige ver o header existente**; `pg_get_functiondef()` em vez
+  de `prosrc` da próxima vez.
+
+**Execução (histórico honesto — 4 migrations):**
+
+1. `emenda_d_idempotencia_cadastro` — índice + RPC (com 2 erros embutidos)
+2. `emenda_d_rename_idempotent_to_duplicate` — padronização com anamnese
+3. `emenda_d_fix_ambiguous_payload` — qualifica `events.payload` (parâmetro e
+   coluna homônimos)
+4. `emenda_d_restore_original_header` — remove SECURITY DEFINER + search_path
+   inventados
+
+Erros 1, 3 e 4 foram do Claudinho no SQL; nenhum de escopo. Diagnóstico do erro
+4 fechado por investigação dupla sem tese prévia: Claude leu o estado do banco
+via MCP (`proconfig`, schema do postgis), Codinho leu o histórico do repo
+(`git log -S"search_path"` provou que a string nunca existiu no snapshot antes
+do commit da Emenda D).
+
+**Validação** α (tsc/build/lint limpos, ~22 linhas líquidas, simetria de grep
+com anamnese). β em 3 rodadas (normal via Comet, idempotência via MCP com
+contagem 1/1/1/1 pós-duplo-submit, paralelismo via Comet com 2 UUIDs distintos).
+Pós-fix do header: submit com lat/lng grava e trigger popula `location`. Teste
+final em produção pelo Alan com geocoding real: PASS.
+
+**Impacto**
+
+- Bug de produção resolvido com evidência ponta-a-ponta.
+- Padrão único entre os dois forms públicos: idempotência, campo `duplicate`,
+  dicionário de erros, header de RPC.
+- Banco de produção zerado pós-validação (todo o conteúdo era dummy) pro início
+  de uso real do Julio.
+
+**Dívida rastreada separada:** repo sem `supabase/migrations/` versionado — as
+migrations vivem no schema `supabase_migrations` do Supabase, não no repo.
+**Dívida removida:** o trigger `sync_people_location` apontado como "dívida"
+durante o β estava correto o tempo todo; o registro foi corrigido.
+
+---
+
 _(Novas entradas devem seguir este mesmo formato.)_
