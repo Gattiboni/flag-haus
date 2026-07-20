@@ -227,8 +227,6 @@ $function$;
 CREATE OR REPLACE FUNCTION public.submit_cadastro(payload jsonb)
  RETURNS jsonb
  LANGUAGE plpgsql
- SECURITY DEFINER
- SET search_path TO 'public', 'pg_temp'
 AS $function$
 declare
   v_phone         text;
@@ -253,8 +251,7 @@ begin
   end if;
 
   -- ── idempotência (curto-circuito antes de qualquer write) ────────
-  -- Qualificar events.payload é necessário: existe também um parâmetro
-  -- 'payload' na função (jsonb), o que torna a referência ambígua sem prefixo.
+  -- events.payload qualificado: 'payload' também é parâmetro da função.
   v_person_id := null;
   select person_id into v_person_id
   from public.events
@@ -353,7 +350,7 @@ begin
     values (v_person_id, null, v_motivation, coalesce(payload->>'source', 'form_cadastro'));
   end if;
 
-  -- ── event (agora com submission_id no payload) ───────────────────
+  -- ── event (com submission_id no payload) ─────────────────────────
   insert into public.events (person_id, event_type, source, payload)
   values (
     v_person_id,
