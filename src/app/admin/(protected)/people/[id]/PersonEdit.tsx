@@ -1,11 +1,14 @@
 'use client'
 
 import { useEffect, useRef, useState, useTransition } from 'react'
+import { Lock, Pencil } from 'lucide-react'
 import { updatePerson, unlockField } from '@/app/actions/admin-people'
 import type { PersonField } from '@/app/admin/_ui/person-fields'
 import { formatDateBR, formatDateTimeBR } from '@/app/admin/_ui/format'
 import { formatPhoneBR } from '@/lib/format'
 import { isEligibleAge } from '@/lib/utils/age'
+import { Button, Dialog, Input, Select } from '@/components/ui'
+import './person-edit.css'
 
 /**
  * Edição de pessoa com trava por campo (#4c §5-bis). "Admin ganha por padrão":
@@ -97,6 +100,8 @@ export function PersonEdit({
   const [editing, setEditing] = useState<PersonField | null>(null)
   const [draft, setDraft] = useState('')
   const [menuFor, setMenuFor] = useState<PersonField | null>(null)
+  // Campo aguardando confirmação de destravamento no <Dialog>.
+  const [unlockFor, setUnlockFor] = useState<PersonField | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [pending, startTransition] = useTransition()
 
@@ -188,12 +193,10 @@ export function PersonEdit({
     })
   }
 
+  /** Confirmado no <Dialog>: destrava de fato. */
   function handleUnlock(key: PersonField) {
     if (pending) return
-    setMenuFor(null)
-    if (!window.confirm(`Destravar ${key}? A próxima submissão do formulário poderá sobrescrever.`)) {
-      return
-    }
+    setUnlockFor(null)
     setError(null)
     startTransition(async () => {
       const res = await unlockField({ personId, field: key })
@@ -211,124 +214,105 @@ export function PersonEdit({
     })
   }
 
+  const unlockLabel = FIELDS.find((f) => f.key === unlockFor)?.label ?? ''
+
   return (
-    <div className="flex flex-col gap-3">
+    <div className="flex flex-col gap-fh-3">
       {FIELDS.map((f) => {
         const lock = locks[f.key]
         const isEditing = editing === f.key
+        const raw = values[f.key]
 
         return (
-          <div key={f.key} className="flex items-end gap-2">
+          <div key={f.key} className="flex items-end gap-fh-2">
             <div className="flex-1 min-w-0">
-              <span className="text-[11px] uppercase tracking-[0.1em] text-[color:var(--granite)]">
-                {f.label}
-              </span>
-
-              <div className="mt-1">
-                {isEditing ? (
-                  f.kind === 'select' ? (
-                    <select
-                      value={draft}
-                      disabled={pending}
-                      autoFocus
-                      onChange={(e) => setDraft(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Escape') cancelEdit()
-                      }}
-                      aria-label={f.label}
-                      className="w-full border-b border-[color:var(--onyx)] bg-transparent py-1 focus:outline-none transition-colors disabled:opacity-50 cursor-pointer"
-                    >
-                      {f.options.map(([value, label]) => (
-                        <option key={value} value={value}>
-                          {label}
-                        </option>
-                      ))}
-                    </select>
-                  ) : (
-                    <input
-                      type={f.kind === 'date' ? 'date' : 'text'}
-                      value={draft}
-                      disabled={pending}
-                      autoFocus
-                      placeholder="—"
-                      onChange={(e) => setDraft(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter') handleSave(f.key)
-                        if (e.key === 'Escape') cancelEdit()
-                      }}
-                      aria-label={f.label}
-                      className="w-full border-b border-[color:var(--onyx)] bg-transparent py-1 focus:outline-none transition-colors disabled:opacity-50"
-                    />
-                  )
+              {isEditing ? (
+                f.kind === 'select' ? (
+                  <Select
+                    label={f.label}
+                    value={draft}
+                    disabled={pending}
+                    autoFocus
+                    onChange={(e) => setDraft(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Escape') cancelEdit()
+                    }}
+                    options={f.options.map(([value, label]) => ({ value, label }))}
+                  />
                 ) : (
+                  <Input
+                    label={f.label}
+                    type={f.kind === 'date' ? 'date' : 'text'}
+                    value={draft}
+                    disabled={pending}
+                    autoFocus
+                    placeholder="—"
+                    onChange={(e) => setDraft(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') handleSave(f.key)
+                      if (e.key === 'Escape') cancelEdit()
+                    }}
+                  />
+                )
+              ) : (
+                <>
+                  <span className="fh-eyebrow">{f.label}</span>
                   <p
-                    className={`w-full border-b border-[color:var(--line)] py-1 truncate ${
-                      values[f.key].trim() ? '' : 'text-[color:var(--granite)]'
-                    }`}
-                    title={displayValue(f, values[f.key])}
+                    className="fh-person-field__read"
+                    data-empty={raw.trim() ? undefined : 'true'}
+                    title={displayValue(f, raw)}
                   >
-                    {displayValue(f, values[f.key])}
+                    {displayValue(f, raw)}
                   </p>
-                )}
-              </div>
+                </>
+              )}
             </div>
 
             {isEditing ? (
-              <div className="shrink-0 flex items-center gap-3 pb-1">
-                <button
-                  type="button"
-                  onClick={cancelEdit}
-                  disabled={pending}
-                  className="text-xs text-[color:var(--granite)] hover:text-[color:var(--onyx)] transition-colors cursor-pointer disabled:opacity-50"
-                >
+              <div className="shrink-0 flex items-center gap-fh-2">
+                <Button variant="tertiary" size="sm" onClick={cancelEdit} disabled={pending}>
                   Cancelar
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleSave(f.key)}
-                  disabled={pending}
-                  className="text-xs tracking-[0.04em] px-4 py-1.5 rounded-full bg-[color:var(--onyx)] text-[color:var(--white)] border border-[color:var(--onyx)] hover:bg-[color:var(--oxblood)] hover:border-[color:var(--oxblood)] transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-default"
-                >
+                </Button>
+                <Button size="sm" onClick={() => handleSave(f.key)} loading={pending}>
                   {pending ? 'Salvando…' : 'Salvar'}
-                </button>
+                </Button>
               </div>
             ) : lock ? (
               <div
-                className="shrink-0 relative pb-1"
+                className="shrink-0 relative"
                 ref={menuFor === f.key ? menuRef : undefined}
               >
-                <button
-                  type="button"
+                <Button
+                  variant="tertiary"
+                  size="sm"
+                  className="fh-lock-trigger"
                   onClick={() => setMenuFor((prev) => (prev === f.key ? null : f.key))}
                   disabled={pending}
                   title={`Travado por ${lock.email || '—'} em ${formatDateTimeBR(lock.locked_at)}.`}
                   aria-label={`${f.label}: travado — abrir ações`}
                   aria-haspopup="menu"
                   aria-expanded={menuFor === f.key}
-                  className="text-[color:var(--oxblood)] hover:opacity-70 transition-opacity cursor-pointer disabled:opacity-50"
-                >
-                  🔒
-                </button>
+                  icon={<Lock size={18} strokeWidth={1.5} />}
+                />
 
                 {menuFor === f.key && (
-                  <div
-                    role="menu"
-                    aria-label={`Ações de ${f.label}`}
-                    className="absolute right-0 top-full z-10 mt-1 w-40 rounded border border-[color:var(--line)] bg-[color:var(--white)] py-1 shadow-lg"
-                  >
+                  <div role="menu" aria-label={`Ações de ${f.label}`} className="fh-person-menu">
                     <button
                       type="button"
                       role="menuitem"
                       onClick={() => startEdit(f.key)}
-                      className="block w-full px-3 py-1.5 text-left text-xs hover:bg-[color:var(--whisper)] transition-colors cursor-pointer"
+                      className="fh-person-menu__item"
                     >
                       Editar
                     </button>
                     <button
                       type="button"
                       role="menuitem"
-                      onClick={() => handleUnlock(f.key)}
-                      className="block w-full px-3 py-1.5 text-left text-xs text-[color:var(--oxblood)] hover:bg-[color:var(--whisper)] transition-colors cursor-pointer"
+                      onClick={() => {
+                        setMenuFor(null)
+                        setUnlockFor(f.key)
+                      }}
+                      className="fh-person-menu__item fh-person-menu__item--danger"
                     >
                       Destravar
                     </button>
@@ -336,28 +320,45 @@ export function PersonEdit({
                 )}
               </div>
             ) : (
-              <button
-                type="button"
+              <Button
+                variant="tertiary"
+                size="sm"
+                className="shrink-0"
                 onClick={() => startEdit(f.key)}
                 disabled={pending}
                 title={`Editar ${f.label}`}
                 aria-label={`Editar ${f.label}`}
-                className="shrink-0 pb-1 text-[color:var(--granite)] hover:text-[color:var(--onyx)] transition-colors cursor-pointer disabled:opacity-50"
-              >
-                ✎
-              </button>
+                icon={<Pencil size={18} strokeWidth={1.5} />}
+              />
             )}
           </div>
         )
       })}
 
       {error && (
-        <div className="flex items-center justify-end pt-1">
-          <span className="text-xs text-[color:var(--oxblood)]" role="alert">
+        <div className="flex items-center justify-end">
+          <span className="fh-error" role="alert">
             {error}
           </span>
         </div>
       )}
+
+      {/*
+        Substitui o window.confirm da #026. O comportamento é o mesmo —
+        confirmar chama unlockField(), cancelar não chama nada — só que agora
+        o aviso cabe em três linhas legíveis, em vez de um alert do navegador.
+      */}
+      <Dialog
+        open={unlockFor !== null}
+        onClose={() => setUnlockFor(null)}
+        variant="danger"
+        title="Destravar campo?"
+        description={`"${unlockLabel}" volta a aceitar o que o cliente enviar: a próxima submissão do formulário poderá sobrescrever o valor atual.`}
+        confirmLabel="Destravar"
+        cancelLabel="Cancelar"
+        loading={pending}
+        onConfirm={() => unlockFor && handleUnlock(unlockFor)}
+      />
     </div>
   )
 }

@@ -1,0 +1,9 @@
+/* ============================================================
+   Flag Haus — Textarea
+   Mesma gramática do Input, multi-linha. Cresce só na vertical.
+   ============================================================ */
+
+.fh-textarea {
+  resize: vertical;
+  min-height: calc(var(--fh-hit-min) * 2);
+}

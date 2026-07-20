@@ -1,0 +1,88 @@
+/* ============================================================
+   Flag Haus — Dialog
+   Scrim = lavagem chapada de onyx a 55%, sem blur (a marca proíbe
+   blur e brilho). Confirmação destrutiva usa o botão danger; a
+   saída segura (Cancelar) é sempre a secundária.
+   ============================================================ */
+
+.fh-dialog__scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--fh-space-4);
+  background: color-mix(in srgb, var(--fh-onyx) 55%, transparent);
+  animation: fh-dialog-fade var(--fh-transition) both;
+}
+
+.fh-dialog {
+  width: 100%;
+  max-width: 440px;
+  padding: var(--fh-space-6);
+  background: var(--fh-surface);
+  border: var(--fh-border-width) solid var(--fh-border-subtle);
+  border-radius: var(--fh-radius-lg);
+  font-family: var(--fh-font-body);
+  animation: fh-dialog-rise var(--fh-transition-slow) both;
+}
+
+.fh-dialog__mark {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  margin-bottom: var(--fh-space-4);
+  border: 1.5px solid var(--fh-oxblood);
+  border-radius: 50%;
+  color: var(--fh-oxblood);
+  font-family: var(--fh-font-heading);
+  font-weight: var(--fh-weight-medium);
+  line-height: 1;
+}
+
+.fh-dialog__title {
+  font-size: var(--fh-text-h3);
+  font-weight: var(--fh-weight-medium);
+  letter-spacing: var(--fh-tracking-heading);
+  color: var(--fh-text-primary);
+}
+
+.fh-dialog__description {
+  margin-top: var(--fh-space-2);
+  font-size: var(--fh-text-body);
+  line-height: var(--fh-leading-body);
+  color: var(--fh-text-secondary);
+}
+
+.fh-dialog__body {
+  margin-top: var(--fh-space-5);
+}
+
+.fh-dialog__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--fh-space-3);
+  margin-top: var(--fh-space-6);
+}
+
+@keyframes fh-dialog-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes fh-dialog-rise {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}

@@ -1,6 +1,8 @@
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
+import { ArrowLeft } from 'lucide-react'
 import { z } from 'zod'
+import { Alert, Badge, Card, CardHeader } from '@/components/ui'
 import { requireOperator } from '@/lib/auth/gate'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { formatBRL, formatPhoneBR, formatRelativeTime } from '@/lib/format'
@@ -105,9 +107,9 @@ export default async function PersonDetailPage({
     return (
       <div>
         <BackLink />
-        <p className="mt-6 text-sm text-[color:var(--oxblood)]" role="alert">
-          Não foi possível carregar a pessoa agora.
-        </p>
+        <Alert variant="warning" title="Não foi possível carregar a pessoa agora" className="mt-fh-5">
+          Recarrega a página em instantes.
+        </Alert>
       </div>
     )
   }
@@ -190,78 +192,89 @@ export default async function PersonDetailPage({
     <div>
       <BackLink />
 
-      <h1 className="mt-6 mb-8 font-[family-name:var(--font-fraunces)] text-2xl sm:text-3xl">
-        {displayName}
-      </h1>
+      <h1 className="mt-fh-4 mb-fh-5">{displayName}</h1>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-fh-5 items-start">
         {/* ── Esquerda: edição + fatos do sistema + extra_data ── */}
-        <div>
-          <ColTitle>Dados</ColTitle>
-          <PersonEdit
-            personId={person.id}
-            operatorEmail={operatorEmail}
-            initial={initial}
-            locks={locks}
-          />
-
-          <dl className="mt-8 flex flex-col gap-1 text-sm">
-            <Fact label="Identificado em" value={formatDateTimeBR(person.identified_at)} />
-            <Fact
-              label="Coordenadas"
-              value={hasGeo ? `${person.lat}, ${person.lng}` : '—'}
+        <div className="flex flex-col gap-fh-5">
+          <Card>
+            <CardHeader
+              title="Dados"
+              description="Clique no lápis para editar um campo. O cadeado marca o que o formulário não pode mais sobrescrever."
             />
-          </dl>
+            <PersonEdit
+              personId={person.id}
+              operatorEmail={operatorEmail}
+              initial={initial}
+              locks={locks}
+            />
 
-          <ExtraData data={person.extra_data} />
+            <dl className="mt-fh-5 flex flex-col gap-fh-1">
+              <Fact label="Identificado em" value={formatDateTimeBR(person.identified_at)} />
+              <Fact
+                label="Coordenadas"
+                value={hasGeo ? `${person.lat}, ${person.lng}` : '—'}
+              />
+            </dl>
+
+            <ExtraData data={person.extra_data} />
+          </Card>
         </div>
 
         {/* ── Direita: jobs + consents + eventos ── */}
-        <div>
-          <ColTitle>Jobs ativos ({active.length})</ColTitle>
-          <JobList jobs={active} />
+        <div className="flex flex-col gap-fh-5">
+          <Card>
+            <CardHeader
+              title="Jobs ativos"
+              action={<Badge variant="neutral">{active.length}</Badge>}
+            />
+            <JobList jobs={active} />
+          </Card>
 
-          <div className="mt-8">
-            <ColTitle>Histórico ({history.length})</ColTitle>
+          <Card>
+            <CardHeader
+              title="Histórico"
+              action={<Badge variant="neutral">{history.length}</Badge>}
+            />
             <JobList jobs={history} muted />
-          </div>
+          </Card>
 
-          <div className="mt-8">
-            <ColTitle>Consentimentos</ColTitle>
+          <Card>
+            <CardHeader title="Consentimentos" />
             {latestConsents.length > 0 ? (
-              <ul className="flex flex-col gap-2">
+              <ul className="flex flex-col gap-fh-2">
                 {latestConsents.map((c) => (
                   <li
                     key={c.consent_type}
-                    className="text-sm flex items-baseline justify-between gap-3 border-b border-[color:var(--line)] pb-2"
+                    className="flex items-baseline justify-between gap-fh-3 border-b border-fh-subtle pb-fh-2"
                   >
                     <span>
                       {CONSENT_LABELS[c.consent_type] ?? c.consent_type}{' '}
-                      <span className={c.granted ? '' : 'text-[color:var(--oxblood)]'}>
+                      <span className={c.granted ? undefined : 'text-fh-accent'}>
                         {c.granted ? '✓' : '✗'}
                       </span>
-                      <span className="block text-xs text-[color:var(--granite)]">
+                      <span className="fh-micro block">
                         {c.policy_version ?? '—'}
                         {c.valid_until
                           ? ` · vale até ${formatDateBR(c.valid_until)}`
                           : ''}
                       </span>
                     </span>
-                    <span className="text-xs text-[color:var(--granite)] whitespace-nowrap">
+                    <span className="fh-micro whitespace-nowrap">
                       {formatRelativeTime(c.created_at)}
                     </span>
                   </li>
                 ))}
               </ul>
             ) : (
-              <p className="text-sm text-[color:var(--granite)]">Sem consentimentos.</p>
+              <p className="fh-micro">Sem consentimentos.</p>
             )}
-          </div>
+          </Card>
 
-          <div className="mt-8">
-            <ColTitle>Últimos eventos</ColTitle>
+          <Card>
+            <CardHeader title="Últimos eventos" />
             <EventList events={events} actorEmails={emails} />
-          </div>
+          </Card>
         </div>
       </div>
     </div>
@@ -270,34 +283,30 @@ export default async function PersonDetailPage({
 
 function JobList({ jobs, muted }: { jobs: JobRow[]; muted?: boolean }) {
   if (jobs.length === 0) {
-    return <p className="text-sm text-[color:var(--granite)]">Nenhum.</p>
+    return <p className="fh-micro">Nenhum.</p>
   }
   return (
     <ul className="flex flex-col">
       {jobs.map((j) => {
         const price = j.final_price ?? j.quoted_price
         return (
-          <li key={j.id} className="border-b border-[color:var(--line)] py-3">
+          <li key={j.id} className="border-b border-fh-subtle py-fh-3">
             <Link
               href={`/admin/jobs/${j.id}`}
-              className={`block group ${muted ? 'text-[color:var(--granite)]' : ''}`}
+              className={`block no-underline ${muted ? 'opacity-70' : ''}`}
             >
-              <div className="flex items-baseline justify-between gap-3">
-                <span className="text-sm">
-                  <span className="uppercase text-[11px] tracking-[0.08em]">
-                    {STATUS_LABELS[j.status]}
-                  </span>
-                  {j.body_region ? ` · ${j.body_region}` : ''}
+              <div className="flex items-baseline justify-between gap-fh-3">
+                <span className="flex items-center gap-fh-2 min-w-0">
+                  <Badge variant={j.status}>{STATUS_LABELS[j.status]}</Badge>
+                  {j.body_region && <span className="truncate">{j.body_region}</span>}
                 </span>
-                <span className="text-xs text-[color:var(--granite)] whitespace-nowrap tabular-nums">
+                <span className="fh-micro fh-tnum whitespace-nowrap">
                   {formatBRL(price)}
                 </span>
               </div>
-              <div className="flex items-baseline justify-between gap-3 mt-0.5">
-                <span className="text-xs text-[color:var(--granite)] truncate group-hover:underline underline-offset-4">
-                  {truncate(j.description)}
-                </span>
-                <span className="text-xs text-[color:var(--granite)] whitespace-nowrap">
+              <div className="flex items-baseline justify-between gap-fh-3 mt-fh-1">
+                <span className="fh-micro truncate">{truncate(j.description)}</span>
+                <span className="fh-micro whitespace-nowrap">
                   {formatRelativeTime(j.created_at)}
                 </span>
               </div>
@@ -312,11 +321,9 @@ function JobList({ jobs, muted }: { jobs: JobRow[]; muted?: boolean }) {
 function ExtraData({ data }: { data: Record<string, unknown> | null }) {
   if (!data || Object.keys(data).length === 0) return null
   return (
-    <details className="mt-6">
-      <summary className="text-xs uppercase tracking-[0.1em] text-[color:var(--granite)] cursor-pointer">
-        extra_data
-      </summary>
-      <pre className="mt-2 text-xs bg-[color:var(--whisper)] p-3 rounded overflow-x-auto tabular-nums">
+    <details className="mt-fh-5">
+      <summary className="fh-eyebrow cursor-pointer">extra_data</summary>
+      <pre className="mt-fh-2 p-fh-3 bg-fh-sunken rounded-fh-md overflow-x-auto fh-micro fh-tnum">
         {JSON.stringify(data, null, 2)}
       </pre>
     </details>
@@ -325,28 +332,18 @@ function ExtraData({ data }: { data: Record<string, unknown> | null }) {
 
 function Fact({ label, value }: { label: string; value: string }) {
   return (
-    <div className="flex justify-between gap-3">
-      <dt className="text-[color:var(--granite)]">{label}</dt>
-      <dd className="tabular-nums text-right">{value}</dd>
+    <div className="flex justify-between gap-fh-3">
+      <dt className="fh-micro">{label}</dt>
+      <dd className="fh-tnum text-right">{value}</dd>
     </div>
   )
 }
 
 function BackLink() {
   return (
-    <Link
-      href="/admin"
-      className="text-sm text-[color:var(--granite)] hover:text-[color:var(--onyx)] transition-colors"
-    >
-      ← Fila
+    <Link href="/admin" className="inline-flex items-center gap-fh-2 no-underline">
+      <ArrowLeft size={18} strokeWidth={1.5} />
+      Fila
     </Link>
-  )
-}
-
-function ColTitle({ children }: { children: React.ReactNode }) {
-  return (
-    <h2 className="font-[family-name:var(--font-fraunces)] text-lg mb-4 pb-2 border-b border-[color:var(--line)]">
-      {children}
-    </h2>
   )
 }

@@ -3,7 +3,9 @@ import { notFound } from 'next/navigation'
 import { z } from 'zod'
 import { requireOperator } from '@/lib/auth/gate'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { formatBRL, formatPhoneBR, formatRelativeTime } from '@/lib/format'
+import { ArrowLeft, AlertTriangle } from 'lucide-react'
+import { formatPhoneBR, formatRelativeTime } from '@/lib/format'
+import { Alert, Card, CardHeader } from '@/components/ui'
 import { formatDateTimeBR } from '@/app/admin/_ui/format'
 import {
   EventList,
@@ -131,9 +133,9 @@ export default async function JobDetailPage({
     return (
       <div>
         <BackLink />
-        <p className="mt-6 text-sm text-[color:var(--oxblood)]" role="alert">
-          Não foi possível carregar o job agora.
-        </p>
+        <Alert variant="warning" title="Não foi possível carregar o job agora" className="mt-fh-5">
+          Recarrega a página em instantes.
+        </Alert>
       </div>
     )
   }
@@ -189,99 +191,89 @@ export default async function JobDetailPage({
     <div>
       <BackLink />
 
-      <div className="mt-6 grid grid-cols-1 lg:grid-cols-3 gap-10">
+      <div className="mt-fh-4 grid grid-cols-1 lg:grid-cols-3 gap-fh-5 items-start">
         {/* ── Coluna esquerda: Job ── */}
-        <section>
-          <ColTitle>Job</ColTitle>
-          <div className="mb-6">
+        <Card as="section">
+          <CardHeader
+            title="Job"
+            description={`criado ${formatRelativeTime(job.created_at)}`}
+          />
+
+          <div className="mb-fh-5">
             {person ? (
-              <Link
-                href={`/admin/people/${person.id}`}
-                className="text-lg underline decoration-[color:var(--line)] underline-offset-4 hover:decoration-[color:var(--onyx)] transition-colors"
-              >
-                {displayName}
-              </Link>
+              <Link href={`/admin/people/${person.id}`}>{displayName}</Link>
             ) : (
-              <span className="text-lg">{displayName}</span>
+              <span>{displayName}</span>
             )}
-            <div className="text-sm text-[color:var(--granite)] tabular-nums mt-1">
-              {formatPhoneBR(person?.phone)}
-            </div>
-            <div className="text-xs text-[color:var(--granite)] mt-0.5">
-              criado {formatRelativeTime(job.created_at)}
-            </div>
+            <div className="fh-micro fh-tnum">{formatPhoneBR(person?.phone)}</div>
           </div>
 
           <JobDetail jobId={job.id} initial={initial} />
 
           {timestamps.length > 0 && (
-            <dl className="mt-6 flex flex-col gap-1 text-sm">
+            <dl className="mt-fh-5 flex flex-col gap-fh-1">
               {timestamps.map((t) => (
-                <div key={t.label} className="flex justify-between gap-3">
-                  <dt className="text-[color:var(--granite)]">{t.label}</dt>
-                  <dd className="tabular-nums text-right">{formatDateTimeBR(t.at)}</dd>
+                <div key={t.label} className="flex justify-between gap-fh-3">
+                  <dt className="fh-micro">{t.label}</dt>
+                  <dd className="fh-tnum text-right">{formatDateTimeBR(t.at)}</dd>
                 </div>
               ))}
             </dl>
           )}
 
           <ExtraData data={job.extra_data} />
-        </section>
+        </Card>
 
         {/* ── Coluna central: Anamnese ── */}
-        <section>
-          <ColTitle>Anamnese</ColTitle>
+        <Card as="section">
+          <CardHeader title="Anamnese" />
           <Anamnese clinical={clinical} />
-        </section>
+        </Card>
 
         {/* ── Coluna direita: Contexto ── */}
-        <section>
-          <ColTitle>Contexto</ColTitle>
+        <Card as="section">
+          <CardHeader title="Contexto" />
 
           <SubTitle>Motivação</SubTitle>
           {motivation ? (
-            <div className="mb-6 text-sm">
+            <div className="mb-fh-5">
               <p>{motivation.content}</p>
-              <p className="text-xs text-[color:var(--granite)] mt-1">
-                {formatRelativeTime(motivation.recorded_at)}
-              </p>
+              <p className="fh-micro">{formatRelativeTime(motivation.recorded_at)}</p>
             </div>
           ) : (
-            <p className="mb-6 text-sm text-[color:var(--granite)]">Sem motivação registrada.</p>
+            <p className="fh-micro mb-fh-5">Sem motivação registrada.</p>
           )}
 
           <SubTitle>Consentimentos deste job</SubTitle>
           {consents.length > 0 ? (
-            <ul className="mb-6 flex flex-col gap-2">
+            <ul className="mb-fh-5 flex flex-col gap-fh-2">
               {consents.map((c, i) => (
                 <li
                   key={`${c.consent_type}-${i}`}
-                  className="text-sm flex items-baseline justify-between gap-3 border-b border-[color:var(--line)] pb-2"
+                  className="flex items-baseline justify-between gap-fh-3 border-b border-fh-subtle pb-fh-2"
                 >
                   <span>
                     {CONSENT_LABELS[c.consent_type] ?? c.consent_type}{' '}
-                    <span className={c.granted ? '' : 'text-[color:var(--oxblood)]'}>
+                    <span className={c.granted ? undefined : 'text-fh-accent'}>
                       {c.granted ? '✓' : '✗'}
                     </span>
                     {c.policy_version && (
-                      <span className="block text-xs text-[color:var(--granite)]">
-                        {c.policy_version}
-                      </span>
+                      <span className="fh-micro block">{c.policy_version}</span>
                     )}
                   </span>
-                  <span className="text-xs text-[color:var(--granite)] whitespace-nowrap">
+                  <span className="fh-micro whitespace-nowrap">
                     {formatRelativeTime(c.granted_at)}
                   </span>
                 </li>
               ))}
             </ul>
           ) : (
-            <p className="mb-6 text-sm text-[color:var(--granite)]">Sem consentimentos neste job.</p>
+            <p className="fh-micro mb-fh-5">Sem consentimentos neste job.</p>
           )}
 
           <SubTitle>Últimos eventos</SubTitle>
           <EventList events={events} actorEmails={actorEmails} />
-        </section>
+        </Card>
       </div>
     </div>
   )
@@ -291,11 +283,7 @@ export default async function JobDetailPage({
 
 function Anamnese({ clinical }: { clinical: ClinicalRow | null }) {
   if (!clinical) {
-    return (
-      <p className="text-sm text-[color:var(--granite)]">
-        Anamnese não preenchida para esta sessão.
-      </p>
-    )
+    return <p className="fh-micro">Anamnese não preenchida para esta sessão.</p>
   }
 
   const pregHigh =
@@ -316,41 +304,50 @@ function Anamnese({ clinical }: { clinical: ClinicalRow | null }) {
   const notesEmpty = !clinical.health_notes?.trim()
 
   if (noFlags && pregClear && substancesClear && notesEmpty) {
-    return (
-      <span className="inline-block text-sm text-[color:var(--granite)] border border-[color:var(--line)] rounded-full px-3 py-1">
-        Anamnese sem alertas.
-      </span>
-    )
+    return <Alert variant="success" title="Anamnese sem alertas." />
   }
 
   return (
-    <div className="flex flex-col gap-3">
+    <div className="flex flex-col gap-fh-3">
+      {/*
+        Alergia é o ÚNICO alerta em `critical` (Oxblood pleno): é o caso de
+        segurança que não pode passar batido enquanto o Julio tatua. Os outros
+        flags clínicos são `warning` (Terracota) — importantes, mas não podem
+        competir com ele, senão nada mais salta.
+      */}
       {clinical.has_allergies === true ? (
-        <AlertCard title="Alergias" detail={clinical.allergies_detail} />
+        <Alert
+          variant="critical"
+          title="Alergia registrada"
+          icon={<AlertTriangle size={22} strokeWidth={1.5} />}
+        >
+          {clinical.allergies_detail?.trim() ||
+            'Sem detalhe informado — confirme com o cliente antes de iniciar.'}
+        </Alert>
       ) : (
         <NormalField label="Alergias" value="Não" />
       )}
 
       {clinical.takes_medication === true ? (
-        <AlertCard title="Medicação" detail={clinical.medications_detail} />
+        <ClinicalFlag title="Medicação" detail={clinical.medications_detail} />
       ) : (
         <NormalField label="Medicação" value="Não" />
       )}
 
       {clinical.has_diabetes === true ? (
-        <AlertCard title="Diabetes" detail={null} />
+        <ClinicalFlag title="Diabetes" detail={null} />
       ) : (
         <NormalField label="Diabetes" value="Não" />
       )}
 
       {clinical.has_skin_condition === true ? (
-        <AlertCard title="Condição de pele" detail={clinical.skin_condition_detail} />
+        <ClinicalFlag title="Condição de pele" detail={clinical.skin_condition_detail} />
       ) : (
         <NormalField label="Condição de pele" value="Não" />
       )}
 
       {pregHigh ? (
-        <AlertCard
+        <ClinicalFlag
           title="Gravidez"
           detail={PREGNANCY_LABELS[clinical.pregnancy_status ?? ''] ?? clinical.pregnancy_status}
         />
@@ -375,26 +372,19 @@ function Anamnese({ clinical }: { clinical: ClinicalRow | null }) {
   )
 }
 
-function AlertCard({ title, detail }: { title: string; detail: string | null }) {
+/** Flag clínico não-crítico: atenção, não alarme (Terracota). */
+function ClinicalFlag({ title, detail }: { title: string; detail: string | null }) {
   return (
-    <div
-      className="border-2 border-[color:var(--oxblood)] rounded-md px-4 py-3"
-      style={{ backgroundColor: 'color-mix(in srgb, var(--oxblood) 6%, var(--white))' }}
-    >
-      <div className="text-[11px] uppercase tracking-[0.1em] font-medium text-[color:var(--oxblood)]">
-        ⚠ {title}
-      </div>
-      {detail && (
-        <p className="mt-1 text-base font-medium text-[color:var(--onyx)]">{detail}</p>
-      )}
-    </div>
+    <Alert variant="warning" title={title}>
+      {detail?.trim() || 'Sem detalhe informado.'}
+    </Alert>
   )
 }
 
 function NormalField({ label, value }: { label: string; value: string }) {
   return (
-    <div className="text-sm flex items-baseline justify-between gap-3 border-b border-[color:var(--line)] pb-1.5">
-      <span className="text-[color:var(--granite)]">{label}</span>
+    <div className="flex items-baseline justify-between gap-fh-3 border-b border-fh-subtle pb-fh-2">
+      <span className="fh-micro">{label}</span>
       <span className="text-right">{value}</span>
     </div>
   )
@@ -405,11 +395,9 @@ function NormalField({ label, value }: { label: string; value: string }) {
 function ExtraData({ data }: { data: Record<string, unknown> | null }) {
   if (!data || Object.keys(data).length === 0) return null
   return (
-    <details className="mt-6">
-      <summary className="text-xs uppercase tracking-[0.1em] text-[color:var(--granite)] cursor-pointer">
-        extra_data
-      </summary>
-      <pre className="mt-2 text-xs bg-[color:var(--whisper)] p-3 rounded overflow-x-auto tabular-nums">
+    <details className="mt-fh-5">
+      <summary className="fh-eyebrow cursor-pointer">extra_data</summary>
+      <pre className="mt-fh-2 p-fh-3 bg-fh-sunken rounded-fh-md overflow-x-auto fh-micro fh-tnum">
         {JSON.stringify(data, null, 2)}
       </pre>
     </details>
@@ -418,27 +406,13 @@ function ExtraData({ data }: { data: Record<string, unknown> | null }) {
 
 function BackLink() {
   return (
-    <Link
-      href="/admin"
-      className="text-sm text-[color:var(--granite)] hover:text-[color:var(--onyx)] transition-colors"
-    >
-      ← Fila
+    <Link href="/admin" className="inline-flex items-center gap-fh-2 no-underline">
+      <ArrowLeft size={18} strokeWidth={1.5} />
+      Fila
     </Link>
   )
 }
 
-function ColTitle({ children }: { children: React.ReactNode }) {
-  return (
-    <h2 className="font-[family-name:var(--font-fraunces)] text-lg mb-4 pb-2 border-b border-[color:var(--line)]">
-      {children}
-    </h2>
-  )
-}
-
 function SubTitle({ children }: { children: React.ReactNode }) {
-  return (
-    <h3 className="text-[11px] uppercase tracking-[0.1em] text-[color:var(--granite)] mb-2">
-      {children}
-    </h3>
-  )
+  return <h3 className="fh-eyebrow mb-fh-2">{children}</h3>
 }

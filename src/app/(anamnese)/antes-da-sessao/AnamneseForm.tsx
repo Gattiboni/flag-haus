@@ -12,10 +12,12 @@ import { calculateAge } from '@/lib/utils/age'
 import { toE164 } from '@/lib/utils/phone'
 import { POLICY_VERSION_ANAMNESE } from '@/lib/legal/policy'
 import { StepShell } from '@/components/form/StepShell'
+import { TerminalScreen } from '@/components/form/TerminalScreen'
 import { OptionPills } from '@/components/form/OptionPills'
 import { ConfirmField } from '@/components/form/ConfirmField'
 import { GeoFields } from '@/components/form/GeoFields'
 import { PhoneField } from '@/components/form/PhoneField'
+import { Alert, Card, Checkbox, Input, Textarea } from '@/components/ui'
 
 type Props = {
   getProfileAction: (phone: string, country?: string) => Promise<GetAnamneseProfileResult>
@@ -190,15 +192,14 @@ const initialState: FormState = {
   blocked: false,
 }
 
-const inputCls =
-  'w-full bg-transparent border-0 border-b border-[color:var(--onyx)] py-2.5 text-lg text-[color:var(--onyx)] outline-none focus:border-[color:var(--oxblood)] transition-colors'
-const textareaCls = `${inputCls} resize-y min-h-20`
-const labelCls =
-  'block text-[13px] uppercase tracking-[0.12em] text-[color:var(--granite)] mb-3'
-const h1Cls = 'text-[32px] leading-[1.25] mb-6'
-const h2Cls = 'text-2xl leading-snug mb-5'
-const mutedCls = 'text-[color:var(--granite)] text-[15px] mb-6'
-const errCls = 'text-[color:var(--oxblood)] text-[13px] mt-2'
+// Só espaçamento: cor, tamanho e peso de h1/h2/p vêm do base.css do padrão.
+const h1Cls = 'mb-fh-5'
+const h2Cls = 'mb-fh-4'
+const mutedCls = 'fh-lead mb-fh-5'
+const fieldCls = 'my-fh-6'
+const errCls = 'fh-error mt-fh-2'
+// Lista dos textos jurídicos congelados (consentimentos).
+const listCls = 'list-disc pl-5 flex flex-col gap-fh-2'
 
 export function AnamneseForm({ getProfileAction, submitAction }: Props) {
   const [state, setState] = useState<FormState>(initialState)
@@ -600,45 +601,27 @@ export function AnamneseForm({ getProfileAction, submitAction }: Props) {
   // ── Tela de bloqueio (menor de 18) — terminal, NENHUMA escrita ──
   if (state.blocked) {
     return (
-      <main className="max-w-[560px] mx-auto px-6 sm:px-8 pt-16 sm:pt-20 pb-[120px] min-h-screen">
-        <header className="flex justify-between items-baseline pb-8 border-b border-[color:var(--line)] mb-14">
-          <span className="font-[family-name:var(--font-fraunces)] text-lg tracking-[0.02em]">
-            Flag Haus
-          </span>
-        </header>
-        <div className="py-10">
-          <h1 className={h1Cls}>Obrigado pela honestidade.</h1>
-          <p className="mb-4">
-            A gente não tatua menores de 18, sem exceção. É o que a lei pede e o
-            que a gente acredita.
-          </p>
-          <p className="mb-4">Quando você completar 18, a gente vai estar aqui.</p>
-          <p className="mt-10 font-[family-name:var(--font-fraunces)] italic">— Julio</p>
-        </div>
-      </main>
+      <TerminalScreen title="Obrigado pela honestidade.">
+        <p>
+          A gente não tatua menores de 18, sem exceção. É o que a lei pede e o
+          que a gente acredita.
+        </p>
+        <p>Quando você completar 18, a gente vai estar aqui.</p>
+      </TerminalScreen>
     )
   }
 
   // ── Tela de sucesso (copy 30 — Fechamento) ──
   if (state.done) {
     return (
-      <main className="max-w-[560px] mx-auto px-6 sm:px-8 pt-16 sm:pt-20 pb-[120px] min-h-screen">
-        <header className="flex justify-between items-baseline pb-8 border-b border-[color:var(--line)] mb-14">
-          <span className="font-[family-name:var(--font-fraunces)] text-lg tracking-[0.02em]">
-            Flag Haus
-          </span>
-        </header>
-        <div className="py-10">
-          <h1 className={h1Cls}>Fechou.</h1>
-          <p className="mb-4">Cadastro atualizado, saúde checada, combinações alinhadas.</p>
-          <p className="mb-4">
-            Agora a gente segue pra confirmação final da sessão e as orientações de
-            cuidado pré-tatuagem — chegam aqui pelo WhatsApp.
-          </p>
-          <p className="mb-4">Qualquer coisa antes do dia, me chama.</p>
-          <p className="mt-10 font-[family-name:var(--font-fraunces)] italic">— Julio</p>
-        </div>
-      </main>
+      <TerminalScreen title="Fechou.">
+        <p>Cadastro atualizado, saúde checada, combinações alinhadas.</p>
+        <p>
+          Agora a gente segue pra confirmação final da sessão e as orientações de
+          cuidado pré-tatuagem — chegam aqui pelo WhatsApp.
+        </p>
+        <p>Qualquer coisa antes do dia, me chama.</p>
+      </TerminalScreen>
     )
   }
 
@@ -676,15 +659,15 @@ export function AnamneseForm({ getProfileAction, submitAction }: Props) {
         return (
           <div>
             <h1 className={h1Cls}>Antes da sua sessão.</h1>
-            <p className="mb-4">
+            <p className="mb-fh-4">
               Tem algumas coisas que precisamos confirmar juntos antes do dia.
             </p>
-            <p className="mb-4">
+            <p className="mb-fh-4">
               Saúde, segurança, e os seus dados com a gente. Leva uns 3 a 5
               minutos.
             </p>
-            <p className="mb-4">Pode fazer agora pelo celular mesmo.</p>
-            <p className="mt-8 font-[family-name:var(--font-fraunces)] italic">— Julio</p>
+            <p className="mb-fh-4">Pode fazer agora pelo celular mesmo.</p>
+            <p className="fh-lead mt-fh-6">— Julio</p>
           </div>
         )
 
@@ -713,7 +696,7 @@ export function AnamneseForm({ getProfileAction, submitAction }: Props) {
                 ? `Beleza, ${state.profile.name} — bom te ver de volta.`
                 : 'Beleza — bom te ver de volta.'}
             </h1>
-            <p className="mb-4">
+            <p className="mb-fh-4">
               Vou só confirmar rapidinho o que já tenho seu por aqui, e perguntar o
               que ainda falta.
             </p>
@@ -721,7 +704,7 @@ export function AnamneseForm({ getProfileAction, submitAction }: Props) {
         ) : (
           <div>
             <h1 className={h1Cls}>Primeira vez por aqui — bem-vindo.</h1>
-            <p className="mb-4">
+            <p className="mb-fh-4">
               Vamos do começo, então. Algumas perguntas sobre saúde primeiro,
               depois sobre você.
             </p>
@@ -734,17 +717,15 @@ export function AnamneseForm({ getProfileAction, submitAction }: Props) {
           <div>
             <h2 className={h2Cls}>Sua data de nascimento.</h2>
             <p className={mutedCls}>Preciso confirmar antes de seguir.</p>
-            <div className="my-8">
-              <label className={labelCls}>Data de nascimento</label>
-              <input
-                type="date"
-                required
-                value={state.birth_date}
-                onChange={(e) => set({ birth_date: e.target.value, birthError: null })}
-                className={inputCls}
-              />
-              {state.birthError && <p className={errCls}>{state.birthError}</p>}
-            </div>
+            <Input
+              className={fieldCls}
+              label="Data de nascimento"
+              type="date"
+              required
+              value={state.birth_date}
+              onChange={(e) => set({ birth_date: e.target.value, birthError: null })}
+              error={state.birthError ?? undefined}
+            />
           </div>
         )
 
@@ -757,17 +738,15 @@ export function AnamneseForm({ getProfileAction, submitAction }: Props) {
               Só a região — braço, costela, coxa, costas. Preciso saber pra te
               perguntar certo sobre a pele.
             </p>
-            <div className="my-8">
-              <label className={labelCls}>Região do corpo</label>
-              <input
-                type="text"
-                value={state.body_region}
-                onChange={(e) => set({ body_region: e.target.value, bodyError: null })}
-                placeholder="Ex.: antebraço esquerdo"
-                className={inputCls}
-              />
-              {state.bodyError && <p className={errCls}>{state.bodyError}</p>}
-            </div>
+            <Input
+              className={fieldCls}
+              label="Região do corpo"
+              type="text"
+              value={state.body_region}
+              onChange={(e) => set({ body_region: e.target.value, bodyError: null })}
+              placeholder="Ex.: antebraço esquerdo"
+              error={state.bodyError ?? undefined}
+            />
           </div>
         )
 
@@ -790,15 +769,13 @@ export function AnamneseForm({ getProfileAction, submitAction }: Props) {
             />
             {state.allergiesError && <p className={errCls}>{state.allergiesError}</p>}
             {state.has_allergies === 'yes' && (
-              <div className="my-8">
-                <label className={labelCls}>Pode me contar quais?</label>
-                <textarea
-                  value={state.allergies_detail}
-                  onChange={(e) => set({ allergies_detail: e.target.value })}
-                  className={textareaCls}
-                  autoFocus
-                />
-              </div>
+              <Textarea
+                className={fieldCls}
+                label="Pode me contar quais?"
+                value={state.allergies_detail}
+                onChange={(e) => set({ allergies_detail: e.target.value })}
+                autoFocus
+              />
             )}
           </div>
         )
@@ -821,19 +798,14 @@ export function AnamneseForm({ getProfileAction, submitAction }: Props) {
             />
             {state.medicationError && <p className={errCls}>{state.medicationError}</p>}
             {state.takes_medication === 'yes' && (
-              <div className="my-8">
-                <label className={labelCls}>Pode me contar quais?</label>
-                <p className={mutedCls}>
-                  Se for anticoagulante, imunossupressor ou algo pra autoimune, é
-                  especialmente importante eu saber.
-                </p>
-                <textarea
-                  value={state.medications_detail}
-                  onChange={(e) => set({ medications_detail: e.target.value })}
-                  className={textareaCls}
-                  autoFocus
-                />
-              </div>
+              <Textarea
+                className={fieldCls}
+                label="Pode me contar quais?"
+                helperText="Se for anticoagulante, imunossupressor ou algo pra autoimune, é especialmente importante eu saber."
+                value={state.medications_detail}
+                onChange={(e) => set({ medications_detail: e.target.value })}
+                autoFocus
+              />
             )}
           </div>
         )
@@ -876,15 +848,13 @@ export function AnamneseForm({ getProfileAction, submitAction }: Props) {
             />
             {state.skinError && <p className={errCls}>{state.skinError}</p>}
             {state.has_skin_condition === 'yes' && (
-              <div className="my-8">
-                <label className={labelCls}>Me conta um pouco mais?</label>
-                <textarea
-                  value={state.skin_condition_detail}
-                  onChange={(e) => set({ skin_condition_detail: e.target.value })}
-                  className={textareaCls}
-                  autoFocus
-                />
-              </div>
+              <Textarea
+                className={fieldCls}
+                label="Me conta um pouco mais?"
+                value={state.skin_condition_detail}
+                onChange={(e) => set({ skin_condition_detail: e.target.value })}
+                autoFocus
+              />
             )}
           </div>
         )
@@ -926,14 +896,12 @@ export function AnamneseForm({ getProfileAction, submitAction }: Props) {
             <p className={mutedCls}>
               Pode ser texto livre. Tudo que você me contar fica entre a gente.
             </p>
-            <div className="my-8">
-              <textarea
-                value={state.health_notes}
-                onChange={(e) => set({ health_notes: e.target.value })}
-                placeholder="Opcional."
-                className={textareaCls}
-              />
-            </div>
+            <Textarea
+              className={fieldCls}
+              value={state.health_notes}
+              onChange={(e) => set({ health_notes: e.target.value })}
+              placeholder="Opcional."
+            />
           </div>
         )
 
@@ -968,7 +936,7 @@ export function AnamneseForm({ getProfileAction, submitAction }: Props) {
         return (
           <div>
             <h1 className={h1Cls}>Pronto.</h1>
-            <p className="mb-4">
+            <p className="mb-fh-4">
               A parte de saúde tá fechada. Agora um momento sobre o que a gente
               combina juntos.
             </p>
@@ -1016,16 +984,14 @@ export function AnamneseForm({ getProfileAction, submitAction }: Props) {
                 { value: 'cnh', label: 'CNH' },
               ]}
             />
-            <div className="my-8">
-              <label className={labelCls}>Número do documento</label>
-              <input
-                type="text"
-                value={state.document_number}
-                onChange={(e) => set({ document_number: e.target.value, docError: null })}
-                className={inputCls}
-              />
-              {state.docError && <p className={errCls}>{state.docError}</p>}
-            </div>
+            <Input
+              className={fieldCls}
+              label="Número do documento"
+              type="text"
+              value={state.document_number}
+              onChange={(e) => set({ document_number: e.target.value, docError: null })}
+              error={state.docError ?? undefined}
+            />
           </div>
         )
 
@@ -1034,9 +1000,9 @@ export function AnamneseForm({ getProfileAction, submitAction }: Props) {
         return (
           <div>
             <h2 className={h2Cls}>Uma confirmação importante.</h2>
-            <div className="bg-[color:var(--white)] border border-[color:var(--line)] p-6 my-6 rounded">
-              <p className="mb-4">Eu entendo e concordo que:</p>
-              <ul className="list-disc pl-5 space-y-2 text-[15px]">
+            <Card className="my-fh-5">
+              <p className="mb-fh-4">Eu entendo e concordo que:</p>
+              <ul className={listCls}>
                 <li>Estou pedindo essa tatuagem por escolha minha, sem pressão de ninguém.</li>
                 <li>Tatuagem é permanente. Pode precisar de retoque depois de cicatrizada.</li>
                 <li>
@@ -1050,18 +1016,16 @@ export function AnamneseForm({ getProfileAction, submitAction }: Props) {
                 </li>
                 <li>Vou receber e seguir as orientações de cuidado depois da sessão.</li>
               </ul>
-              <label className="flex items-start gap-3 mt-5 pt-5 border-t border-[color:var(--line)] cursor-pointer">
-                <input
-                  type="checkbox"
+              <div className="mt-fh-4 pt-fh-4 border-t border-fh-subtle">
+                <Checkbox
+                  label="Confirmo todas essas combinações"
                   checked={state.procedure_accepted}
                   onChange={(e) =>
                     set({ procedure_accepted: e.target.checked, procedureError: null })
                   }
-                  className="mt-1 accent-[color:var(--oxblood)] cursor-pointer"
                 />
-                <span className="text-[15px]">Confirmo todas essas combinações</span>
-              </label>
-            </div>
+              </div>
+            </Card>
             {state.procedureError && <p className={errCls}>{state.procedureError}</p>}
           </div>
         )
@@ -1071,37 +1035,33 @@ export function AnamneseForm({ getProfileAction, submitAction }: Props) {
         return (
           <div>
             <h2 className={h2Cls}>Uma autorização separada, e ela é específica.</h2>
-            <div className="bg-[color:var(--white)] border-2 border-[color:var(--oxblood)] p-6 my-6 rounded">
-              <p className="mb-4">
+            <Card accent className="my-fh-5 flex flex-col gap-fh-4">
+              <p>
                 As informações de saúde que você acabou de me dar — alergias,
                 medicação, condição de pele, e o que mais tiver aparecido aqui — são
                 dados sensíveis. A lei trata elas de um jeito diferente, e eu também.
               </p>
-              <p className="mb-4">
+              <p>
                 Elas servem pra uma coisa só: decidir se dá pra tatuar com segurança,
                 e como. Não vão pra lista de e-mail, não viram post, não vão pra
                 lugar nenhum.
               </p>
-              <p className="mb-0">
+              <p>
                 Ficam guardadas porque a vigilância sanitária pede registro do
                 procedimento. Você pode pedir acesso, correção ou apagamento quando
                 quiser — e revogar essa autorização também, falando comigo no
                 WhatsApp (11) 97661-7569.
               </p>
-              <label className="flex items-start gap-3 mt-5 pt-5 border-t border-[color:var(--line)] cursor-pointer">
-                <input
-                  type="checkbox"
+              <div className="pt-fh-4 border-t border-fh-subtle">
+                <Checkbox
+                  label="Autorizo o uso das minhas informações de saúde pra isso"
                   checked={state.health_accepted}
                   onChange={(e) =>
                     set({ health_accepted: e.target.checked, healthConsentError: null })
                   }
-                  className="mt-1 accent-[color:var(--oxblood)] cursor-pointer"
                 />
-                <span className="text-[15px]">
-                  Autorizo o uso das minhas informações de saúde pra isso
-                </span>
-              </label>
-            </div>
+              </div>
+            </Card>
             {state.healthConsentError && <p className={errCls}>{state.healthConsentError}</p>}
           </div>
         )
@@ -1111,9 +1071,9 @@ export function AnamneseForm({ getProfileAction, submitAction }: Props) {
         return (
           <div>
             <h2 className={h2Cls}>Sobre seus dados.</h2>
-            <div className="bg-[color:var(--white)] border border-[color:var(--line)] p-6 my-6 rounded">
-              <p className="mb-4">Seus dados ficam com a gente pra:</p>
-              <ul className="list-disc pl-5 space-y-2 text-[15px]">
+            <Card className="my-fh-5">
+              <p className="mb-fh-4">Seus dados ficam com a gente pra:</p>
+              <ul className={listCls}>
                 <li>Fazer e registrar seu atendimento.</li>
                 <li>Cumprir o que a lei pede.</li>
                 <li>
@@ -1121,20 +1081,18 @@ export function AnamneseForm({ getProfileAction, submitAction }: Props) {
                   novidades — se você quiser, claro.
                 </li>
               </ul>
-              <p className="mt-4 mb-0">
+              <p className="mt-fh-4">
                 Você pode pedir acesso, correção ou apagamento desses dados quando
                 quiser, no WhatsApp (11) 97661-7569.
               </p>
-              <label className="flex items-start gap-3 mt-5 pt-5 border-t border-[color:var(--line)] cursor-pointer">
-                <input
-                  type="checkbox"
+              <div className="mt-fh-4 pt-fh-4 border-t border-fh-subtle">
+                <Checkbox
+                  label="Entendi e concordo"
                   checked={state.lgpd_accepted}
                   onChange={(e) => set({ lgpd_accepted: e.target.checked, lgpdError: null })}
-                  className="mt-1 accent-[color:var(--oxblood)] cursor-pointer"
                 />
-                <span className="text-[15px]">Entendi e concordo</span>
-              </label>
-            </div>
+              </div>
+            </Card>
             {state.lgpdError && <p className={errCls}>{state.lgpdError}</p>}
           </div>
         )
@@ -1165,7 +1123,7 @@ export function AnamneseForm({ getProfileAction, submitAction }: Props) {
         return (
           <div>
             <h2 className={h2Cls}>Última coisa do consentimento — e essa é opcional.</h2>
-            <p className="mb-4">
+            <p className="mb-fh-4">
               Posso usar fotos do trabalho finalizado no Instagram, portfólio e site
               da Flag Haus?
             </p>
@@ -1187,7 +1145,7 @@ export function AnamneseForm({ getProfileAction, submitAction }: Props) {
         return (
           <div>
             <h1 className={h1Cls}>Boa.</h1>
-            <p className="mb-4">Última parte. Quero te conhecer um pouco melhor.</p>
+            <p className="mb-fh-4">Última parte. Quero te conhecer um pouco melhor.</p>
           </div>
         )
 
@@ -1204,15 +1162,13 @@ export function AnamneseForm({ getProfileAction, submitAction }: Props) {
           <div>
             <h2 className={h2Cls}>Como você se chama?</h2>
             <p className={mutedCls}>Nome completo, do jeito que aparece no documento.</p>
-            <div className="my-8">
-              <label className={labelCls}>Nome completo</label>
-              <input
-                type="text"
-                value={state.name}
-                onChange={(e) => set({ name: e.target.value })}
-                className={inputCls}
-              />
-            </div>
+            <Input
+              className={fieldCls}
+              label="Nome completo"
+              type="text"
+              value={state.name}
+              onChange={(e) => set({ name: e.target.value })}
+            />
           </div>
         )
 
@@ -1229,16 +1185,15 @@ export function AnamneseForm({ getProfileAction, submitAction }: Props) {
         ) : (
           <div>
             <h2 className={h2Cls}>Seu e-mail.</h2>
-            <div className="my-8">
-              <label className={labelCls}>E-mail (opcional)</label>
-              <input
-                type="email"
-                value={state.email}
-                onChange={(e) => set({ email: e.target.value, emailError: null })}
-                className={inputCls}
-              />
-              {state.emailError && <p className={errCls}>{state.emailError}</p>}
-            </div>
+            <Input
+              className={fieldCls}
+              label="E-mail"
+              optionalText="opcional"
+              type="email"
+              value={state.email}
+              onChange={(e) => set({ email: e.target.value, emailError: null })}
+              error={state.emailError ?? undefined}
+            />
           </div>
         )
 
@@ -1343,16 +1298,15 @@ export function AnamneseForm({ getProfileAction, submitAction }: Props) {
               Sem obrigação. É só pra a gente trocar ideia por lá quando fizer
               sentido.
             </p>
-            <div className="my-8">
-              <label className={labelCls}>@ (opcional)</label>
-              <input
-                type="text"
-                value={state.instagram}
-                onChange={(e) => set({ instagram: e.target.value })}
-                placeholder="@seu.handle"
-                className={inputCls}
-              />
-            </div>
+            <Input
+              className={fieldCls}
+              label="Instagram"
+              optionalText="opcional"
+              type="text"
+              value={state.instagram}
+              onChange={(e) => set({ instagram: e.target.value })}
+              placeholder="@seu.handle"
+            />
           </div>
         )
 
@@ -1373,15 +1327,14 @@ export function AnamneseForm({ getProfileAction, submitAction }: Props) {
               Pode ser profissão, estudo, atividade principal — do jeito que você
               costuma responder essa pergunta.
             </p>
-            <div className="my-8">
-              <label className={labelCls}>Profissão (opcional)</label>
-              <input
-                type="text"
-                value={state.occupation}
-                onChange={(e) => set({ occupation: e.target.value })}
-                className={inputCls}
-              />
-            </div>
+            <Input
+              className={fieldCls}
+              label="Profissão"
+              optionalText="opcional"
+              type="text"
+              value={state.occupation}
+              onChange={(e) => set({ occupation: e.target.value })}
+            />
           </div>
         )
 
@@ -1457,10 +1410,9 @@ export function AnamneseForm({ getProfileAction, submitAction }: Props) {
             confirmLabel="Manter"
             editLabel="Adicionar / atualizar"
             renderEditor={(val, onChange) => (
-              <textarea
+              <Textarea
                 value={val}
                 onChange={(e) => onChange(e.target.value)}
-                className={textareaCls}
                 autoFocus
               />
             )}
@@ -1473,14 +1425,12 @@ export function AnamneseForm({ getProfileAction, submitAction }: Props) {
               (natureza, escrita, geometria, retrato), parte do corpo que você ainda
               quer trabalhar, ou só uma vibe que tem rondado.
             </p>
-            <div className="my-8">
-              <textarea
-                value={state.interests}
-                onChange={(e) => set({ interests: e.target.value })}
-                placeholder="Solta aí — opcional."
-                className={textareaCls}
-              />
-            </div>
+            <Textarea
+              className={fieldCls}
+              value={state.interests}
+              onChange={(e) => set({ interests: e.target.value })}
+              placeholder="Solta aí — opcional."
+            />
           </div>
         )
 
@@ -1494,14 +1444,12 @@ export function AnamneseForm({ getProfileAction, submitAction }: Props) {
               veio agora. Pode ser nada disso e tá tudo bem também. Se quiser contar,
               é uma das partes mais legais do processo pra mim.
             </p>
-            <div className="my-8">
-              <textarea
-                value={state.motivation}
-                onChange={(e) => set({ motivation: e.target.value })}
-                placeholder="Opcional."
-                className={textareaCls}
-              />
-            </div>
+            <Textarea
+              className={fieldCls}
+              value={state.motivation}
+              onChange={(e) => set({ motivation: e.target.value })}
+              placeholder="Opcional."
+            />
           </div>
         )
 
@@ -1515,9 +1463,9 @@ export function AnamneseForm({ getProfileAction, submitAction }: Props) {
               concluir.
             </p>
             {state.submitError && (
-              <p className="text-[color:var(--oxblood)] text-[15px] mt-4">
+              <Alert variant="warning" title="Não deu pra salvar" className="mt-fh-4">
                 {state.submitError}
-              </p>
+              </Alert>
             )}
           </div>
         )

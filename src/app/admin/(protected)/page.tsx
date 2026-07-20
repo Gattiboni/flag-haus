@@ -3,6 +3,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { formatBRL, formatPhoneBR, formatRelativeTime } from '@/lib/format'
 import { QueueTable, type QueueJob } from './QueueTable'
 import type { JobStatus } from '@/lib/domain/job-status'
+import { Alert, Badge, Card, CardHeader } from '@/components/ui'
 
 /**
  * Home do admin = a FILA (#4b). Não é dashboard: é o que precisa da mão do
@@ -81,9 +82,9 @@ export default async function AdminQueuePage() {
     return (
       <div>
         <Header />
-        <p className="text-sm text-[color:var(--oxblood)]" role="alert">
-          Não foi possível carregar a fila agora.
-        </p>
+        <Alert variant="warning" title="Não foi possível carregar a fila agora">
+          Recarrega a página em instantes.
+        </Alert>
       </div>
     )
   }
@@ -119,14 +120,14 @@ export default async function AdminQueuePage() {
     <div>
       <Header />
 
-      <div className="flex flex-col gap-12">
+      <div className="flex flex-col gap-fh-5">
         <Group title="Precisa de preço" jobs={needsPrice} />
         <Group title="Aguardando resposta" jobs={awaitingReply} />
         <Group title="Aguardando sessão" jobs={awaitingSession} />
         <Group title="Sem resposta" jobs={noResponse} />
       </div>
 
-      <p className="mt-12 text-xs text-[color:var(--granite)] tracking-[0.02em]">
+      <p className="fh-micro mt-fh-5">
         {total} {total === 1 ? 'job' : 'jobs'} na fila
       </p>
     </div>
@@ -134,23 +135,17 @@ export default async function AdminQueuePage() {
 }
 
 function Header() {
-  return (
-    <h1 className="font-[family-name:var(--font-fraunces)] text-2xl sm:text-3xl mb-10">
-      Fila de trabalho
-    </h1>
-  )
+  return <h1 className="mb-fh-6">Fila de trabalho</h1>
 }
 
 function Group({ title, jobs }: { title: string; jobs: QueueJob[] }) {
   return (
-    <section>
-      <h2 className="font-[family-name:var(--font-fraunces)] text-lg mb-3 tracking-[0.01em]">
-        {title}{' '}
-        <span className="text-[color:var(--granite)] text-base">
-          ({jobs.length})
-        </span>
-      </h2>
+    <Card as="section">
+      <CardHeader
+        title={title}
+        action={<Badge variant="neutral">{jobs.length}</Badge>}
+      />
       <QueueTable jobs={jobs} />
-    </section>
+    </Card>
   )
 }

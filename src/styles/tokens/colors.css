@@ -1,0 +1,33 @@
+/* ============================================================
+   Flag Haus — Colour Tokens  (§6.5 Paleta Cromática)
+   Raw brand values are copied EXACTLY from the branding book.
+   Never approximate a hex; never introduce a colour outside this file.
+   ============================================================ */
+
+:root {
+  /* ---- Paleta Principal (§6.5.1) — the six canonical colours ---- */
+  --fh-onyx:      #2D2C2A; /* silêncio, gesto, texto principal            */
+  --fh-oxblood:   #8B0000; /* presença, emoção, densidade — regra 10/90   */
+  --fh-terracota: #A8643D; /* corpo, pele, elemento narrativo (não texto) */
+  --fh-granite:   #6B6B6B; /* texto secundário, respiro                    */
+  --fh-whisper:   #F4F4F4; /* fundo padrão, espaço negativo               */
+  --fh-white:     #FFFFFF; /* alta leitura                                 */
+
+  /* ---- Paleta Secundária (§6.5.2) — extensões de baixa saturação ----
+     "Não adiciona novas atmosferas, apenas nuances de respiro."
+     Used only for surfaces, borders and low-luminosity detail — never text. */
+  --fh-gray-100:     #E8E8E8; /* cinza claro — respiro                     */
+  --fh-gray-200:     #DDDDDD; /* cinza claro — divisores                   */
+  --fh-beige-100:    #D8CFC7; /* bege suave — aplicações táteis (corpo)    */
+  --fh-beige-200:    #C7B8AC; /* bege suave — corpo / estúdio             */
+  --fh-graphite-100: #4A4947; /* grafite desaturado — baixa luminosidade  */
+  --fh-graphite-200: #3A3A39; /* grafite desaturado — quase-preto         */
+
+  /* ---- Derived tints (in-family, low saturation) ----
+     Computed by mixing brand hues toward Whisper. Used for calm alert /
+     chip fills so they never read as a saturated background (§6.9.3). */
+  --fh-oxblood-050:   #F3E6E6; /* oxblood washed to a whisper tint         */
+  --fh-oxblood-700:   #6E0000; /* darker oxblood — hover / pressed         */
+  --fh-terracota-050: #F2E8E1; /* terracota washed — warning / confirmado  */
+  --fh-terracota-700: #8A4E2E; /* darker terracota — text on light tint    */
+}

@@ -1,0 +1,28 @@
+/* ============================================================
+   Sugestões do autocomplete (bairro / cidade).
+   Não é componente do design system — é um detalhe do GeoFields —
+   mas segue a mesma gramática: superfície branca sobre a página,
+   borda fina de 1px, sem sombra (a lista antiga usava shadow-lg,
+   proibido pelo §6.9.3).
+   ============================================================ */
+
+.fh-suggestions {
+  margin-top: var(--fh-space-1);
+  max-height: 16rem;
+  overflow-y: auto;
+  background: var(--fh-surface);
+  border: var(--fh-border-width) solid var(--fh-border-subtle);
+  border-radius: var(--fh-radius-md);
+}
+
+.fh-suggestions__item {
+  padding: var(--fh-space-3) var(--fh-space-4);
+  font-size: var(--fh-text-body);
+  color: var(--fh-text-primary);
+  cursor: pointer;
+  transition: background var(--fh-transition-fast);
+}
+
+.fh-suggestions__item[data-active='true'] {
+  background: var(--fh-surface-sunken);
+}

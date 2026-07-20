@@ -1,0 +1,16 @@
+/* ============================================================
+   Flag Haus Design System — global entry point.
+   Consumers link THIS one file. It is only @import lines.
+
+   NOTA (CRM): fonts.css do design system NÃO é importado aqui.
+   As famílias (Inter / Lato / Bebas Neue) são carregadas por
+   next/font/google em src/app/layout.tsx e expostas como
+   --fh-font-*-loaded, consumidas em tokens/typography.css.
+   ============================================================ */
+
+@import url("./tokens/colors.css");
+@import url("./tokens/typography.css");
+@import url("./tokens/spacing.css");
+@import url("./tokens/surfaces.css");
+@import url("./tokens/semantic.css");
+@import url("./base.css");

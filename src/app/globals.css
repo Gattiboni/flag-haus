@@ -1,30 +1,110 @@
+/* Design system Flag Haus — as seis camadas, na ordem.
+   São importadas uma a uma (e não via src/styles/styles.css) porque o
+   Turbopack iça os @import aninhados para o topo do CSS gerado e resolve
+   os caminhos relativos a ESTE arquivo — o que quebraria "./base.css".
+   src/styles/styles.css continua existindo como entry point portátil do
+   design system fora do Next; aqui ele não é usado.
+
+   Vem antes do Tailwind só pela regra de posicionamento do @import. A ordem
+   não afeta a cascata: base.css é sem @layer e por isso vence o preflight
+   do Tailwind, que mora em @layer base. */
+@import "../styles/tokens/colors.css";
+@import "../styles/tokens/typography.css";
+@import "../styles/tokens/spacing.css";
+@import "../styles/tokens/surfaces.css";
+@import "../styles/tokens/semantic.css";
+@import "../styles/base.css";
 @import "tailwindcss";
 
-@layer base {
-  :root {
-    --onyx: #2D2C2A;
-    --oxblood: #8B0000;
-    --terracota: #A8643D;
-    --granite: #6B6B6B;
-    --whisper: #F4F4F4;
-    --white: #FFFFFF;
-    --paper: #FAF8F5;
-    --line: rgba(45, 44, 42, 0.12);
-  }
+/* ============================================================
+   Ponte Tailwind v4 ↔ Design System Flag Haus.
 
-  html, body {
-    background: var(--paper);
-    color: var(--onyx);
-    font-family: var(--font-lato), 'Lato', sans-serif;
-    font-weight: 300;
-    font-size: 17px;
-    line-height: 1.6;
-    -webkit-font-smoothing: antialiased;
-  }
+   Regra da Spec #4c-visual: Tailwind cuida de LAYOUT
+   (flex, grid, gap, padding, margin, breakpoints); os componentes
+   de src/components/ui/* cuidam de APARÊNCIA (cor, tipo, borda,
+   radii, transições) via CSS puro lendo os tokens.
 
-  h1, h2, h3 {
-    font-family: var(--font-fraunces), 'Fraunces', serif;
-    font-weight: 400;
-    letter-spacing: -0.01em;
-  }
+   O @theme abaixo NÃO inventa valor nenhum: só apelida os tokens
+   do design system para dentro do Tailwind, com prefixo `fh-`,
+   para que utilitárias de layout possam usar a escala oficial
+   (`p-fh-5`, `gap-fh-4`) e nenhuma cor precise virar hex solto
+   (`border-fh-subtle`, `text-fh-secondary`).
+   Escala do DS ≠ escala default do Tailwind a partir do passo 5
+   (DS: 24/32/48/64/96) — por isso os nomes são explícitos.
+   ============================================================ */
+
+@theme {
+  /* Escala de espaçamento do DS (§6.3) */
+  --spacing-fh-1: var(--fh-space-1);
+  --spacing-fh-2: var(--fh-space-2);
+  --spacing-fh-3: var(--fh-space-3);
+  --spacing-fh-4: var(--fh-space-4);
+  --spacing-fh-5: var(--fh-space-5);
+  --spacing-fh-6: var(--fh-space-6);
+  --spacing-fh-7: var(--fh-space-7);
+  --spacing-fh-8: var(--fh-space-8);
+  --spacing-fh-9: var(--fh-space-9);
+
+  /* Cores semânticas — nunca hex no JSX */
+  --color-fh-primary: var(--fh-text-primary);
+  --color-fh-secondary: var(--fh-text-secondary);
+  --color-fh-muted: var(--fh-text-muted);
+  --color-fh-inverse: var(--fh-text-inverse);
+  --color-fh-accent: var(--fh-text-accent);
+  --color-fh-surface: var(--fh-surface);
+  --color-fh-sunken: var(--fh-surface-sunken);
+  --color-fh-inset: var(--fh-surface-inset);
+  --color-fh-onyx: var(--fh-onyx);
+  --color-fh-oxblood: var(--fh-oxblood);
+  --color-fh-terracota: var(--fh-terracota);
+  --color-fh-subtle: var(--fh-border-subtle);
+  --color-fh-strong: var(--fh-border-hover);
+
+  /* Radii do DS */
+  --radius-fh-sm: var(--fh-radius-sm);
+  --radius-fh-md: var(--fh-radius-md);
+  --radius-fh-lg: var(--fh-radius-lg);
+}
+
+/* ------------------------------------------------------------
+   Helpers de tipografia que o base.css não cobre (o base.css já
+   resolve body, h1–h4, links, ::selection e .fh-eyebrow).
+   ------------------------------------------------------------ */
+
+/* Letreiro "FLAG HAUS" — único lugar onde Bebas Neue e caixa alta entram
+   (§6.6.2). Nunca usar para outro texto. */
+.fh-wordmark {
+  font-family: var(--fh-font-wordmark);
+  font-size: var(--fh-text-h4);
+  font-weight: var(--fh-weight-regular);
+  letter-spacing: var(--fh-tracking-caps);
+  text-transform: uppercase;
+  color: var(--fh-text-primary);
+  line-height: 1;
+}
+
+.fh-micro {
+  font-size: var(--fh-text-micro);
+  line-height: var(--fh-leading-body);
+  color: var(--fh-text-secondary);
+}
+
+.fh-lead {
+  font-size: var(--fh-text-body);
+  line-height: var(--fh-leading-body);
+  color: var(--fh-text-secondary);
+}
+
+/* Erro de validação solto (fora de um campo — ex.: um RadioGroup obrigatório
+   dos wizards). Dentro de um campo, quem manda é .fh-field__message. */
+.fh-error {
+  font-size: var(--fh-text-micro);
+  line-height: var(--fh-leading-body);
+  color: var(--fh-danger-text);
+}
+
+/* Números tabulares para preços, telefones e contadores do admin */
+.fh-tnum {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: 'tnum' 1;
 }

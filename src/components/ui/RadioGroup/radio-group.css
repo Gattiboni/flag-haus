@@ -1,0 +1,119 @@
+/* ============================================================
+   Flag Haus — RadioGroup
+   Escolha única com legenda e descrição por opção (o formato das
+   perguntas da anamnese). Marcador redondo, preenchimento onyx.
+   ============================================================ */
+
+.fh-radio-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--fh-control-gap);
+  margin: 0;
+  padding: 0;
+  border: none;
+  min-width: 0;
+  font-family: var(--fh-font-body);
+}
+
+.fh-radio-group__legend {
+  padding: 0;
+  margin-bottom: var(--fh-space-1);
+  font-family: var(--fh-font-heading);
+  font-size: var(--fh-text-micro);
+  font-weight: var(--fh-weight-medium);
+  letter-spacing: var(--fh-tracking-heading);
+  color: var(--fh-text-primary);
+}
+
+.fh-radio {
+  display: flex;
+  align-items: center;
+  gap: var(--fh-space-3);
+  cursor: pointer;
+}
+
+.fh-radio--with-description {
+  align-items: flex-start;
+}
+
+.fh-radio[data-disabled='true'] {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.fh-radio__control {
+  position: relative;
+  display: inline-flex;
+  flex-shrink: 0;
+}
+
+.fh-radio--with-description .fh-radio__control {
+  margin-top: 1px;
+}
+
+.fh-radio__dot {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 20px;
+  height: 20px;
+  margin: 0;
+  background: var(--fh-field-bg);
+  border: var(--fh-border-width) solid var(--fh-field-border);
+  border-radius: 50%;
+  cursor: inherit;
+  transition: border-color var(--fh-transition);
+}
+
+.fh-radio__dot:hover:not(:disabled) {
+  border-color: var(--fh-border-active);
+}
+
+.fh-radio__dot:checked {
+  border-color: var(--fh-onyx);
+}
+
+.fh-radio__dot:focus-visible {
+  outline: var(--fh-focus-ring);
+  outline-offset: var(--fh-focus-offset);
+}
+
+.fh-radio__dot:disabled {
+  cursor: not-allowed;
+}
+
+.fh-radio__fill {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--fh-onyx);
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity var(--fh-transition-fast);
+}
+
+.fh-radio__dot:checked + .fh-radio__fill {
+  opacity: 1;
+}
+
+.fh-radio__text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.fh-radio__label {
+  font-size: var(--fh-text-body);
+  line-height: 1.4;
+  color: var(--fh-text-primary);
+}
+
+.fh-radio__description {
+  font-size: var(--fh-text-micro);
+  line-height: 1.4;
+  color: var(--fh-text-secondary);
+}

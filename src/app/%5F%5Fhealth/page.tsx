@@ -36,19 +36,19 @@ export default async function HealthPage() {
         <div>Status: <strong>{status}</strong></div>
         <div>People count: <strong>{peopleCount ?? 'n/a'}</strong></div>
         {errorMessage && (
-          <div className="text-[color:var(--oxblood)]">Erro: {errorMessage}</div>
+          <div className="text-fh-accent">Erro: {errorMessage}</div>
         )}
-        <div className="text-[color:var(--granite)] text-xs">
+        <div className="fh-micro">
           Conexão via service_role (bypass RLS).
         </div>
       </section>
 
-      <section className="border-t border-[color:var(--line)] pt-8">
+      <section className="border-t border-fh-subtle pt-8">
         <h2 className="text-lg mb-4">Buscar pessoa por telefone</h2>
         <HealthClient findPersonAction={findPersonByPhone} />
       </section>
 
-      <div className="text-[color:var(--granite)] text-xs mt-12">
+      <div className="fh-micro mt-12">
         Rota técnica. Será removida antes do lançamento público.
       </div>
     </main>

@@ -1,0 +1,124 @@
+/* ============================================================
+   Flag Haus — Button
+   Affordance sem sombra/gradiente: peso de tipo, fundo, borda fina
+   respirada e hover marcado. Oxblood carrega a ação primária (10/90).
+   ============================================================ */
+
+.fh-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--fh-space-2);
+  min-height: var(--fh-hit-min);
+  padding: 11px 20px;
+  font-family: var(--fh-font-heading);
+  font-size: var(--fh-text-body);
+  font-weight: var(--fh-weight-medium);
+  letter-spacing: var(--fh-tracking-heading);
+  line-height: 1;
+  border: var(--fh-border-width) solid transparent;
+  border-radius: var(--fh-radius-md);
+  cursor: pointer;
+  user-select: none;
+  -webkit-font-smoothing: antialiased;
+  transition:
+    background var(--fh-transition),
+    border-color var(--fh-transition),
+    color var(--fh-transition);
+}
+
+.fh-button:focus-visible {
+  outline: var(--fh-focus-ring);
+  outline-offset: var(--fh-focus-offset);
+}
+
+.fh-button--sm {
+  min-height: 36px;
+  padding: 8px 14px;
+  font-size: var(--fh-text-micro);
+}
+
+.fh-button--full {
+  width: 100%;
+}
+
+/* ---- primary: bloco sólido oxblood ---- */
+.fh-button--primary {
+  background: var(--fh-action-primary);
+  border-color: var(--fh-action-primary);
+  color: var(--fh-action-primary-text);
+}
+.fh-button--primary:hover:not(:disabled) {
+  background: var(--fh-action-primary-hover);
+  border-color: var(--fh-action-primary-hover);
+}
+
+/* ---- secondary: neutro com borda ---- */
+.fh-button--secondary {
+  background: var(--fh-action-secondary-bg);
+  border-color: var(--fh-action-secondary-border);
+  color: var(--fh-action-secondary-text);
+}
+.fh-button--secondary:hover:not(:disabled) {
+  background: var(--fh-action-secondary-bg-hover);
+  border-color: var(--fh-border-active);
+}
+
+/* ---- tertiary: link, sublinhado no hover ---- */
+.fh-button--tertiary {
+  background: transparent;
+  border-color: transparent;
+  color: var(--fh-action-tertiary-text);
+  padding-left: 6px;
+  padding-right: 6px;
+}
+.fh-button--tertiary:hover:not(:disabled) {
+  color: var(--fh-action-tertiary-text-hover);
+  text-decoration: underline;
+  text-underline-offset: 0.18em;
+  text-decoration-thickness: 1px;
+}
+
+/* ---- danger: oxblood sólido, sempre com contexto explícito ---- */
+.fh-button--danger {
+  background: var(--fh-danger);
+  border-color: var(--fh-danger);
+  color: var(--fh-danger-on-solid);
+}
+.fh-button--danger:hover:not(:disabled) {
+  background: var(--fh-danger-hover);
+  border-color: var(--fh-danger-hover);
+}
+
+/* ---- estados ---- */
+.fh-button:disabled,
+.fh-button[data-loading='true'] {
+  cursor: not-allowed;
+  opacity: 0.4;
+}
+
+.fh-button[data-loading='true'] {
+  cursor: progress;
+}
+
+/* Spinner: linha girando — sem glow, sem sombra */
+.fh-button__spinner {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+  border: 1.5px solid currentColor;
+  border-top-color: transparent;
+  border-radius: 50%;
+  animation: fh-button-spin 700ms linear infinite;
+}
+
+@keyframes fh-button-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.fh-button__icon {
+  display: inline-flex;
+  flex-shrink: 0;
+}

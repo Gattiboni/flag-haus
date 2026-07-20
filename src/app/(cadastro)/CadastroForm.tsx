@@ -10,10 +10,12 @@ import type {
 } from '@/app/actions/people'
 import { calculateAge } from '@/lib/utils/age'
 import { StepShell } from '@/components/form/StepShell'
+import { TerminalScreen } from '@/components/form/TerminalScreen'
 import { OptionPills } from '@/components/form/OptionPills'
 import { ConfirmField } from '@/components/form/ConfirmField'
 import { GeoFields } from '@/components/form/GeoFields'
 import { PhoneField } from '@/components/form/PhoneField'
+import { Alert, Card, Checkbox, Input, Textarea } from '@/components/ui'
 
 type Props = {
   getProfileAction: (phone: string, country?: string) => Promise<GetProfileResult>
@@ -126,15 +128,11 @@ const initialState: FormState = {
   blocked: false,
 }
 
-const inputCls =
-  'w-full bg-transparent border-0 border-b border-[color:var(--onyx)] py-2.5 text-lg text-[color:var(--onyx)] outline-none focus:border-[color:var(--oxblood)] transition-colors'
-const textareaCls = `${inputCls} resize-y min-h-20`
-const labelCls =
-  'block text-[13px] uppercase tracking-[0.12em] text-[color:var(--granite)] mb-3'
-const h1Cls = 'text-[32px] leading-[1.25] mb-6'
-const h2Cls = 'text-2xl leading-snug mb-5'
-const mutedCls = 'text-[color:var(--granite)] text-[15px] mb-6'
-const errCls = 'text-[color:var(--oxblood)] text-[13px] mt-2'
+// Só espaçamento: cor, tamanho e peso de h1/h2/p vêm do base.css do padrão.
+const h1Cls = 'mb-fh-5'
+const h2Cls = 'mb-fh-4'
+const mutedCls = 'fh-lead mb-fh-5'
+const fieldCls = 'my-fh-6'
 
 export function CadastroForm({ getProfileAction, submitAction }: Props) {
   const [state, setState] = useState<FormState>(initialState)
@@ -426,52 +424,26 @@ export function CadastroForm({ getProfileAction, submitAction }: Props) {
   // não dispara Server Action, não registra evento).
   if (state.blocked) {
     return (
-      <main className="max-w-[560px] mx-auto px-6 sm:px-8 pt-16 sm:pt-20 pb-[120px] min-h-screen">
-        <header className="flex justify-between items-baseline pb-8 border-b border-[color:var(--line)] mb-14">
-          <span className="font-[family-name:var(--font-fraunces)] text-lg tracking-[0.02em]">
-            Flag Haus
-          </span>
-        </header>
-        <div className="py-10">
-          <h1 className={h1Cls}>Obrigado pela honestidade.</h1>
-          <p className="mb-4">
-            Ainda não posso te cadastrar — a gente não tatua menores de 18, sem
-            exceção.
-          </p>
-          <p className="mb-4">
-            Quando você completar 18, a gente vai estar aqui.
-          </p>
-          <p className="mt-10 font-[family-name:var(--font-fraunces)] italic">
-            — Julio
-          </p>
-        </div>
-      </main>
+      <TerminalScreen title="Obrigado pela honestidade.">
+        <p>
+          Ainda não posso te cadastrar — a gente não tatua menores de 18, sem
+          exceção.
+        </p>
+        <p>Quando você completar 18, a gente vai estar aqui.</p>
+      </TerminalScreen>
     )
   }
 
   // ── Tela de sucesso (substitui o step 18) ──
   if (state.done) {
     return (
-      <main className="max-w-[560px] mx-auto px-6 sm:px-8 pt-16 sm:pt-20 pb-[120px] min-h-screen">
-        <header className="flex justify-between items-baseline pb-8 border-b border-[color:var(--line)] mb-14">
-          <span className="font-[family-name:var(--font-fraunces)] text-lg tracking-[0.02em]">
-            Flag Haus
-          </span>
-        </header>
-        <div className="py-10">
-          <h1 className={h1Cls}>Pronto. Cadastro atualizado.</h1>
-          <p className="mb-4">
-            Agora consigo te avisar com mais precisão sobre agenda, retornos e o
-            que a gente for soltando por aqui.
-          </p>
-          <p className="mb-4">
-            Obrigado pelo tempo — significa que a casa continua sua.
-          </p>
-          <p className="mt-10 font-[family-name:var(--font-fraunces)] italic">
-            — Julio
-          </p>
-        </div>
-      </main>
+      <TerminalScreen title="Pronto. Cadastro atualizado.">
+        <p>
+          Agora consigo te avisar com mais precisão sobre agenda, retornos e o
+          que a gente for soltando por aqui.
+        </p>
+        <p>Obrigado pelo tempo — significa que a casa continua sua.</p>
+      </TerminalScreen>
     )
   }
 
@@ -509,18 +481,16 @@ export function CadastroForm({ getProfileAction, submitAction }: Props) {
         return (
           <div>
             <h1 className={h1Cls}>Oi.</h1>
-            <p className="mb-4">
+            <p className="mb-fh-4">
               Tô organizando aqui o cadastro de quem já passou pela Flag Haus,
               pra manter teu histórico bem feito e melhorar como a gente conversa
               daqui pra frente.
             </p>
-            <p className="mb-4">
+            <p className="mb-fh-4">
               Leva menos de 3 minutos. Tudo que você não quiser preencher pode
               pular.
             </p>
-            <p className="mt-8 font-[family-name:var(--font-fraunces)] italic">
-              — Julio
-            </p>
+            <p className="fh-lead mt-fh-6">— Julio</p>
           </div>
         )
 
@@ -550,7 +520,7 @@ export function CadastroForm({ getProfileAction, submitAction }: Props) {
                 ? `${state.profile.name}, que bom — já te encontrei aqui.`
                 : 'Que bom — já te encontrei aqui.'}
             </h1>
-            <p className="mb-4">
+            <p className="mb-fh-4">
               Vou confirmar o que tenho e perguntar só o que falta.
             </p>
           </div>
@@ -559,7 +529,7 @@ export function CadastroForm({ getProfileAction, submitAction }: Props) {
             <h1 className={h1Cls}>
               Não te encontrei na base ainda — vamos começar então.
             </h1>
-            <p className="mb-4">
+            <p className="mb-fh-4">
               Algumas perguntas rápidas pra te cadastrar direito.
             </p>
           </div>
@@ -580,15 +550,13 @@ export function CadastroForm({ getProfileAction, submitAction }: Props) {
             <p className={mutedCls}>
               Nome completo, do jeito que aparece no documento.
             </p>
-            <div className="my-8">
-              <label className={labelCls}>Nome completo</label>
-              <input
-                type="text"
-                value={state.name}
-                onChange={(e) => set({ name: e.target.value })}
-                className={inputCls}
-              />
-            </div>
+            <Input
+              className={fieldCls}
+              label="Nome completo"
+              type="text"
+              value={state.name}
+              onChange={(e) => set({ name: e.target.value })}
+            />
           </div>
         )
 
@@ -605,16 +573,15 @@ export function CadastroForm({ getProfileAction, submitAction }: Props) {
         ) : (
           <div>
             <h2 className={h2Cls}>Seu e-mail.</h2>
-            <div className="my-8">
-              <label className={labelCls}>E-mail (opcional)</label>
-              <input
-                type="email"
-                value={state.email}
-                onChange={(e) => set({ email: e.target.value, emailError: null })}
-                className={inputCls}
-              />
-              {state.emailError && <p className={errCls}>{state.emailError}</p>}
-            </div>
+            <Input
+              className={fieldCls}
+              label="E-mail"
+              optionalText="opcional"
+              type="email"
+              value={state.email}
+              onChange={(e) => set({ email: e.target.value, emailError: null })}
+              error={state.emailError ?? undefined}
+            />
           </div>
         )
 
@@ -626,17 +593,15 @@ export function CadastroForm({ getProfileAction, submitAction }: Props) {
             <p className={mutedCls}>
               Só tatuamos maiores de 18. Essa é a única que não dá pra pular.
             </p>
-            <div className="my-8">
-              <label className={labelCls}>Data de nascimento</label>
-              <input
-                type="date"
-                required
-                value={state.birth_date}
-                onChange={(e) => set({ birth_date: e.target.value, birthError: null })}
-                className={inputCls}
-              />
-              {state.birthError && <p className={errCls}>{state.birthError}</p>}
-            </div>
+            <Input
+              className={fieldCls}
+              label="Data de nascimento"
+              type="date"
+              required
+              value={state.birth_date}
+              onChange={(e) => set({ birth_date: e.target.value, birthError: null })}
+              error={state.birthError ?? undefined}
+            />
           </div>
         )
 
@@ -741,16 +706,15 @@ export function CadastroForm({ getProfileAction, submitAction }: Props) {
               Sem obrigação. É só pra a gente trocar ideia por lá quando fizer
               sentido.
             </p>
-            <div className="my-8">
-              <label className={labelCls}>@ (opcional)</label>
-              <input
-                type="text"
-                value={state.instagram}
-                onChange={(e) => set({ instagram: e.target.value })}
-                placeholder="@seu.handle"
-                className={inputCls}
-              />
-            </div>
+            <Input
+              className={fieldCls}
+              label="Instagram"
+              optionalText="opcional"
+              type="text"
+              value={state.instagram}
+              onChange={(e) => set({ instagram: e.target.value })}
+              placeholder="@seu.handle"
+            />
           </div>
         )
 
@@ -763,15 +727,14 @@ export function CadastroForm({ getProfileAction, submitAction }: Props) {
               Pode ser profissão, estudo, atividade principal — do jeito que você
               costuma responder essa pergunta.
             </p>
-            <div className="my-8">
-              <label className={labelCls}>Profissão (opcional)</label>
-              <input
-                type="text"
-                value={state.occupation}
-                onChange={(e) => set({ occupation: e.target.value })}
-                className={inputCls}
-              />
-            </div>
+            <Input
+              className={fieldCls}
+              label="Profissão"
+              optionalText="opcional"
+              type="text"
+              value={state.occupation}
+              onChange={(e) => set({ occupation: e.target.value })}
+            />
           </div>
         )
 
@@ -785,10 +748,9 @@ export function CadastroForm({ getProfileAction, submitAction }: Props) {
             confirmLabel="Manter"
             editLabel="Adicionar / atualizar"
             renderEditor={(val, onChange) => (
-              <textarea
+              <Textarea
                 value={val}
                 onChange={(e) => onChange(e.target.value)}
-                className={textareaCls}
                 autoFocus
               />
             )}
@@ -801,14 +763,12 @@ export function CadastroForm({ getProfileAction, submitAction }: Props) {
               (natureza, escrita, geometria, retrato), parte do corpo que você
               ainda quer trabalhar, ou só uma vibe que tem rondado.
             </p>
-            <div className="my-8">
-              <textarea
-                value={state.interests}
-                onChange={(e) => set({ interests: e.target.value })}
-                placeholder="Solta aí — opcional."
-                className={textareaCls}
-              />
-            </div>
+            <Textarea
+              className={fieldCls}
+              value={state.interests}
+              onChange={(e) => set({ interests: e.target.value })}
+              placeholder="Solta aí — opcional."
+            />
           </div>
         )
 
@@ -884,14 +844,12 @@ export function CadastroForm({ getProfileAction, submitAction }: Props) {
               que veio agora. Pode ser nada disso e tá tudo bem também. Se quiser
               contar, é uma das partes mais legais do processo pra mim.
             </p>
-            <div className="my-8">
-              <textarea
-                value={state.motivation}
-                onChange={(e) => set({ motivation: e.target.value })}
-                placeholder="Opcional."
-                className={textareaCls}
-              />
-            </div>
+            <Textarea
+              className={fieldCls}
+              value={state.motivation}
+              onChange={(e) => set({ motivation: e.target.value })}
+              placeholder="Opcional."
+            />
           </div>
         )
 
@@ -904,14 +862,12 @@ export function CadastroForm({ getProfileAction, submitAction }: Props) {
               Bairros, regiões, lugares que você frequenta. Ajuda a entender o
               fluxo de quem chega aqui.
             </p>
-            <div className="my-8">
-              <textarea
-                value={state.circulation_areas}
-                onChange={(e) => set({ circulation_areas: e.target.value })}
-                placeholder="Opcional."
-                className={textareaCls}
-              />
-            </div>
+            <Textarea
+              className={fieldCls}
+              value={state.circulation_areas}
+              onChange={(e) => set({ circulation_areas: e.target.value })}
+              placeholder="Opcional."
+            />
           </div>
         )
 
@@ -920,25 +876,25 @@ export function CadastroForm({ getProfileAction, submitAction }: Props) {
         return (
           <div>
             <h2 className={h2Cls}>Sobre seus dados.</h2>
-            <div className="bg-[color:var(--white)] border border-[color:var(--line)] p-6 my-6 rounded">
-              <p className="mb-0">
+            <Card className="my-fh-5">
+              <p>
                 Eles ficam comigo pra manter seu cadastro, te avisar das coisas
                 que você autorizou, e cumprir o que a lei pede. Você pode pedir
                 acesso, correção ou apagamento quando quiser.
               </p>
-              <label className="flex items-start gap-3 mt-5 pt-5 border-t border-[color:var(--line)] cursor-pointer">
-                <input
-                  type="checkbox"
+              <div className="mt-fh-4 pt-fh-4 border-t border-fh-subtle">
+                <Checkbox
+                  label="Entendi e concordo."
                   checked={state.lgpd_accepted}
                   onChange={(e) =>
                     set({ lgpd_accepted: e.target.checked, lgpdError: null })
                   }
-                  className="mt-1 accent-[color:var(--oxblood)] cursor-pointer"
                 />
-                <span className="text-[15px]">Entendi e concordo.</span>
-              </label>
-            </div>
-            {state.lgpdError && <p className={errCls}>{state.lgpdError}</p>}
+              </div>
+            </Card>
+            {state.lgpdError && (
+              <Alert variant="warning">{state.lgpdError}</Alert>
+            )}
           </div>
         )
 
@@ -952,9 +908,9 @@ export function CadastroForm({ getProfileAction, submitAction }: Props) {
               concluir.
             </p>
             {state.submitError && (
-              <p className="text-[color:var(--oxblood)] text-[15px] mt-4">
+              <Alert variant="warning" title="Não deu pra salvar" className="mt-fh-4">
                 {state.submitError}
-              </p>
+              </Alert>
             )}
           </div>
         )

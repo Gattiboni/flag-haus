@@ -1,0 +1,76 @@
+/* ============================================================
+   Flag Haus — Card
+   Elevação é CONTRASTE, nunca sombra: o branco sobe sobre a página
+   whisper, fechado por uma única borda de 1px.
+   ============================================================ */
+
+.fh-card {
+  background: var(--fh-surface);
+  border: var(--fh-border-width) solid var(--fh-border-subtle);
+  border-radius: var(--fh-radius-lg);
+  padding: var(--fh-card-pad);
+  min-width: 0;
+}
+
+.fh-card--sunken {
+  background: var(--fh-surface-sunken);
+}
+
+.fh-card--inset {
+  background: var(--fh-surface-inset);
+}
+
+.fh-card--inverse {
+  background: var(--fh-surface-inverse);
+  border-color: var(--fh-surface-inverse);
+  color: var(--fh-text-inverse);
+}
+
+/* Destaque: borda oxblood 1.5px, sem preencher a superfície.
+   O preenchimento sólido de oxblood é exclusivo do Alert critical
+   (alergia) — aqui a borda basta para marcar "leia com atenção",
+   sem gastar o orçamento 10/90 duas vezes na mesma tela. */
+.fh-card--accent {
+  border-width: 1.5px;
+  border-color: var(--fh-oxblood);
+}
+
+.fh-card--flush {
+  padding: 0;
+}
+
+.fh-card--borderless {
+  border-color: transparent;
+}
+
+/* ---- CardHeader ---- */
+.fh-card-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--fh-space-4);
+  margin-bottom: var(--fh-space-4);
+}
+
+.fh-card-header__text {
+  display: flex;
+  flex-direction: column;
+  gap: var(--fh-space-1);
+  min-width: 0;
+}
+
+.fh-card-header__title {
+  font-size: var(--fh-text-h4);
+  font-weight: var(--fh-weight-medium);
+  color: inherit;
+}
+
+.fh-card-header__description {
+  font-size: var(--fh-text-micro);
+  line-height: var(--fh-leading-body);
+  color: var(--fh-text-secondary);
+}
+
+.fh-card-header__action {
+  flex-shrink: 0;
+}

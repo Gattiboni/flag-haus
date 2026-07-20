@@ -1,0 +1,100 @@
+/* ============================================================
+   Flag Haus — Checkbox
+   Quadrado de linha fina; ao marcar, preenche onyx e revela o
+   check desenhado. O estado visual é 100% CSS (:checked), então o
+   componente serve controlado e não-controlado sem guardar estado.
+   ============================================================ */
+
+.fh-checkbox {
+  display: flex;
+  align-items: center;
+  gap: var(--fh-space-3);
+  cursor: pointer;
+  font-family: var(--fh-font-body);
+}
+
+.fh-checkbox--with-description {
+  align-items: flex-start;
+}
+
+.fh-checkbox[data-disabled='true'] {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.fh-checkbox__control {
+  position: relative;
+  display: inline-flex;
+  flex-shrink: 0;
+}
+
+.fh-checkbox--with-description .fh-checkbox__control {
+  margin-top: 2px;
+}
+
+.fh-checkbox__box {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 20px;
+  height: 20px;
+  margin: 0;
+  background: var(--fh-field-bg);
+  border: var(--fh-border-width) solid var(--fh-field-border);
+  border-radius: var(--fh-radius-sm);
+  cursor: inherit;
+  transition:
+    background var(--fh-transition),
+    border-color var(--fh-transition);
+}
+
+.fh-checkbox__box:hover:not(:disabled) {
+  border-color: var(--fh-border-active);
+}
+
+.fh-checkbox__box:checked {
+  background: var(--fh-onyx);
+  border-color: var(--fh-onyx);
+}
+
+.fh-checkbox__box:focus-visible {
+  outline: var(--fh-focus-ring);
+  outline-offset: var(--fh-focus-offset);
+}
+
+.fh-checkbox__box:disabled {
+  cursor: not-allowed;
+}
+
+.fh-checkbox__check {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  color: var(--fh-white);
+  opacity: 0;
+  transition: opacity var(--fh-transition-fast);
+}
+
+.fh-checkbox__box:checked + .fh-checkbox__check {
+  opacity: 1;
+}
+
+.fh-checkbox__text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.fh-checkbox__label {
+  font-size: var(--fh-text-body);
+  line-height: 1.4;
+  color: var(--fh-text-primary);
+}
+
+.fh-checkbox__description {
+  font-size: var(--fh-text-micro);
+  line-height: 1.4;
+  color: var(--fh-text-secondary);
+}

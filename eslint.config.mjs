@@ -12,6 +12,9 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Design system de referência (gitignored, material de consulta da
+    // Spec #4c-visual). Não é código do repo; não deve ser lintado.
+    "_reference/**",
   ]),
 ]);
 

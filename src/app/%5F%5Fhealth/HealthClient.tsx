@@ -28,20 +28,20 @@ export function HealthClient({ findPersonAction }: Props) {
           value={phone}
           onChange={(e) => setPhone(e.target.value)}
           placeholder="11 99999 8888"
-          className="flex-1 px-3 py-2 border border-[color:var(--line)] rounded font-mono text-sm bg-transparent text-[color:var(--onyx)]"
+          className="flex-1 px-3 py-2 border border-fh-subtle rounded font-mono text-sm bg-transparent text-fh-primary"
           disabled={isPending}
         />
         <button
           onClick={handleSubmit}
           disabled={isPending || !phone.trim()}
-          className="px-4 py-2 bg-[color:var(--onyx)] text-[color:var(--paper)] rounded text-sm disabled:opacity-50"
+          className="px-4 py-2 bg-fh-onyx text-fh-inverse rounded text-sm disabled:opacity-50"
         >
           {isPending ? 'Buscando...' : 'Buscar'}
         </button>
       </div>
 
       {result && (
-        <pre className="bg-[color:var(--whisper)] p-4 rounded text-xs overflow-auto">
+        <pre className="bg-fh-sunken p-4 rounded text-xs overflow-auto">
           {JSON.stringify(result, null, 2)}
         </pre>
       )}

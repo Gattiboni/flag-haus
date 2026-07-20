@@ -5,6 +5,7 @@ import {
   getCountryCallingCode,
   type CountryCode,
 } from 'libphonenumber-js/max'
+import { Input, Select } from '@/components/ui'
 
 type PhoneFieldProps = {
   phone: string
@@ -22,17 +23,19 @@ function flagEmoji(iso: string): string {
 }
 
 // BR primeiro, resto em ordem alfabética do ISO.
-const COUNTRIES: CountryCode[] = [
-  'BR',
-  ...getCountries().filter((c) => c !== 'BR'),
-]
-
-const controlCls =
-  'bg-transparent border-0 border-b border-[color:var(--onyx)] py-2.5 text-lg text-[color:var(--onyx)] outline-none focus:border-[color:var(--oxblood)] transition-colors'
+const COUNTRY_OPTIONS = ['BR', ...getCountries().filter((c) => c !== 'BR')].map(
+  (iso) => ({
+    value: iso,
+    label: `${flagEmoji(iso as CountryCode)} ${iso} +${getCountryCallingCode(iso as CountryCode)}`,
+  })
+)
 
 /**
- * Seletor de país (bandeira + ISO + DDI) + input de telefone.
+ * Seletor de país (bandeira + ISO + DDI) + campo de telefone.
  * Controlado pelo form pai. Validação (isValidPhoneNumber) fica no Continuar.
+ *
+ * Dívida rastreada (anterior a esta spec): a bandeira é emoji e não renderiza
+ * no Chrome/Windows. Vira SVG numa spec própria.
  */
 export function PhoneField({
   phone,
@@ -42,34 +45,25 @@ export function PhoneField({
   error,
 }: PhoneFieldProps) {
   return (
-    <div className="my-8">
-      <label className="block text-[13px] uppercase tracking-[0.12em] text-[color:var(--granite)] mb-3">
-        WhatsApp com DDD
-      </label>
-      <div className="flex gap-3 items-end">
-        <select
+    <div className="mt-fh-6">
+      <div className="flex gap-fh-3 items-start">
+        <Select
+          label="País"
+          className="shrink-0 max-w-40"
           value={country}
           onChange={(e) => onCountryChange(e.target.value)}
-          className={`${controlCls} shrink-0 max-w-[9rem]`}
-          aria-label="País"
-        >
-          {COUNTRIES.map((iso) => (
-            <option key={iso} value={iso}>
-              {flagEmoji(iso)} {iso} +{getCountryCallingCode(iso)}
-            </option>
-          ))}
-        </select>
-        <input
+          options={COUNTRY_OPTIONS}
+        />
+        <Input
+          label="WhatsApp com DDD"
+          className="flex-1"
           type="tel"
           value={phone}
           onChange={(e) => onPhoneChange(e.target.value)}
           placeholder="11 98334 0447"
-          className={`${controlCls} flex-1 min-w-0`}
+          error={error ?? undefined}
         />
       </div>
-      {error && (
-        <p className="text-[color:var(--oxblood)] text-[13px] mt-2">{error}</p>
-      )}
     </div>
   )
 }

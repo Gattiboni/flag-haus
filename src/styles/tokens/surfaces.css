@@ -1,0 +1,31 @@
+/* ============================================================
+   Flag Haus — Surface / Border / Motion Tokens
+   PROHIBITED (§6.9.3, §7.5): shadows, glows, blurs, gradients,
+   artificial strokes, saturated backgrounds. Affordance is built
+   from WEIGHT, BACKGROUND, thin RESPIRED borders and marked HOVER.
+   ============================================================ */
+
+:root {
+  /* ---- Radii — restrained. Human, not geometric; never pill-heavy. ---- */
+  --fh-radius-sm: 2px;
+  --fh-radius-md: 4px;
+  --fh-radius-lg: 8px; /* cards / modals only */
+
+  /* ---- Borders — thin "linha respirada" (§6.3). The ONLY structural
+     edge the brand permits; no drop-shadow substitute exists. ---- */
+  --fh-border-width: 1px;
+  --fh-border:        #DDDCDA; /* default divider — granite desaturated to whisper */
+  --fh-border-strong: #B4B2AE; /* emphasised field / hover edge */
+  --fh-border-onyx:   var(--fh-onyx); /* focus / active edge */
+
+  /* ---- Focus ring — a crisp LINE (outline), never a glow.
+     Outline is honest structure, not a shadow effect. ---- */
+  --fh-focus-ring: 2px solid var(--fh-onyx);
+  --fh-focus-offset: 2px;
+
+  /* ---- Motion (§6.3 "ritmo lento") — calm fades, no bounce ---- */
+  --fh-ease: cubic-bezier(0.22, 0.61, 0.36, 1); /* @kind other */
+  --fh-transition-fast: 120ms var(--fh-ease);
+  --fh-transition:      180ms var(--fh-ease);
+  --fh-transition-slow: 260ms var(--fh-ease);
+}

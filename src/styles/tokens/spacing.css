@@ -1,0 +1,37 @@
+/* ============================================================
+   Flag Haus — Spacing Tokens  (§6.3 "Espaço negativo como estrutura")
+   Scale on a 4px base, stepping through 8 for larger gaps.
+   Rationale: small steps (4–12) tune control internals; the 8-multiples
+   (16–96) build the generous negative space the brand treats as pause.
+   ============================================================ */
+
+:root {
+  --fh-space-1:  4px;   /* hairline gap — icon↔label                    */
+  --fh-space-2:  8px;   /* tight inner padding                          */
+  --fh-space-3:  12px;  /* control inner padding (compact)              */
+  --fh-space-4:  16px;  /* base rhythm — default gap                    */
+  --fh-space-5:  24px;  /* comfortable control padding / card padding   */
+  --fh-space-6:  32px;  /* block separation                            */
+  --fh-space-7:  48px;  /* section separation (respiro)                */
+  --fh-space-8:  64px;  /* major section / page top on mobile          */
+  --fh-space-9:  96px;  /* full-breath spacing (§ headers, hero)       */
+
+  /* ---- Density (golden rule: same component, adaptive air) ----
+     Public form = comfortable. Admin panel = compact.
+     Scope a subtree with [data-density="compact"] to switch. */
+  --fh-control-pad-y: var(--fh-space-3);  /* 12px comfortable default */
+  --fh-control-pad-x: var(--fh-space-4);  /* 16px */
+  --fh-control-gap:   var(--fh-space-4);  /* 16px between fields */
+  --fh-card-pad:      var(--fh-space-5);  /* 24px */
+
+  /* Minimum interactive height — 44px hit target (mobile, sensitive data) */
+  --fh-hit-min: 44px;
+}
+
+[data-density="compact"] {
+  --fh-control-pad-y: var(--fh-space-2); /* 8px */
+  --fh-control-pad-x: var(--fh-space-3); /* 12px */
+  --fh-control-gap:   var(--fh-space-3); /* 12px */
+  --fh-card-pad:      var(--fh-space-4); /* 16px */
+  --fh-hit-min: 36px; /* mouse target — still generous, denser than mobile */
+}

@@ -69,17 +69,17 @@ export function EventList({
   actorEmails: Record<string, string>
 }) {
   if (events.length === 0) {
-    return <p className="text-sm text-[color:var(--granite)]">Sem eventos.</p>
+    return <p className="fh-micro">Sem eventos.</p>
   }
 
   return (
-    <ul className="flex flex-col gap-2">
+    <ul className="flex flex-col gap-fh-2">
       {events.map((e) => {
         const who = e.actor_id ? actorEmails[e.actor_id] : ''
         return (
-          <li key={e.id} className="text-sm border-b border-[color:var(--line)] pb-2">
+          <li key={e.id} className="border-b border-fh-subtle pb-fh-2">
             <span>{EVENT_LABELS[e.event_type] ?? e.event_type}</span>
-            <span className="block text-xs text-[color:var(--granite)]">
+            <span className="fh-micro block">
               {who ? `${who} · ` : ''}
               {formatRelativeTime(e.occurred_at)}
             </span>

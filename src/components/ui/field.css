@@ -1,0 +1,87 @@
+/* ============================================================
+   Flag Haus — Gramática de campo (compartilhada)
+   Input, Textarea, Select e RadioGroup falam a mesma língua:
+   label medium micro, controle com borda fina, mensagem curta
+   embaixo. Estado se lê pela BORDA + a linha de mensagem —
+   nunca por brilho, sombra ou fundo saturado.
+   ============================================================ */
+
+.fh-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--fh-space-2);
+  font-family: var(--fh-font-body);
+  min-width: 0;
+}
+
+.fh-field__label {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--fh-space-3);
+  font-family: var(--fh-font-heading);
+  font-size: var(--fh-text-micro);
+  font-weight: var(--fh-weight-medium);
+  letter-spacing: var(--fh-tracking-heading);
+  color: var(--fh-text-primary);
+}
+
+.fh-field__required {
+  color: var(--fh-oxblood);
+  margin-left: 3px;
+}
+
+.fh-field__optional {
+  color: var(--fh-text-secondary);
+  font-weight: var(--fh-weight-regular);
+}
+
+.fh-field__message {
+  font-size: var(--fh-text-micro);
+  line-height: var(--fh-leading-body);
+  color: var(--fh-text-secondary);
+}
+
+.fh-field__message[data-error='true'] {
+  color: var(--fh-danger-text);
+}
+
+/* ---- Base comum dos controles preenchíveis ---- */
+.fh-control {
+  width: 100%;
+  min-height: var(--fh-hit-min);
+  padding: var(--fh-control-pad-y) var(--fh-control-pad-x);
+  background: var(--fh-field-bg);
+  border: var(--fh-border-width) solid var(--fh-field-border);
+  border-radius: var(--fh-radius-md);
+  font-family: var(--fh-font-body);
+  font-size: var(--fh-text-body);
+  line-height: var(--fh-leading-body);
+  color: var(--fh-text-primary);
+  transition: border-color var(--fh-transition);
+}
+
+.fh-control::placeholder {
+  color: var(--fh-text-muted);
+}
+
+.fh-control:hover:not(:disabled):not([data-error='true']) {
+  border-color: var(--fh-border-active);
+}
+
+.fh-control:focus-visible {
+  border-color: var(--fh-field-border-focus);
+  outline: var(--fh-focus-ring);
+  outline-offset: var(--fh-focus-offset);
+}
+
+.fh-control[data-error='true'] {
+  border-color: var(--fh-field-border-error);
+}
+
+.fh-control:disabled {
+  background: var(--fh-surface-inset);
+  border-color: var(--fh-border-subtle);
+  color: var(--fh-text-muted);
+  cursor: not-allowed;
+}

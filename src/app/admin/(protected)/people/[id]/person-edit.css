@@ -1,0 +1,66 @@
+/* ============================================================
+   PersonEdit — detalhes visuais que não são componente do padrão:
+   o gatilho do cadeado e o menu que ele abre. Tudo em token.
+   O menu antigo usava shadow-lg; sombra é proibida (§6.9.3), então
+   ele se apoia em fundo branco + borda fina, como todo o resto.
+   ============================================================ */
+
+/* O cadeado nasce oxblood: ele é o sinal de que aquele campo está travado.
+   O lápis fica granite (ver .fh-person-field__read) — quem chama atenção é a
+   exceção, não a regra. */
+.fh-lock-trigger {
+  color: var(--fh-oxblood);
+}
+
+.fh-lock-trigger:hover:not(:disabled) {
+  color: var(--fh-oxblood-700);
+}
+
+.fh-person-menu {
+  position: absolute;
+  right: 0;
+  top: 100%;
+  z-index: 10;
+  min-width: 10rem;
+  margin-top: var(--fh-space-1);
+  padding: var(--fh-space-1) 0;
+  background: var(--fh-surface);
+  border: var(--fh-border-width) solid var(--fh-border-subtle);
+  border-radius: var(--fh-radius-md);
+}
+
+.fh-person-menu__item {
+  display: block;
+  width: 100%;
+  padding: var(--fh-space-2) var(--fh-space-3);
+  border: none;
+  background: transparent;
+  text-align: left;
+  font-family: var(--fh-font-body);
+  font-size: var(--fh-text-micro);
+  color: var(--fh-text-primary);
+  cursor: pointer;
+  transition: background var(--fh-transition-fast);
+}
+
+.fh-person-menu__item:hover {
+  background: var(--fh-surface-sunken);
+}
+
+.fh-person-menu__item--danger {
+  color: var(--fh-danger-text);
+}
+
+/* Linha em modo leitura: o valor tem que parecer texto, não campo. */
+.fh-person-field__read {
+  width: 100%;
+  padding: var(--fh-control-pad-y) 0;
+  border-bottom: var(--fh-border-width) solid var(--fh-border-subtle);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.fh-person-field__read[data-empty='true'] {
+  color: var(--fh-text-muted);
+}

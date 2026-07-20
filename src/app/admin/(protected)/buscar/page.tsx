@@ -2,6 +2,7 @@ import Link from 'next/link'
 import { requireOperator } from '@/lib/auth/gate'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { formatPhoneBR } from '@/lib/format'
+import { Alert, Card } from '@/components/ui'
 
 /**
  * Busca de pessoa por nome ou telefone (#4c §6). Sem client search, sem debounce:
@@ -30,9 +31,7 @@ export default async function BuscarPage({
     return (
       <div>
         <Header q={rawQ ?? ''} />
-        <p className="text-sm text-[color:var(--granite)]">
-          Digite ao menos 3 caracteres.
-        </p>
+        <p className="fh-lead">Digite ao menos 3 caracteres.</p>
       </div>
     )
   }
@@ -67,9 +66,9 @@ export default async function BuscarPage({
     return (
       <div>
         <Header q={q} />
-        <p className="text-sm text-[color:var(--oxblood)]" role="alert">
-          Não foi possível buscar agora.
-        </p>
+        <Alert variant="warning" title="Não foi possível buscar agora">
+          Tenta de novo em instantes.
+        </Alert>
       </div>
     )
   }
@@ -81,29 +80,32 @@ export default async function BuscarPage({
       <Header q={q} />
 
       {hits.length === 0 ? (
-        <p className="text-sm text-[color:var(--granite)]">Nada encontrado.</p>
+        <p className="fh-lead">Nada encontrado.</p>
       ) : (
         <>
-          <ul>
-            {hits.map((p) => (
-              <li key={p.id} className="border-b border-[color:var(--line)] py-3">
-                <Link
-                  href={`/admin/people/${p.id}`}
-                  className="flex items-baseline justify-between gap-3 group"
+          <Card padded={false}>
+            <ul>
+              {hits.map((p, i) => (
+                <li
+                  key={p.id}
+                  className={i > 0 ? 'border-t border-fh-subtle' : undefined}
                 >
-                  <span className="underline decoration-[color:var(--line)] underline-offset-4 group-hover:decoration-[color:var(--onyx)] transition-colors">
-                    {p.name?.trim() || '(sem nome)'}
-                  </span>
-                  <span className="text-sm text-[color:var(--granite)] tabular-nums whitespace-nowrap">
-                    {formatPhoneBR(p.phone)}
-                  </span>
-                </Link>
-              </li>
-            ))}
-          </ul>
+                  <Link
+                    href={`/admin/people/${p.id}`}
+                    className="flex items-baseline justify-between gap-fh-3 px-fh-4 py-fh-3 no-underline hover:bg-fh-sunken transition-colors"
+                  >
+                    <span>{p.name?.trim() || '(sem nome)'}</span>
+                    <span className="fh-micro fh-tnum whitespace-nowrap">
+                      {formatPhoneBR(p.phone)}
+                    </span>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </Card>
 
           {hits.length === LIMIT && (
-            <p className="mt-4 text-xs text-[color:var(--granite)]">
+            <p className="fh-micro mt-fh-4">
               Mostrando os primeiros {LIMIT}. Refine a busca.
             </p>
           )}
@@ -115,14 +117,9 @@ export default async function BuscarPage({
 
 function Header({ q }: { q: string }) {
   return (
-    <h1 className="font-[family-name:var(--font-fraunces)] text-2xl sm:text-3xl mb-8">
+    <h1 className="mb-fh-5">
       Busca
-      {q.trim() && (
-        <span className="text-[color:var(--granite)] text-base font-[family-name:var(--font-lato)]">
-          {' '}
-          — “{q.trim()}”
-        </span>
-      )}
+      {q.trim() && <span className="text-fh-secondary"> — “{q.trim()}”</span>}
     </h1>
   )
 }

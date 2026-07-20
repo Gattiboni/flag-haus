@@ -1,0 +1,104 @@
+/* ============================================================
+   Flag Haus — Semantic Tokens
+   Meaning-first aliases mapped onto the raw palette. Components read
+   ONLY these; never the raw --fh-onyx etc. directly.
+
+   TWO DECISIONS worth reading (see readme.md "The central tension"):
+
+   1. DANGER = OXBLOOD. Oxblood is the brand's colour of presença,
+      emoção e densidade (§6.5.3) reserved by the 10/90 rule for the
+      highest-emotion moment. A critical health/allergy alert IS that
+      moment, so danger and the primary CTA share the hue. They never
+      read as ambiguous because they are disambiguated by TREATMENT
+      (a solid block button vs. a full-bleed bordered alert), not colour.
+
+   2. NO GREEN. The palette has no green, so "success" is expressed with
+      onyx + a check mark + calm framing — never an off-palette green.
+      "Warning" borrows Terracota (corpo/narrative), used as fill/edge,
+      never as body text (§6.5.4).
+   ============================================================ */
+
+:root {
+  /* ---- Text ---- */
+  --fh-text-primary:   var(--fh-onyx);      /* body & headings          */
+  --fh-text-secondary: var(--fh-granite);   /* support; never micro-type */
+  --fh-text-muted:     #8C8C8C;             /* placeholder / disabled    */
+  --fh-text-inverse:   var(--fh-white);     /* on dark surfaces          */
+  --fh-text-accent:    var(--fh-oxblood);   /* rare emphasis word        */
+
+  /* ---- Surfaces (elevation via BACKGROUND, never shadow) ---- */
+  --fh-surface:          var(--fh-white);   /* raised card — reads above field */
+  --fh-surface-sunken:   var(--fh-whisper); /* page field / negative space     */
+  --fh-surface-inset:    var(--fh-gray-100);/* nested well / read-only field   */
+  --fh-surface-inverse:  var(--fh-onyx);    /* dark bars, executed chip        */
+
+  /* ---- Border ---- */
+  --fh-border-subtle: var(--fh-border);
+  --fh-border-hover:  var(--fh-border-strong);
+  --fh-border-active: var(--fh-border-onyx);
+
+  /* ---- Action: primary (Oxblood, 10/90) ---- */
+  --fh-action-primary:        var(--fh-oxblood);
+  --fh-action-primary-hover:  var(--fh-oxblood-700);
+  --fh-action-primary-text:   var(--fh-white);
+
+  /* ---- Action: secondary (neutral, bordered) ---- */
+  --fh-action-secondary-bg:      var(--fh-white);
+  --fh-action-secondary-bg-hover:var(--fh-whisper);
+  --fh-action-secondary-border:  var(--fh-border-strong);
+  --fh-action-secondary-text:    var(--fh-onyx);
+
+  /* ---- Action: tertiary (link) ---- */
+  --fh-action-tertiary-text:       var(--fh-onyx);
+  --fh-action-tertiary-text-hover: var(--fh-oxblood);
+
+  /* ---- Feedback: danger / critical ---- */
+  --fh-danger:            var(--fh-oxblood);
+  --fh-danger-hover:      var(--fh-oxblood-700);
+  --fh-danger-surface:    var(--fh-oxblood-050);
+  --fh-danger-text:       var(--fh-oxblood-700);
+  --fh-danger-on-solid:   var(--fh-white);
+
+  /* ---- Feedback: warning (Terracota, narrative) ---- */
+  --fh-warning:         var(--fh-terracota);
+  --fh-warning-surface: var(--fh-terracota-050);
+  --fh-warning-text:    var(--fh-terracota-700);
+
+  /* ---- Feedback: info (neutral onyx/granite) ---- */
+  --fh-info:         var(--fh-graphite-100);
+  --fh-info-surface: var(--fh-whisper);
+  --fh-info-text:    var(--fh-onyx);
+
+  /* ---- Feedback: success (onyx-based, NO green) ---- */
+  --fh-success:         var(--fh-onyx);
+  --fh-success-surface: var(--fh-gray-100);
+  --fh-success-text:    var(--fh-onyx);
+
+  /* ---- Status chips (workflow: a orçar → executado / cancelado) ---- */
+  --fh-status-toquote-bg:     var(--fh-whisper);   /* a orçar   — pending  */
+  --fh-status-toquote-border: var(--fh-gray-200);
+  --fh-status-toquote-text:   var(--fh-granite);
+
+  --fh-status-quoted-bg:      var(--fh-gray-100);  /* orçado    — advanced */
+  --fh-status-quoted-border:  var(--fh-gray-200);
+  --fh-status-quoted-text:    var(--fh-graphite-200);
+
+  --fh-status-confirmed-bg:     var(--fh-terracota-050); /* confirmado — warm affirm */
+  --fh-status-confirmed-border: var(--fh-terracota);
+  --fh-status-confirmed-text:   var(--fh-terracota-700);
+
+  --fh-status-executed-bg:    var(--fh-onyx);      /* executado — complete, calm */
+  --fh-status-executed-border:var(--fh-onyx);
+  --fh-status-executed-text:  var(--fh-white);
+
+  --fh-status-cancelled-bg:     var(--fh-whisper); /* cancelado — receded */
+  --fh-status-cancelled-border: var(--fh-gray-200);
+  --fh-status-cancelled-text:   var(--fh-granite);
+
+  /* ---- Field-level state ---- */
+  --fh-field-bg:            var(--fh-white);
+  --fh-field-border:        var(--fh-border-strong);
+  --fh-field-border-focus:  var(--fh-onyx);
+  --fh-field-border-error:  var(--fh-oxblood);
+  --fh-field-border-success:var(--fh-onyx);
+}

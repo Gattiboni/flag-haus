@@ -1,0 +1,66 @@
+/* ============================================================
+   Flag Haus — Input
+   A casca (.fh-input__shell) carrega a borda e o foco; o <input>
+   interno é transparente, para que prefixo/sufixo (R$, cm)
+   morem dentro do mesmo retângulo.
+   ============================================================ */
+
+.fh-input__shell {
+  display: flex;
+  align-items: center;
+  gap: var(--fh-space-2);
+  cursor: text;
+}
+
+.fh-input__shell:focus-within {
+  border-color: var(--fh-field-border-focus);
+  outline: var(--fh-focus-ring);
+  outline-offset: var(--fh-focus-offset);
+}
+
+.fh-input__shell[data-error='true']:focus-within {
+  border-color: var(--fh-field-border-error);
+}
+
+.fh-input__shell[data-disabled='true'] {
+  background: var(--fh-surface-inset);
+  border-color: var(--fh-border-subtle);
+  cursor: not-allowed;
+}
+
+.fh-input__field {
+  flex: 1;
+  min-width: 0;
+  padding: 0;
+  border: none;
+  outline: none;
+  background: transparent;
+  font-family: var(--fh-font-body);
+  font-size: var(--fh-text-body);
+  line-height: var(--fh-leading-body);
+  color: var(--fh-text-primary);
+}
+
+.fh-input__field::placeholder {
+  color: var(--fh-text-muted);
+}
+
+.fh-input__field:disabled {
+  color: var(--fh-text-muted);
+  cursor: not-allowed;
+  -webkit-text-fill-color: var(--fh-text-muted);
+  opacity: 1;
+}
+
+.fh-input__affix {
+  flex-shrink: 0;
+  font-size: var(--fh-text-body);
+  color: var(--fh-text-secondary);
+  user-select: none;
+}
+
+.fh-input__icon {
+  display: inline-flex;
+  flex-shrink: 0;
+  color: var(--fh-text-secondary);
+}

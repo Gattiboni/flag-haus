@@ -1,0 +1,82 @@
+/* ============================================================
+   Flag Haus — Base element defaults.
+   Light reset + brand typography wiring. Kept minimal; components
+   own their own styling. Everything below reads semantic tokens.
+   ============================================================ */
+
+*, *::before, *::after { box-sizing: border-box; }
+
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+body {
+  margin: 0;
+  font-family: var(--fh-font-body);
+  font-size: var(--fh-text-body);
+  line-height: var(--fh-leading-body);
+  font-weight: var(--fh-weight-regular);
+  color: var(--fh-text-primary);
+  background: var(--fh-surface-sunken);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* Headings — Inter, tightened tracking, calm weights (no 700) */
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--fh-font-heading);
+  font-weight: var(--fh-weight-medium);
+  letter-spacing: var(--fh-tracking-heading);
+  line-height: var(--fh-leading-tight);
+  color: var(--fh-text-primary);
+  margin: 0;
+  text-wrap: balance;
+}
+h1 { font-size: var(--fh-text-h1); }
+h2 { font-size: var(--fh-text-h2); }
+h3 { font-size: var(--fh-text-h3); line-height: var(--fh-leading-snug); }
+h4 { font-size: var(--fh-text-h4); line-height: var(--fh-leading-snug); }
+
+p { margin: 0; text-wrap: pretty; }
+
+/* Links — brand default; oxblood only on hover as a gentle accent. */
+a {
+  color: var(--fh-action-tertiary-text);
+  text-decoration: underline;
+  text-underline-offset: 0.18em;
+  text-decoration-thickness: 1px;
+  text-decoration-color: var(--fh-border-strong);
+  transition: color var(--fh-transition-fast),
+              text-decoration-color var(--fh-transition-fast);
+}
+a:hover {
+  color: var(--fh-action-tertiary-text-hover);
+  text-decoration-color: currentColor;
+}
+a:focus-visible {
+  outline: var(--fh-focus-ring);
+  outline-offset: var(--fh-focus-offset);
+  border-radius: var(--fh-radius-sm);
+}
+
+/* Selection — restrained, on-palette */
+::selection { background: var(--fh-beige-100); color: var(--fh-onyx); }
+
+/* Eyebrow / versalete helper */
+.fh-eyebrow {
+  font-family: var(--fh-font-heading);
+  font-size: var(--fh-text-micro);
+  font-weight: var(--fh-weight-medium);
+  letter-spacing: var(--fh-tracking-caps);
+  text-transform: uppercase;
+  color: var(--fh-text-secondary);
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
+}

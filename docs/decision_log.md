@@ -1380,4 +1380,83 @@ sobre-travou), e a dívida cosmética do telefone está declarada.
 
 ---
 
+## Decision #027 — 2026-07-15
+
+### Decisão: Adoção do Design System Flag Haus no CRM (Spec #4c-visual)
+
+**Contexto** O admin do CRM sofria de crise de affordance: botões não pareciam
+botões, hierarquia visual ambígua durante a rotina de tatuagem do Julio. A
+decisão #026 resolveu o modelo de interação (lápis/cadeado condicional), mas a
+estética minimalista sem sinalização clara permanecia. Simultaneamente, um
+Design System oficial foi gerado (Claude Design + Branding Book 11/2025): 5
+camadas de tokens CSS, 10 componentes com `.prompt.md` de cada, UI kits de
+referência, regras de aplicação — todos ancorados em decisões documentadas do
+book (paleta §6.5, tipografia §6.6, espaço §6.3, proibições §6.9.3).
+
+**Decisão adotada**
+
+Integração completa em modo "padrão em vigor": refatorar tudo que existe, criar
+apenas componentes já usados, qualquer JSX/estilo novo daqui pra frente nasce no
+padrão.
+
+1. **Tokens em 5 camadas CSS separadas** (colors, typography, spacing, surfaces,
+   semantic) em `src/styles/tokens/`. Consumidos por `globals.css` via `@import`
+   direto (Turbopack não iça `@import` aninhado). Zero hex hardcoded fora dessas
+   camadas.
+2. **Fontes via `next/font/google`** (Inter, Lato, Bebas Neue) — melhor prática
+   Next.js (evita FOIT/FOUT, otimiza LCP). Descoberta durante execução;
+   divergência aprovada do CSS `@import` original do design system.
+3. **10 componentes UI** em `src/components/ui/*`, cada um com CSS próprio
+   consumindo tokens. Barrel `index.ts` re-exporta. Sem lib externa de
+   componentes (nem shadcn, nem MUI). React idiomatic, não o namespace
+   `window.FlagHausDesignSystem_cded98` do bundle standalone.
+4. **`OptionPills` mantido como wrapper de `RadioGroup`** — segmented control
+   não existe no design system e a regra de adoção proíbe improvisar componente.
+   Caso de uso bate 1:1 com RadioGroup (escolha única + poucas opções). API do
+   arquivo preservada, ~20 chamadas nos wizards intocadas.
+5. **Tailwind continua no repo, mas com escala do DS**. Escala de espaçamento
+   apelidada com prefixo `fh-` via `@theme` em `globals.css` (`p-fh-5`,
+   `border-fh-subtle`, `rounded-fh-md`). Não inventa valor — apelida token.
+   Prefixo evita colisão com a default do Tailwind. Divergência do texto
+   original da spec (que dizia "Tailwind pra layout, tokens pra appearance") —
+   melhor solução, mais consistente e ergonômica.
+6. **`lucide-react` como biblioteca de ícones** (dep nova autorizada, versão
+   pinada). Flagged pelo readme do design system: stroke 1.5px consistente com a
+   fineline da marca.
+7. **Hierarquia de alerta clínico:** alergia é o único `critical` (Oxblood
+   pleno). Medicação, diabetes, pele, gravidez são `warning` (Terracota).
+   Consent de saúde do step 15 usa modificador novo `.fh-card--accent` (borda
+   oxblood 1.5px) — não `critical`, pra não gastar o orçamento 10/90 duas vezes.
+   Filosofia: se tudo grita, nada grita.
+8. **`<Dialog variant="danger">` substitui `window.confirm()` do destravar** —
+   foco automático no botão de confirmar, Esc fecha, foco volta ao cadeado.
+   Comportamento equivalente ao `confirm()` (chama `unlockField()` ou fecha),
+   visual do padrão.
+9. **`confirm()` do telefone no `<PersonEdit>` permanece nativo.** Substituição
+   exigiria reestruturar o fluxo síncrono do `handleSave` — proibido pela spec.
+   Dívida rastreada.
+
+**Fluxo de execução aprovado** Codinho executa as 5 fases da spec sem pausar por
+commit intermediário. Ao fim, valida α (build/lint/moas/grep) e reporta ao Alan.
+Alan valida β no navegador (13 passos da §5.3 + varredura estética). Se
+aprovado, UM commit único.
+
+**Validação**
+
+- α: `tsc --noEmit`, `next build`, `eslint` limpos (2 erros pré-existentes em
+  `CadastroForm.tsx` fora do escopo). Grep de hex/box-shadow/gradient/blur em
+  `src/` — zero violações. `moas:check` passa (banco intocado).
+- β manual: form público (wizard completo, radio group substituindo pill sem
+  regressão de UX) + admin (densidade compact visível, alerta crítico de alergia
+  impossível de ignorar, `<PersonEdit>` com Dialog custom funcionando
+  ponta-a-ponta). Focus outline sólido 2px onyx em toda tela.
+
+**Impacto**
+
+- Bloco 4 fecha visualmente pronto pra apresentação ao Julio (falta #4d — job
+  manual — pra fechar o bloco funcional)
+- Regra de adoção em vigor documentada em `docs/design-system/adoption.md`:
+
+---
+
 _(Novas entradas devem seguir este mesmo formato.)_

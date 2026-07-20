@@ -1,0 +1,36 @@
+/* ============================================================
+   Flag Haus — Select
+   <select> nativo com a gramática de campo. Sem dropdown custom:
+   honesto, acessível, calmo. O chevron é desenhado como SVG de
+   linha fina (1.25px) — herda a cor do token via currentColor,
+   por isso não existe hex nenhum neste arquivo.
+   ============================================================ */
+
+.fh-select {
+  position: relative;
+  display: flex;
+}
+
+.fh-select__control {
+  appearance: none;
+  -webkit-appearance: none;
+  padding-right: calc(var(--fh-control-pad-x) + 22px);
+  cursor: pointer;
+}
+
+.fh-select__control[data-placeholder='true'] {
+  color: var(--fh-text-muted);
+}
+
+.fh-select__chevron {
+  position: absolute;
+  top: 50%;
+  right: var(--fh-control-pad-x);
+  transform: translateY(-50%);
+  pointer-events: none;
+  color: var(--fh-text-secondary);
+}
+
+.fh-select__control:disabled + .fh-select__chevron {
+  color: var(--fh-text-muted);
+}

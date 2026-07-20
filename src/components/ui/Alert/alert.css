@@ -1,0 +1,100 @@
+/* ============================================================
+   Flag Haus — Alert
+   Quatro variantes que escalam em PESO, não em decoração.
+   `critical` é o único lugar do sistema onde o Oxblood inunda uma
+   superfície inteira: é o caso de segurança (alergia na anamnese) e
+   precisa ser impossível de ignorar. A regra 10/90 gasta aqui o
+   orçamento todo — por isso não se usa `critical` para outra coisa.
+   ============================================================ */
+
+.fh-alert {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--fh-space-3);
+  padding: var(--fh-space-4);
+  border: var(--fh-border-width) solid var(--fh-border-hover);
+  border-radius: var(--fh-radius-md);
+  background: var(--fh-info-surface);
+  color: var(--fh-info-text);
+  font-family: var(--fh-font-body);
+}
+
+.fh-alert--success {
+  background: var(--fh-success-surface);
+  border-color: var(--fh-success);
+  color: var(--fh-success-text);
+}
+
+.fh-alert--warning {
+  background: var(--fh-warning-surface);
+  border-color: var(--fh-warning);
+  color: var(--fh-warning-text);
+}
+
+.fh-alert--critical {
+  padding: var(--fh-space-5);
+  background: var(--fh-danger);
+  border-width: 1.5px;
+  border-color: var(--fh-danger);
+  color: var(--fh-danger-on-solid);
+}
+
+.fh-alert__mark {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 22px;
+  height: 22px;
+  margin-top: 1px;
+  border: var(--fh-border-width) solid currentColor;
+  border-radius: 50%;
+  font-family: var(--fh-font-heading);
+  font-size: var(--fh-text-micro);
+  font-weight: var(--fh-weight-medium);
+  line-height: 1;
+}
+
+.fh-alert--critical .fh-alert__mark {
+  width: 26px;
+  height: 26px;
+}
+
+/* Com ícone Lucide o círculo sai: o traço fino já é a marca. */
+.fh-alert__mark--icon {
+  width: auto;
+  height: auto;
+  border: none;
+  border-radius: 0;
+  margin-top: 2px;
+}
+
+.fh-alert__body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.fh-alert__title {
+  font-family: var(--fh-font-heading);
+  font-size: var(--fh-text-body);
+  font-weight: var(--fh-weight-medium);
+  letter-spacing: var(--fh-tracking-heading);
+  color: inherit;
+}
+
+.fh-alert--critical .fh-alert__title {
+  font-size: var(--fh-text-h4);
+  font-weight: var(--fh-weight-semibold);
+}
+
+.fh-alert__content {
+  font-size: var(--fh-text-micro);
+  line-height: var(--fh-leading-body);
+  color: inherit;
+}
+
+.fh-alert--critical .fh-alert__content {
+  font-size: var(--fh-text-body);
+}

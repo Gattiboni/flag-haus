@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, type ReactNode } from 'react'
+import { Button, Input } from '@/components/ui'
 
 type Choice = 'none' | 'confirm' | 'edit' | 'remove'
 
@@ -10,27 +11,23 @@ type ConfirmFieldProps = {
   /** Valor atual (dono é o form pai; começa = valor do banco). */
   value: string
   onChange: (value: string) => void
-  /** Rótulo do pill de confirmação: "Confirmar" (default) | "Manter". */
+  /** Rótulo do botão de confirmação: "Confirmar" (default) | "Manter". */
   confirmLabel?: string
-  /** Rótulo do pill de edição: "Corrigir" | "Atualizar" | "Adicionar / atualizar". */
+  /** Rótulo do botão de edição: "Corrigir" | "Atualizar" | "Adicionar / atualizar". */
   editLabel?: string
   allowRemove?: boolean
   inputType?: string
-  /** Editor custom (ex.: GeoFields, textarea). Default = input simples. */
+  /** Editor custom (ex.: GeoFields, Textarea). Default = Input simples. */
   renderEditor?: (value: string, onChange: (v: string) => void) => ReactNode
 }
 
-const pill =
-  'rounded-full border border-[color:var(--onyx)] px-5 py-3 text-sm transition-colors cursor-pointer'
-const pillOn = 'bg-[color:var(--onyx)] text-[color:var(--white)]'
-const pillOff = 'text-[color:var(--onyx)] hover:bg-[color:var(--whisper)]'
-
-const inputCls =
-  'w-full bg-transparent border-0 border-b border-[color:var(--onyx)] py-2.5 text-lg text-[color:var(--onyx)] outline-none focus:border-[color:var(--oxblood)] transition-colors'
-
 /**
  * Confirmação leve com edição inline: Confirmar mantém o valor do banco;
- * o pill de edição abre o editor no mesmo step; Remover (opcional) esvazia.
+ * o botão de edição abre o editor no mesmo step; Remover (opcional) esvazia.
+ *
+ * São AÇÕES, não uma escolha de dado — por isso continuam botões (e não
+ * viraram RadioGroup como o OptionPills). A opção ativa fica `primary`;
+ * as outras, `secondary`.
  */
 export function ConfirmField({
   label,
@@ -46,56 +43,50 @@ export function ConfirmField({
 
   return (
     <div>
-      <h2 className="text-2xl leading-snug mb-5">{label}</h2>
+      <h2>{label}</h2>
 
-      <div className="flex flex-wrap gap-3 mt-4">
-        <button
-          type="button"
+      <div className="flex flex-wrap gap-fh-3 mt-fh-5">
+        <Button
+          variant={choice === 'confirm' ? 'primary' : 'secondary'}
           onClick={() => setChoice('confirm')}
-          className={`${pill} ${choice === 'confirm' ? pillOn : pillOff}`}
         >
           {confirmLabel}
-        </button>
-        <button
-          type="button"
+        </Button>
+        <Button
+          variant={choice === 'edit' ? 'primary' : 'secondary'}
           onClick={() => setChoice('edit')}
-          className={`${pill} ${choice === 'edit' ? pillOn : pillOff}`}
         >
           {editLabel}
-        </button>
+        </Button>
         {allowRemove && (
-          <button
-            type="button"
+          <Button
+            variant={choice === 'remove' ? 'primary' : 'secondary'}
             onClick={() => {
               onChange('')
               setChoice('remove')
             }}
-            className={`${pill} ${choice === 'remove' ? pillOn : pillOff}`}
           >
             Remover
-          </button>
+          </Button>
         )}
       </div>
 
       {choice === 'edit' && (
-        <div className="my-8">
+        <div className="mt-fh-6">
           {renderEditor ? (
             renderEditor(value, onChange)
           ) : (
-            <input
+            <Input
               type={inputType}
               value={value}
               onChange={(e) => onChange(e.target.value)}
-              className={inputCls}
               autoFocus
             />
           )}
         </div>
       )}
 
-      {choice === 'remove' && (
-        <p className="text-[color:var(--granite)] text-[15px] mt-6">Removido.</p>
-      )}
+      {choice === 'remove' && <p className="fh-lead mt-fh-5">Removido.</p>}
     </div>
   )
 }

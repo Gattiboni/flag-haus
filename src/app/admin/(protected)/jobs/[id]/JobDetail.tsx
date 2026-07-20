@@ -3,6 +3,7 @@
 import { useState, useTransition } from 'react'
 import { updateJob, type UpdateJobInput } from '@/app/actions/admin-jobs'
 import { JOB_STATUSES, type JobStatus } from '@/lib/domain/job-status'
+import { Button, Input, Select, Textarea } from '@/components/ui'
 
 /**
  * Bloco editável do detalhe do job (#4c §4). Mesmo padrão da fila (#4b): estado
@@ -134,120 +135,90 @@ export function JobDetail({
   }
 
   return (
-    <div className="flex flex-col gap-4">
-      <Field label="Status">
-        <select
-          value={status}
+    <div className="flex flex-col gap-fh-4">
+      <Select
+        label="Status"
+        value={status}
+        disabled={saving}
+        onChange={(e) => setStatus(e.target.value as JobStatus)}
+        options={JOB_STATUSES.map((s) => ({ value: s, label: STATUS_LABELS[s] }))}
+      />
+
+      <div className="grid grid-cols-2 gap-fh-4">
+        <Input
+          label="Orçado"
+          prefix="R$"
+          type="text"
+          inputMode="decimal"
+          placeholder="—"
+          value={quotedPrice}
           disabled={saving}
-          onChange={(e) => setStatus(e.target.value as JobStatus)}
-          className="w-full border-b border-[color:var(--line)] bg-transparent py-1 focus:outline-none focus:border-[color:var(--onyx)] transition-colors disabled:opacity-50 cursor-pointer"
-        >
-          {JOB_STATUSES.map((s) => (
-            <option key={s} value={s}>
-              {STATUS_LABELS[s]}
-            </option>
-          ))}
-        </select>
-      </Field>
-
-      <div className="grid grid-cols-2 gap-4">
-        <Field label="Orçado (R$)">
-          <TextInput
-            value={quotedPrice}
-            onChange={setQuotedPrice}
-            disabled={saving}
-            numeric
-          />
-        </Field>
-        <Field label="Final (R$)">
-          <TextInput
-            value={finalPrice}
-            onChange={setFinalPrice}
-            disabled={saving}
-            numeric
-          />
-        </Field>
-      </div>
-
-      <div className="grid grid-cols-2 gap-4">
-        <Field label="Região do corpo">
-          <TextInput value={bodyRegion} onChange={setBodyRegion} disabled={saving} />
-        </Field>
-        <Field label="Tamanho (cm)">
-          <TextInput value={sizeCm} onChange={setSizeCm} disabled={saving} numeric />
-        </Field>
-      </div>
-
-      <Field label="Estilo">
-        <TextInput value={style} onChange={setStyle} disabled={saving} />
-      </Field>
-
-      <Field label="Descrição">
-        <textarea
-          value={description}
-          disabled={saving}
-          rows={3}
-          onChange={(e) => setDescription(e.target.value)}
-          className="w-full border-b border-[color:var(--line)] bg-transparent py-1 focus:outline-none focus:border-[color:var(--onyx)] transition-colors disabled:opacity-50 resize-y"
+          onChange={(e) => setQuotedPrice(e.target.value)}
         />
-      </Field>
+        <Input
+          label="Final"
+          prefix="R$"
+          type="text"
+          inputMode="decimal"
+          placeholder="—"
+          value={finalPrice}
+          disabled={saving}
+          onChange={(e) => setFinalPrice(e.target.value)}
+        />
+      </div>
+
+      <div className="grid grid-cols-2 gap-fh-4">
+        <Input
+          label="Região do corpo"
+          type="text"
+          placeholder="—"
+          value={bodyRegion}
+          disabled={saving}
+          onChange={(e) => setBodyRegion(e.target.value)}
+        />
+        <Input
+          label="Tamanho"
+          suffix="cm"
+          type="text"
+          inputMode="decimal"
+          placeholder="—"
+          value={sizeCm}
+          disabled={saving}
+          onChange={(e) => setSizeCm(e.target.value)}
+        />
+      </div>
+
+      <Input
+        label="Estilo"
+        type="text"
+        placeholder="—"
+        value={style}
+        disabled={saving}
+        onChange={(e) => setStyle(e.target.value)}
+      />
+
+      <Textarea
+        label="Descrição"
+        rows={3}
+        value={description}
+        disabled={saving}
+        onChange={(e) => setDescription(e.target.value)}
+      />
 
       {(dirty || error) && (
-        <div className="flex items-center justify-end gap-4 pt-1">
+        <div className="flex items-center justify-end gap-fh-3">
           {error && (
-            <span className="text-xs text-[color:var(--oxblood)]" role="alert">
+            <span className="fh-error" role="alert">
               {error}
             </span>
           )}
           {dirty && (
-            <button
-              type="button"
-              onClick={handleSave}
-              disabled={saving}
-              className="text-sm tracking-[0.04em] px-5 py-2 rounded-full bg-[color:var(--onyx)] text-[color:var(--white)] border border-[color:var(--onyx)] hover:bg-[color:var(--oxblood)] hover:border-[color:var(--oxblood)] transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-default"
-            >
+            <Button size="sm" onClick={handleSave} loading={saving}>
               {saving ? 'Salvando…' : 'Salvar'}
-            </button>
+            </Button>
           )}
         </div>
       )}
     </div>
-  )
-}
-
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <label className="block">
-      <span className="text-[11px] uppercase tracking-[0.1em] text-[color:var(--granite)]">
-        {label}
-      </span>
-      <div className="mt-1">{children}</div>
-    </label>
-  )
-}
-
-function TextInput({
-  value,
-  onChange,
-  disabled,
-  numeric,
-}: {
-  value: string
-  onChange: (v: string) => void
-  disabled: boolean
-  numeric?: boolean
-}) {
-  return (
-    <input
-      type="text"
-      inputMode={numeric ? 'decimal' : undefined}
-      value={value}
-      disabled={disabled}
-      placeholder="—"
-      onChange={(e) => onChange(e.target.value)}
-      className={`w-full border-b border-[color:var(--line)] bg-transparent py-1 focus:outline-none focus:border-[color:var(--onyx)] transition-colors disabled:opacity-50 ${
-        numeric ? 'tabular-nums' : ''
-      }`}
-    />
   )
 }

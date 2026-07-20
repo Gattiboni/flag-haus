@@ -1,0 +1,84 @@
+/* ============================================================
+   Flag Haus — Badge
+   Chip de status do fluxo. A cor mora numa borda fina + preenchimento
+   de baixa saturação; só "executado" preenche sólido.
+   Oxblood NÃO aparece aqui de propósito: fica reservado para ação e
+   alerta crítico (regra 10/90).
+   ============================================================ */
+
+.fh-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--fh-space-2);
+  padding: 3px 10px;
+  border: var(--fh-border-width) solid var(--fh-gray-200);
+  border-radius: var(--fh-radius-sm);
+  background: var(--fh-whisper);
+  color: var(--fh-granite);
+  font-family: var(--fh-font-heading);
+  font-size: var(--fh-text-micro);
+  font-weight: var(--fh-weight-medium);
+  letter-spacing: 0.01em;
+  line-height: 1.4;
+  white-space: nowrap;
+}
+
+/* "A orçar" — pendente, ainda não precificado */
+.fh-badge--quoted {
+  background: var(--fh-status-toquote-bg);
+  border-color: var(--fh-status-toquote-border);
+  color: var(--fh-status-toquote-text);
+}
+
+/* "Sem resposta" — orçado, avançou, mas parou do outro lado */
+.fh-badge--no_response {
+  background: var(--fh-status-quoted-bg);
+  border-color: var(--fh-status-quoted-border);
+  color: var(--fh-status-quoted-text);
+}
+
+.fh-badge--confirmed {
+  background: var(--fh-status-confirmed-bg);
+  border-color: var(--fh-status-confirmed-border);
+  color: var(--fh-status-confirmed-text);
+}
+
+.fh-badge--executed {
+  background: var(--fh-status-executed-bg);
+  border-color: var(--fh-status-executed-border);
+  color: var(--fh-status-executed-text);
+}
+
+.fh-badge--cancelled {
+  background: var(--fh-status-cancelled-bg);
+  border-color: var(--fh-status-cancelled-border);
+  color: var(--fh-status-cancelled-text);
+  text-decoration: line-through;
+}
+
+/* ---- Variantes fora do fluxo de job ---- */
+.fh-badge--neutral {
+  background: var(--fh-whisper);
+  border-color: var(--fh-gray-200);
+  color: var(--fh-granite);
+}
+
+.fh-badge--warning {
+  background: var(--fh-warning-surface);
+  border-color: var(--fh-warning);
+  color: var(--fh-warning-text);
+}
+
+.fh-badge--critical {
+  background: var(--fh-danger-surface);
+  border-color: var(--fh-danger);
+  color: var(--fh-danger-text);
+}
+
+.fh-badge__dot {
+  width: 6px;
+  height: 6px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: currentColor;
+}

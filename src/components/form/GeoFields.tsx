@@ -1,7 +1,10 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useId, useRef, useState } from 'react'
+import { MapPin } from 'lucide-react'
 import { reverseGeocode, searchPlaces, type PlaceSuggestion } from '@/lib/utils/geo'
+import { Button, Input } from '@/components/ui'
+import './autocomplete.css'
 
 type GeoFieldsProps = {
   neighborhood: string
@@ -16,12 +19,6 @@ type GeoFieldsProps = {
   /** Erro inline da cidade (obrigatória); bairro segue opcional. */
   cityError?: string | null
 }
-
-const inputCls =
-  'w-full bg-transparent border-0 border-b border-[color:var(--onyx)] py-2.5 text-lg text-[color:var(--onyx)] outline-none focus:border-[color:var(--oxblood)] transition-colors'
-const labelCls =
-  'block text-[13px] uppercase tracking-[0.12em] text-[color:var(--granite)] mb-3'
-const errCls = 'text-[color:var(--oxblood)] text-[13px] mt-2'
 
 // ─── Input com autocomplete Photon ─────────────────────────
 // Digitação livre SEMPRE permitida; sugestões são enhancement, nunca gate.
@@ -56,6 +53,7 @@ function AutocompleteInput({
   const [activeIndex, setActiveIndex] = useState(-1)
   const [loading, setLoading] = useState(false)
 
+  const listboxId = useId()
   const containerRef = useRef<HTMLDivElement>(null)
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const abortRef = useRef<AbortController | null>(null)
@@ -144,8 +142,8 @@ function AutocompleteInput({
 
   return (
     <div ref={containerRef} className="relative">
-      <label className={labelCls}>{label}</label>
-      <input
+      <Input
+        label={label}
         type="text"
         required={required}
         value={value}
@@ -161,37 +159,43 @@ function AutocompleteInput({
         autoComplete="off"
         role="combobox"
         aria-expanded={open}
+        aria-controls={listboxId}
         aria-autocomplete="list"
-        className={inputCls}
+        error={error ?? undefined}
+        suffix={
+          loading ? (
+            <span className="fh-micro" aria-live="polite">
+              buscando…
+            </span>
+          ) : undefined
+        }
       />
-      {loading && (
-        <span className="absolute right-0 top-9 text-[11px] text-[color:var(--granite)] pointer-events-none">
-          buscando…
-        </span>
-      )}
+
       {open && suggestions.length > 0 && (
-        <ul className="absolute left-0 right-0 top-full z-20 mt-1 max-h-64 overflow-auto bg-[color:var(--white)] border border-[color:var(--line)] rounded shadow-lg">
+        <ul
+          id={listboxId}
+          role="listbox"
+          className="fh-suggestions absolute left-0 right-0 top-full z-20"
+        >
           {suggestions.map((s, i) => (
             <li
               key={`${s.label}-${i}`}
+              role="option"
+              aria-selected={i === activeIndex}
               // mousedown (não click) pra selecionar antes do blur fechar o menu
               onMouseDown={(e) => {
                 e.preventDefault()
                 select(s)
               }}
               onMouseEnter={() => setActiveIndex(i)}
-              className={`px-4 py-2.5 text-[15px] cursor-pointer transition-colors ${
-                i === activeIndex
-                  ? 'bg-[color:var(--whisper)] text-[color:var(--onyx)]'
-                  : 'text-[color:var(--onyx)]'
-              }`}
+              className="fh-suggestions__item"
+              data-active={i === activeIndex || undefined}
             >
               {s.label}
             </li>
           ))}
         </ul>
       )}
-      {error && <p className={errCls}>{error}</p>}
     </div>
   )
 }
@@ -256,42 +260,40 @@ export function GeoFields({
   }
 
   return (
-    <div>
-      <button
-        type="button"
-        onClick={handleLocate}
-        disabled={locating}
-        className="rounded-full border border-[color:var(--onyx)] px-5 py-3 text-sm text-[color:var(--onyx)] hover:bg-[color:var(--whisper)] transition-colors cursor-pointer disabled:opacity-50 mb-2"
-      >
-        {locating ? 'Localizando…' : '📍 Usar minha localização'}
-      </button>
-      {hint && (
-        <p className="text-[color:var(--granite)] text-[13px] mb-2">{hint}</p>
-      )}
+    <div className="flex flex-col gap-fh-5 mt-fh-6">
+      <div>
+        <Button
+          variant="secondary"
+          onClick={handleLocate}
+          disabled={locating}
+          loading={locating}
+          icon={<MapPin size={18} strokeWidth={1.5} />}
+        >
+          {locating ? 'Localizando…' : 'Usar minha localização'}
+        </Button>
+        {hint && <p className="fh-micro mt-fh-2">{hint}</p>}
+      </div>
 
-      <div className="my-8">
-        <AutocompleteInput
-          label="Bairro"
-          value={neighborhood}
-          onChange={onNeighborhood}
-          onSelect={handleNeighborhoodSelect}
-          kind="neighborhood"
-          bias={bias}
-          placeholder="Seu bairro"
-        />
-      </div>
-      <div className="my-8">
-        <AutocompleteInput
-          label="Cidade"
-          value={city}
-          onChange={onCity}
-          onSelect={handleCitySelect}
-          kind="city"
-          placeholder="Sua cidade"
-          required
-          error={cityError}
-        />
-      </div>
+      <AutocompleteInput
+        label="Bairro"
+        value={neighborhood}
+        onChange={onNeighborhood}
+        onSelect={handleNeighborhoodSelect}
+        kind="neighborhood"
+        bias={bias}
+        placeholder="Seu bairro"
+      />
+
+      <AutocompleteInput
+        label="Cidade"
+        value={city}
+        onChange={onCity}
+        onSelect={handleCitySelect}
+        kind="city"
+        placeholder="Sua cidade"
+        required
+        error={cityError}
+      />
     </div>
   )
 }

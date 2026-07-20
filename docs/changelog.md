@@ -591,3 +591,109 @@
 (implementação)
 
 ---
+
+## 2026-07-15 — CRM: Adoção do Design System Flag Haus (Spec #4c-visual)
+
+### Adicionado
+
+- **Tokens CSS (5 camadas)** em `src/styles/tokens/`: colors, typography,
+  spacing, surfaces, semantic. Consumidos por `src/app/globals.css` via
+  `@import` direto (Turbopack não iça `@import` aninhado).
+  `src/styles/styles.css` mantido como entry point portátil.
+- **Fontes** via `next/font/google` no `layout.tsx`: Inter (headings,
+  `-0.01em`), Lato (corpo), Bebas Neue (letreiro "FLAG HAUS").
+- **10 componentes UI** em `src/components/ui/`: Button, Input, Select,
+  Textarea, Checkbox, RadioGroup, Card + CardHeader, Badge, Alert, Dialog.
+  Barrel `index.ts` re-exporta os 10 com tipos; componentes client (`Input`,
+  `Select`, `Textarea`, `Checkbox`, `RadioGroup`, `Dialog`) e server (`Card`,
+  `CardHeader`, `Badge`, `Alert`, `Button`) coexistem no mesmo barrel — a
+  fronteira só se cria onde o componente é usado.
+- **Escala de espaçamento** exposta ao Tailwind com prefixo `fh-` via `@theme`
+  em `globals.css`: `p-fh-5`, `border-fh-subtle`, `rounded-fh-md`. Não inventa
+  valor — apelida token. Prefixo evita colisão com a escala default do Tailwind.
+- **Dep nova:** `lucide-react` (versão pinada) — ícones consistentes com a
+  fineline da marca (stroke 1.5px).
+- **Assets:** `public/brand/` com 3 PNGs oficiais do FH monogram
+  (onyx-on-whisper, white-on-onyx, wordmark-lockup-dark).
+- **Docs:** `docs/design-system/` com README adaptado + SKILL.md + `adoption.md`
+  (regra em vigor).
+
+### Alterado (refactor visual completo)
+
+- **Form público:** `/` (cadastro) e `/antes-da-sessao` (anamnese wizard 31
+  steps) consumindo componentes UI. `OptionPills` reescrito internamente como
+  `RadioGroup` (API preservada, ~20 chamadas nos wizards intocadas).
+- **Admin:** `/admin` (fila), `/admin/jobs/[id]`, `/admin/people/[id]`,
+  `/admin/buscar`, `/admin/login`. Wrapper raiz com `data-density="compact"`.
+- **`<PersonEdit>`:** ícones ✎/🔒 via `lucide-react`, botões e inputs via
+  componentes UI, dropdown do 🔒 estilizado com tokens, `confirm()` do destravar
+  substituído por `<Dialog variant="danger">` com foco automático no botão de
+  confirmar, fechamento em Esc, devolução de foco ao cadeado. `confirm()` nativo
+  do telefone permanece — substituição exigiria reestruturar o fluxo síncrono
+  (dívida rastreada).
+- **Hierarquia de alerta clínico na anamnese:** alergia é o único
+  `<Alert variant="critical">` (Oxblood pleno, `role="alert"`, ícone
+  `AlertTriangle`). Medicação, diabetes, pele, gravidez viram `warning`
+  (Terracota). Consent de saúde do step 15 recebeu modificador novo
+  `.fh-card--accent` (borda oxblood 1.5px) — não usa `critical` pra não gastar o
+  orçamento 10/90 duas vezes.
+- **Badge de status do job:** usa nomes do enum (`quoted`, `confirmed`,
+  `no_response`, `executed`, `cancelled`), com rótulos UX ("A orçar",
+  "Confirmado" etc). Aparece no detalhe do job e na lista de jobs da pessoa; não
+  na fila (lá o status é editável e os grupos já separam).
+- **`/__health`:** refatorado pra consumir tokens novos (usava vars
+  `--onyx`/`--paper` que sumiram; dívida rastreada anterior).
+- **ESLint:** `_reference/**` adicionado aos ignores.
+
+### Não alterado
+
+- Server Actions (todas), RPCs, schema — intocados.
+- Modelo lápis/cadeado do `<PersonEdit>` (decisão #026) — comportamento
+  idêntico, apenas visual atualizado.
+- Regras da Emenda C (RPCs respeitam `admin_locks`) — intocadas.
+- Route groups, middleware/proxy, wizard state, validação Zod, gate de idade —
+  intocados.
+
+### Validado
+
+- α: `tsc --noEmit`, `next build`, `eslint` (2 erros pré-existentes em
+  `CadastroForm.tsx:157-158`, não introduzidos por esta spec), grep de hex
+  hardcoded / box-shadow / gradient / blur em `src/` — zero regressões, zero
+  violações da regra de adoção.
+- `npm run moas:check` passa — banco intocado, `docs/db/` limpo.
+- β manual (Alan no navegador, 13 passos da §5.3 da spec + varredura estética):
+  - Form público: wizard completo funciona, radio group substituindo pill valida
+    sem regressão de UX
+  - Admin: densidade compact visivelmente mais apertada que o form público
+  - Job da Marina: alerta crítico de alergia impossível de ignorar (Oxblood
+    pleno)
+  - `<PersonEdit>`: lápis vira input inline ao clicar, salvar volta pra
+    leitura + cadeado aparece, menu do cadeado com Editar/Destravar, Dialog
+    custom no destravar (foco automático, Esc fecha, foco volta ao cadeado)
+  - Focus outline sólido 2px onyx em toda tela ao Tab — nunca brilho
+- Testes secundários pelo Comet: complementaram varredura sistemática (rodada 14
+  do roteiro pedia login bloqueado propositalmente pra testar
+  `<Alert critical>`).
+
+### Dívidas rastreadas (não bloqueantes)
+
+- `window.confirm` do telefone no `<PersonEdit>` permanece nativo — substituição
+  exigiria reestruturar fluxo síncrono do `handleSave`
+- Logo em SVG vetorial (Julio ainda não mandou)
+- 2 erros de ESLint pré-existentes em `CadastroForm.tsx:157-158`
+  (react-hooks/refs, mutação de ref no render)
+- Neue Einstellung: se comprada no futuro, swap trivial em
+  `tokens/typography.css` + `layout.tsx`
+
+**Impacto:**
+
+- Bloco 4 fecha visualmente pronto pra apresentação ao Julio (falta apenas #4d —
+  job manual — pra fechar o bloco funcional)
+- Regra de adoção em vigor: qualquer JSX/estilo novo daqui pra frente consome
+  tokens e componentes do design system; componente inexistente = pausa e
+  reporta, não improvisa
+
+**Responsável:** Gattiboni (validação) · Claudinho (spec/arquitetura) · Codinho
+(implementação)
+
+---

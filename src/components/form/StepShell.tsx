@@ -1,6 +1,7 @@
 'use client'
 
 import type { ReactNode } from 'react'
+import { Button } from '@/components/ui'
 
 type StepShellProps = {
   counter: string
@@ -12,9 +13,10 @@ type StepShellProps = {
 }
 
 /**
- * Moldura de cada step: header (marca + contador), corpo e nav.
- * Reproduz o visual do preview (cadastro_preview_v1.html) com os
- * tokens do globals.css. Voltar é opcional (abertura não tem).
+ * Moldura de cada step: header (letreiro + contador), corpo e nav.
+ * Densidade comfortable (o público preenche no celular, com dado sensível):
+ * respiro generoso, alvo de toque ≥ 44px, sem sombra em lugar nenhum.
+ * Voltar é opcional (a abertura não tem).
  */
 export function StepShell({
   counter,
@@ -25,38 +27,25 @@ export function StepShell({
   children,
 }: StepShellProps) {
   return (
-    <main className="max-w-[560px] mx-auto px-6 sm:px-8 pt-16 sm:pt-20 pb-[120px] min-h-screen flex flex-col">
-      <header className="flex justify-between items-baseline pb-8 border-b border-[color:var(--line)] mb-14">
-        <span className="font-[family-name:var(--font-fraunces)] text-lg tracking-[0.02em]">
-          Flag Haus
-        </span>
-        <span className="text-[11px] text-[color:var(--granite)] tracking-[0.12em] uppercase">
-          {counter}
-        </span>
+    <main className="max-w-[560px] mx-auto px-fh-5 sm:px-fh-6 pt-fh-8 pb-fh-9 min-h-screen flex flex-col">
+      <header className="flex justify-between items-baseline pb-fh-5 border-b border-fh-subtle mb-fh-8">
+        <span className="fh-wordmark">Flag Haus</span>
+        <span className="fh-eyebrow">{counter}</span>
       </header>
 
       <div className="flex-1">{children}</div>
 
-      <div className="flex justify-between items-center mt-14 pt-8 border-t border-[color:var(--line)]">
+      <div className="flex justify-between items-center gap-fh-4 mt-fh-8 pt-fh-5 border-t border-fh-subtle">
         {onBack ? (
-          <button
-            type="button"
-            onClick={onBack}
-            className="text-sm tracking-[0.04em] text-[color:var(--granite)] hover:text-[color:var(--onyx)] transition-colors cursor-pointer"
-          >
+          <Button variant="tertiary" onClick={onBack}>
             Voltar
-          </button>
+          </Button>
         ) : (
           <span />
         )}
-        <button
-          type="button"
-          onClick={onNext}
-          disabled={nextDisabled}
-          className="text-sm tracking-[0.04em] px-7 py-3.5 rounded-full bg-[color:var(--onyx)] text-[color:var(--white)] border border-[color:var(--onyx)] hover:bg-[color:var(--oxblood)] hover:border-[color:var(--oxblood)] transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-default"
-        >
+        <Button variant="primary" onClick={onNext} disabled={nextDisabled}>
           {nextLabel}
-        </button>
+        </Button>
       </div>
     </main>
   )
