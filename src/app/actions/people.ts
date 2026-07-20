@@ -176,6 +176,7 @@ export async function getPersonProfileByPhone(
 // ─── submitCadastro ────────────────────────────────────────
 
 const cadastroPayloadSchema = z.object({
+  submission_id: z.string().uuid(),
   phone: z.string().min(1),
   country: z.string().length(2),
   mode: z.enum(['new', 'returning']),
@@ -205,9 +206,23 @@ const cadastroPayloadSchema = z.object({
 export type CadastroPayload = z.infer<typeof cadastroPayloadSchema>
 
 export type SubmitCadastroResult =
-  | { status: 'ok'; personId: string }
+  | { status: 'ok'; personId: string; duplicate?: boolean }
   | { status: 'invalid'; reason: string }
   | { status: 'error'; message: string }
+
+// Exceptions que a RPC pode levantar → mensagem legível pro usuário.
+const RPC_EXCEPTIONS: Record<string, string> = {
+  invalid_phone: INVALID_PHONE_REASON,
+  invalid_submission_id: 'Sessão inválida — recarrega a página e tenta de novo?',
+  minor_not_allowed: 'Só tatuamos maiores de 18, sem exceção.',
+}
+
+function translateRpcError(message: string): string {
+  for (const [code, friendly] of Object.entries(RPC_EXCEPTIONS)) {
+    if (message.includes(code)) return friendly
+  }
+  return 'Algo deu errado ao salvar. Tenta de novo?'
+}
 
 /**
  * Submit único do form /cadastro. Valida, normaliza telefone,
@@ -241,6 +256,7 @@ export async function submitCadastro(
     const supabase = createAdminClient()
     const { data, error } = await supabase.rpc('submit_cadastro', {
       payload: {
+        submission_id: p.submission_id,
         phone: e164,
         mode: p.mode,
         name: p.name,
@@ -257,11 +273,19 @@ export async function submitCadastro(
 
     if (error) {
       console.error('[submitCadastro] rpc error:', error.message)
-      return { status: 'error', message: error.message }
+      // Erro conhecido da RPC → mensagem legível; genérico → tenta de novo.
+      return { status: 'error', message: translateRpcError(error.message) }
     }
 
-    console.log('[submitCadastro] ok:', data?.person_id, 'mode:', p.mode)
-    return { status: 'ok', personId: data.person_id }
+    console.log(
+      '[submitCadastro] ok:',
+      data?.person_id,
+      'mode:',
+      p.mode,
+      'dup:',
+      data?.duplicate
+    )
+    return { status: 'ok', personId: data.person_id, duplicate: !!data.duplicate }
   } catch (e) {
     const msg = e instanceof Error ? e.message : 'erro desconhecido'
     console.error('[submitCadastro] throw:', msg)

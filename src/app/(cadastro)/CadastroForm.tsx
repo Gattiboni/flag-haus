@@ -138,6 +138,10 @@ export function CadastroForm({ getProfileAction, submitAction }: Props) {
   const [state, setState] = useState<FormState>(initialState)
   const [isPending, startTransition] = useTransition()
 
+  // uuid de idempotência gerado UMA vez, no mount. Reenvio do mesmo formulário
+  // (retry, F5 no submit) reusa este id → a RPC detecta e não grava de novo.
+  const [submissionId] = useState(() => crypto.randomUUID())
+
   const currentStep = state.visibleSteps[state.stepIndex]
   const counter = `${state.stepIndex + 1} de ${state.visibleSteps.length}`
 
@@ -356,6 +360,7 @@ export function CadastroForm({ getProfileAction, submitAction }: Props) {
       extra.circulation_areas = state.circulation_areas.trim()
 
     return {
+      submission_id: submissionId,
       phone: state.phone,
       country: state.country,
       mode: state.mode,
@@ -392,8 +397,11 @@ export function CadastroForm({ getProfileAction, submitAction }: Props) {
       if (r.status === 'ok') {
         setState((s) => ({ ...s, done: true, submitError: null }))
       } else {
+        // Mensagem específica da action (Zod → reason; RPC traduzida → message)
+        // quando houver; senão o texto genérico.
         set({
           submitError:
+            (r.status === 'invalid' ? r.reason : r.message) ||
             'Algo deu errado ao salvar. Suas respostas continuam aqui — tenta de novo?',
         })
       }

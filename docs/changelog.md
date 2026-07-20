@@ -697,3 +697,121 @@
 (implementação)
 
 ---
+
+## 2026-07-20 — CRM: idempotência real no /cadastro (Emenda D) — fix de bug em produção
+
+### Contexto
+
+Bug em produção descoberto 2026-07-19 (~22:55 BRT): submits do `/cadastro`
+falhavam com mensagem "Não deu pra salvar" no step 18. Reportado pelo Julio
+(esposa dele tentou se cadastrar) e reproduzido pelo Alan. Log do Postgres
+identificou a causa em 30 segundos: `raise exception 'invalid_submission_id'` na
+`submit_cadastro`, linha 21 — validação órfã deixada pela Emenda C, que copiou a
+checagem da `submit_anamnese` sem que o front implementasse o campo.
+
+Rota decidida: implementar idempotência real no `/cadastro` espelhando o padrão
+da anamnese. Alinhado com a decisão #023 (idempotência como padrão para submits
+públicos). Alternativa descartada: remover a validação e viver sem idempotência
+no cadastro, o que criaria exceção conceitual.
+
+### Adicionado
+
+- **Banco (via MCP):** índice único parcial
+  `events_cadastro_submission_id_unique` em `public.events` sobre
+  `((payload->>'submission_id'))` filtrado por
+  `event_type = 'form.cadastro_submitted'`. Chaves NULL não colidem em Postgres,
+  então events antigos sem submission_id não são afetados. Anamnese usa
+  event_type diferente, também sem conflito.
+- **Front (`src/app/(cadastro)/CadastroForm.tsx`):**
+  `const [submissionId] =
+  useState(() => crypto.randomUUID())` gerado uma vez
+  no mount. Injetado em `buildPayload()` como `submission_id: submissionId`.
+  UUID preso ao mount → "tenta de novo" após erro reusa o mesmo id (efeito
+  desejado). F5 gera id novo (idem anamnese).
+- **Server Action (`src/app/actions/people.ts`):** campo
+  `submission_id: z.string().uuid()` no `cadastroPayloadSchema`, repassado no
+  payload da RPC. Dicionário `RPC_EXCEPTIONS` + função `translateRpcError()`
+  espelhando o padrão da `anamnese.ts:213-227`. Aplicado no ramo de erro da RPC
+  — resultado: `error.message` cru do Postgres nunca mais vai direto pro client,
+  sempre uma string controlada.
+
+### Alterado
+
+- **RPC `submit_cadastro` (via MCP):** curto-circuito idempotente logo após a
+  validação de `submission_id` e antes de qualquer read/write em `people`. Se já
+  existe event `form.cadastro_submitted` com aquele `submission_id`, retorna
+  `{status:'ok', person_id:<existente>, duplicate:true}` sem re-executar upsert,
+  consents, motivations ou event. O INSERT final em `events` agora inclui
+  `submission_id` no `payload` (permite o curto-circuito funcionar em requests
+  subsequentes).
+- **`handleSubmit` do CadastroForm:** lê `r.message` / `r.reason` do retorno da
+  action com fallback pro texto genérico atual. Sem essa leitura, o dicionário
+  de mensagens ficaria morto (dívida evitada durante o α do Codinho —
+  divergência D3 da spec).
+
+### Não alterado
+
+- `submit_anamnese`, `AnamneseForm`, `anamnese.ts` — intocados. Padrão original
+  preservado; o cadastro se alinhou a ele.
+- Regras da Emenda C (RPCs respeitam `admin_locks`) — intocadas.
+- Schema das tabelas (`people`, `events`, `consents`, `motivations`) — intocado.
+  Apenas RPC + índice.
+
+### Validado
+
+- α (Codinho): `tsc --noEmit` limpo, `next build` compilou em 8.2s,
+  `npm run lint` com os 2 erros pré-existentes de `CadastroForm.tsx`
+  (react-hooks/refs, dívida rastreada anterior). Diff final: 37 inserções, 5
+  deleções → ~22 linhas líquidas. Grep confirmou simetria com anamnese (6 → 11
+  ocorrências de `submission_id|submissionId`).
+- β (Comet + MCP):
+  - **Rodada 1** — cadastro normal (Comet, `localhost:3001`): pessoa nova "João
+    Silva Teste" gravou 1 people + 1 event com `submission_id` no payload + 2
+    consents. Tela final "Pronto. Cadastro atualizado."
+  - **Rodada 2** — idempotência (Claude via MCP, 2 calls com mesmo
+    `submission_id`): primeira retorna `{status:'ok', person_id:X}`, segunda
+    retorna `{status:'ok', person_id:X, duplicate:true}`. Contagem pós-testes: 1
+    people, 1 event, 1 consent, 1 motivation (zero duplicação).
+  - **Rodada 3** — paralelismo (Comet, 2 abas normais em `localhost:3001`): "Ana
+    Paralela A" e "Beatriz Paralela B" gravaram como pessoas distintas com
+    `submission_id` distintos, nenhuma com `duplicate`.
+- Pessoas de teste removidas pós-validação (4 pessoas, 4 events, 7 consents, 2
+  motivations deletados via MCP).
+
+### Migrations aplicadas via MCP (histórico honesto)
+
+1. `emenda_d_idempotencia_cadastro` — índice + RPC nova. Erro no primeiro
+   design: campo de retorno chamado `idempotent` (divergia do padrão `duplicate`
+   da anamnese).
+2. `emenda_d_rename_idempotent_to_duplicate` — padroniza campo com anamnese.
+   Decisão do Alan durante o α do Codinho: consistência entre os dois forms
+   públicos vale mais que semântica isolada.
+3. `emenda_d_fix_ambiguous_payload` — corrige `payload->>'submission_id'` para
+   `events.payload->>'submission_id'` no SELECT interno de idempotência. Erro
+   descoberto durante β Rodada 1: `payload` é ambíguo (parâmetro da função +
+   coluna de `public.events`). Log do Postgres deu o diagnóstico em uma linha.
+
+### Dívidas rastreadas (não relacionadas à Emenda D)
+
+- Trigger `sync_people_location` usa tipo `geography` sem qualificar schema.
+  Quebra em chamadas com search_path restrito (ex: MCP direto sem `extensions`).
+  Não afeta produção — o front sempre envia lat/lng num contexto onde o trigger
+  encontra o tipo. Dívida real, prioridade baixa.
+- Repo ainda não tem `supabase/migrations/` versionado. Migrations agora ficam
+  no schema `supabase_migrations` do próprio Supabase (via MCP). Divergência de
+  versionamento a resolver depois.
+
+### Impacto
+
+- Bug crítico em produção resolvido. `/cadastro` volta a funcionar
+  ponta-a-ponta.
+- Cadastro agora tem idempotência real: duplo submit ou refresh no meio do envio
+  não duplica consents/events/motivations.
+- Padrão de mensagens de erro no `/cadastro` alinhado com anamnese
+  (`RPC_EXCEPTIONS` + `translateRpcError()`).
+
+**Responsável:** Gattiboni (validação + aplicação SQL via MCP orquestrado por
+Claudinho) · Claudinho (spec, correção dos bugs de SQL, execução das migrations
+via MCP, roteiros β) · Codinho (implementação código de aplicação)
+
+---

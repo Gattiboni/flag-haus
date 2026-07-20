@@ -1459,4 +1459,103 @@ aprovado, UM commit único.
 
 ---
 
+## Decision #028 — 2026-07-20
+
+### Decisão: Idempotência real no /cadastro (Emenda D)
+
+**Contexto** Bug crítico em produção descoberto 2026-07-19: submits do
+`/cadastro` falhavam com "invalid_submission_id". Diagnóstico pelo log do
+Postgres identificou validação órfã deixada pela Emenda C — a checagem foi
+copiada da `submit_anamnese` sem que o front implementasse o campo. A esposa do
+Julio, primeira pessoa real a tentar se cadastrar pós-lançamento, encontrou o
+bug no step 18 do wizard. Alan reproduziu.
+
+**Duas rotas avaliadas:**
+
+- **A — Remover validação órfã da RPC.** Fix cirúrgico, RPC volta ao
+  comportamento pré-Emenda C. Custo: `/cadastro` sem idempotência real, duplo
+  clique geraria linhas duplicadas em `consents`, `events`, `motivations`
+  (people não duplica — ON CONFLICT por phone).
+- **B — Implementar idempotência real espelhando anamnese.** Alinha os dois
+  submits públicos, padrão único no projeto. Custo: mudanças em 2 arquivos de
+  código + 1 índice + reescrita da RPC.
+
+**Decisão adotada: rota B.**
+
+Justificativa: decisão #023 estabeleceu idempotência como padrão para submits
+públicos (via `submission_id` gerado no mount do form, checado no início da
+RPC). A rota A criaria uma exceção conceitual entre `/cadastro` e
+`/antes-da-sessao` que ninguém lembraria daqui a três meses. Zero dívida técnica
+é regra do projeto.
+
+**Padrão de implementação (espelha anamnese):**
+
+1. **UUID no mount:**
+   `const [submissionId] = useState(() => crypto.randomUUID())`. Preso ao mount
+   → "tenta de novo" após erro reusa o mesmo id (comportamento desejado). F5
+   gera id novo.
+2. **Zod valida no server:** `submission_id: z.string().uuid()` no schema —
+   payload sem o campo é barrado antes de chegar na RPC.
+3. **RPC valida formato de novo:** regex UUID como defense-in-depth (RPC pode
+   ser chamada de outros lugares no futuro).
+4. **Curto-circuito idempotente** antes de qualquer write: se já existe event
+   `form.cadastro_submitted` com aquele `submission_id`, retorna com
+   `duplicate: true` sem re-executar nada.
+5. **Índice único parcial** em `events((payload->>'submission_id'))` filtrado
+   por `event_type = 'form.cadastro_submitted'` garante que o SELECT seja O(log
+   n) e que dois inserts concorrentes com mesmo id colidam no banco
+   (defense-in-depth se o SELECT-antes-de-INSERT tiver race).
+
+**Decisão colateral tomada durante execução:** campo de retorno se chama
+`duplicate` (não `idempotent`), padronizando com `anamnese.ts:207` e `:296`.
+Semanticamente `idempotent` seria mais preciso ("essa operação foi tratada como
+idempotente"), mas `duplicate` já era o padrão instalado — o novo (cadastro) se
+ajusta ao velho (anamnese), não o contrário. Zero exceção conceitual entre os
+dois forms.
+
+**Onde armazenar o submission_id:** `events.payload->>'submission_id'`, filtrado
+por `event_type = 'form.cadastro_submitted'`. Não em `people.extra_data` (upsert
+por phone sobrescreveria o histórico). Não em `consents` ou `motivations`
+(múltiplos por submit). `events` é append-only e o `form.cadastro_submitted` é o
+"certificado" natural da submissão.
+
+**Onde não muda:** RPC `submit_anamnese` e todo o fluxo `/antes-da-sessao`
+preservados exatamente. O padrão estabelecido lá é a referência; o cadastro se
+alinha, não o contrário.
+
+**Fluxo de execução aprovado** Alan aplicou SQL via MCP (índice + 3 versões da
+RPC — as duas correções foram por erro do Claudinho no SQL inicial, não por
+mudança de escopo). Codinho aplicou código de aplicação após α aprovado e depois
+de Alan avisar "SQL aplicado". Comet validou UX (Rodadas 1 e 3), Claudinho
+validou lógica de idempotência via MCP direto (Rodada 2) — alternativa
+equivalente porque o Comet não tem acesso a DevTools/Replay XHR neste ambiente.
+Um commit único ao final.
+
+**Validação**
+
+- α (Codinho): tsc, build, lint — 2 erros pré-existentes de `CadastroForm.tsx`,
+  nenhum novo. Grep confirmou simetria 6 → 11 ocorrências de
+  `submission_id|submissionId` entre cadastro e anamnese.
+- β (Comet + MCP): 3 rodadas passaram. Idempotência confirmada por contagem no
+  banco (1 pessoa/1 event/1 consent/1 motivation após 2 chamadas com mesmo
+  submission_id).
+- Limpeza pós-teste: 4 pessoas removidas.
+
+**Impacto**
+
+- Bug em produção resolvido. `/cadastro` volta a funcionar.
+- Alinhamento total entre `/cadastro` e `/antes-da-sessao`: mesmo padrão de
+  idempotência, mesmo nome de campo no retorno (`duplicate`), mesmo padrão de
+  dicionário de erros (`RPC_EXCEPTIONS` + `translateRpcError()`).
+- Zero dívida conceitual entre os dois submits públicos.
+
+**Dívidas rastreadas separadas (não são desta decisão):**
+
+- Trigger `sync_people_location` sem `extensions.geography` qualificado
+  (descoberto durante β via MCP)
+- Repo sem `supabase/migrations/` versionado (as 3 migrations da Emenda D
+  ficaram no schema `supabase_migrations` do Supabase, não no repo)
+
+---
+
 _(Novas entradas devem seguir este mesmo formato.)_

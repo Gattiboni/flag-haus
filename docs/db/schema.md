@@ -303,6 +303,7 @@ Timeline unificada. Marcos do funil e interações de marketing convivem aqui. e
 **Índices**
 
 - `events_anonymous_id_occurred_at_idx` — CREATE INDEX events_anonymous_id_occurred_at_idx ON public.events USING btree (anonymous_id, occurred_at DESC) WHERE (anonymous_id IS NOT NULL)
+- `events_cadastro_submission_id_unique` — CREATE UNIQUE INDEX events_cadastro_submission_id_unique ON public.events USING btree (((payload ->> 'submission_id'::text))) WHERE (event_type = 'form.cadastro_submitted'::text)
 - `events_event_type_idx` — CREATE INDEX events_event_type_idx ON public.events USING btree (event_type, occurred_at DESC)
 - `events_job_id_idx` — CREATE INDEX events_job_id_idx ON public.events USING btree (job_id, occurred_at DESC) WHERE (job_id IS NOT NULL)
 - `events_person_id_occurred_at_idx` — CREATE INDEX events_person_id_occurred_at_idx ON public.events USING btree (person_id, occurred_at DESC) WHERE (person_id IS NOT NULL)
@@ -1054,6 +1055,8 @@ Grants: postgres → EXECUTE, service_role → EXECUTE
 CREATE OR REPLACE FUNCTION public.submit_cadastro(payload jsonb)
  RETURNS jsonb
  LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public', 'pg_temp'
 AS $function$
 declare
   v_phone         text;
@@ -1077,6 +1080,25 @@ begin
     raise exception 'invalid_submission_id';
   end if;
 
+  -- ── idempotência (curto-circuito antes de qualquer write) ────────
+  -- Qualificar events.payload é necessário: existe também um parâmetro
+  -- 'payload' na função (jsonb), o que torna a referência ambígua sem prefixo.
+  v_person_id := null;
+  select person_id into v_person_id
+  from public.events
+  where event_type = 'form.cadastro_submitted'
+    and events.payload->>'submission_id' = v_submission_id
+  limit 1;
+
+  if v_person_id is not null then
+    return jsonb_build_object(
+      'status', 'ok',
+      'person_id', v_person_id,
+      'duplicate', true
+    );
+  end if;
+
+  -- ── validação de idade ───────────────────────────────────────────
   v_birth_date := nullif(payload->>'birth_date', '')::date;
 
   if v_birth_date is not null then
@@ -1086,9 +1108,6 @@ begin
   end if;
 
   -- ── LER LOCKS EXISTENTES ─────────────────────────────────────────
-  -- Se a pessoa já existe, precisamos saber quais chaves estão travadas
-  -- ANTES do upsert, pra remover do payload de entrada os campos que
-  -- devem ser mantidos como estão.
   select coalesce(extra_data->'admin_locks', '{}'::jsonb)
   into v_locks
   from public.people
@@ -1097,8 +1116,6 @@ begin
   v_locks := coalesce(v_locks, '{}'::jsonb);
   v_incoming_extra := coalesce(payload->'extra_data', '{}'::jsonb);
 
-  -- Remove do extra_data recebido as chaves que estão travadas.
-  -- Postgres suporta jsonb - text: remove uma chave. Iteramos.
   v_incoming_extra := v_incoming_extra - array(
     select jsonb_object_keys(v_locks)
     intersect
@@ -1119,7 +1136,6 @@ begin
   )
   on conflict (phone) where (deleted_at is null)
   do update set
-    -- colunas diretas: CASE por chave de admin_locks
     name = case
       when v_locks ? 'name' then people.name
       else coalesce(nullif(excluded.name, ''), people.name)
@@ -1132,16 +1148,12 @@ begin
       when v_locks ? 'birth_date' then people.birth_date
       else coalesce(excluded.birth_date, people.birth_date)
     end,
-    -- phone não pode ser alterado pelo próprio upsert (é a chave do ON CONFLICT),
-    -- mas o CASE fica registrado por simetria; o valor é o mesmo.
     phone = case
       when v_locks ? 'phone' then people.phone
       else people.phone
     end,
-    -- lat/lng não são travados (não vieram na §5-bis) — comportamento antigo
     lat  = coalesce(excluded.lat, people.lat),
     lng  = coalesce(excluded.lng, people.lng),
-    -- extra_data: merge com o v_incoming_extra JÁ FILTRADO acima
     extra_data    = people.extra_data || excluded.extra_data,
     identified_at = coalesce(people.identified_at, now())
   returning id into v_person_id;
@@ -1169,7 +1181,7 @@ begin
     values (v_person_id, null, v_motivation, coalesce(payload->>'source', 'form_cadastro'));
   end if;
 
-  -- ── event ────────────────────────────────────────────────────────
+  -- ── event (agora com submission_id no payload) ───────────────────
   insert into public.events (person_id, event_type, source, payload)
   values (
     v_person_id,
@@ -1177,7 +1189,8 @@ begin
     coalesce(payload->>'source', 'form_cadastro'),
     jsonb_build_object(
       'mode', coalesce(payload->>'mode', 'unknown'),
-      'locked_fields_ignored', (select array_agg(k) from jsonb_object_keys(v_locks) k)
+      'locked_fields_ignored', (select array_agg(k) from jsonb_object_keys(v_locks) k),
+      'submission_id', v_submission_id
     )
   );
 
@@ -1248,3 +1261,6 @@ _Referência — a fonte da verdade do DDL é `schema.sql`._
 | 20260705154434 | rpc_submit_cadastro_e164 |
 | 20260713000000 | jobs_submission_id_unique |
 | 20260713010000 | consent_health_policy_version_event_actor |
+| 20260720033902 | emenda_d_idempotencia_cadastro |
+| 20260720034258 | emenda_d_rename_idempotent_to_duplicate |
+| 20260720041048 | emenda_d_fix_ambiguous_payload |
