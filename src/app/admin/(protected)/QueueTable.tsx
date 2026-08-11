@@ -2,6 +2,7 @@
 
 import Link from 'next/link'
 import { useState, useTransition } from 'react'
+import { CalendarCheck } from 'lucide-react'
 import { updateJob } from '@/app/actions/admin-jobs'
 import { JOB_STATUSES, type JobStatus } from '@/lib/domain/job-status'
 import { Button, Input, Select } from '@/components/ui'
@@ -14,6 +15,8 @@ export type QueueJob = {
   description: string // já truncado
   quotedPriceLabel: string // BRL ou —
   ageLabel: string // tempo relativo
+  /** Data/hora da sessão já formatada. '' quando não há data marcada. */
+  scheduledLabel: string
   status: JobStatus
   finalPrice: number | null // cru, pro input
 }
@@ -137,6 +140,20 @@ function QueueRow({ job }: { job: QueueJob }) {
           {job.displayName}
         </Link>
         <div className="fh-micro fh-tnum">{job.phone}</div>
+        {/* A data da sessão (#4d) mora aqui, colada no cliente, e não numa
+            oitava coluna: só "Aguardando sessão" costuma tê-la, e uma coluna
+            vazia em três das quatro seções custaria largura em todas elas.
+            Renderiza onde existir — job com data ainda não confirmada também é
+            compromisso marcado. */}
+        {job.scheduledLabel && (
+          <div className="fh-micro fh-tnum flex items-center gap-fh-1">
+            <CalendarCheck size={14} strokeWidth={1.5} aria-hidden="true" />
+            <span>
+              <span className="sr-only">Sessão em </span>
+              {job.scheduledLabel}
+            </span>
+          </div>
+        )}
       </div>
 
       <Cell label="Região">{job.bodyRegion || '—'}</Cell>

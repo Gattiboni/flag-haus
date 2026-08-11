@@ -1,0 +1,103 @@
+/* ============================================================
+   Flag Haus — Navegação do admin (Bloco 4)
+   Dois itens: Funil e Cadastros. Sidebar no desktop, barra inferior
+   no celular (o Julio usa o admin no iPhone — mobile é o caso
+   principal, não a adaptação).
+
+   Conflito com design_system_v1/ui_kits/admin_panel resolvido a favor
+   da consistência do admim existente: a referência traz uma sidebar
+   sólida em Onyx com o letreiro dentro dela, mas o header atual já é
+   claro e já carrega o letreiro, a busca global e o Sair. Duas peças
+   de chrome disputando o mesmo papel ficariam ruidosas. Ficou a
+   sidebar clara; o tratamento de item ativo (preenchimento + fio
+   Onyx) é o mesmo gesto da referência traduzido pra superfície clara.
+   ============================================================ */
+
+.fh-admin-sidebar {
+  width: 200px;
+  flex-shrink: 0;
+  background: var(--fh-surface);
+  border-right: var(--fh-border-width) solid var(--fh-border-subtle);
+  padding: var(--fh-space-5) var(--fh-space-3);
+}
+
+.fh-admin-nav__item {
+  display: flex;
+  align-items: center;
+  gap: var(--fh-space-3);
+  min-height: var(--fh-hit-min);
+  padding: var(--fh-space-2) var(--fh-space-3);
+  /* O fio do item ativo entra na borda, não no padding: assim o rótulo
+     não dança 2px ao trocar de aba. */
+  border-left: 2px solid transparent;
+  border-radius: 0 var(--fh-radius-md) var(--fh-radius-md) 0;
+  font-family: var(--fh-font-heading);
+  font-size: var(--fh-text-micro);
+  font-weight: var(--fh-weight-regular);
+  color: var(--fh-text-secondary);
+  text-decoration: none;
+  transition:
+    background var(--fh-transition-fast),
+    color var(--fh-transition-fast);
+}
+
+.fh-admin-nav__item:hover {
+  background: var(--fh-surface-sunken);
+  color: var(--fh-text-primary);
+  text-decoration: none;
+}
+
+.fh-admin-nav__item[aria-current='page'] {
+  background: var(--fh-surface-inset);
+  border-left-color: var(--fh-onyx);
+  color: var(--fh-text-primary);
+  font-weight: var(--fh-weight-medium);
+}
+
+.fh-admin-nav__icon {
+  flex-shrink: 0;
+  display: inline-flex;
+}
+
+/* ---- Barra inferior (celular) ---- */
+
+.fh-admin-bottomnav {
+  position: fixed;
+  inset-inline: 0;
+  bottom: 0;
+  z-index: 20;
+  background: var(--fh-surface);
+  border-top: var(--fh-border-width) solid var(--fh-border-subtle);
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+.fh-admin-bottomnav__list {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+}
+
+.fh-admin-bottomnav__item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--fh-space-1);
+  min-height: 56px;
+  /* Alvo de toque generoso: aqui a densidade compact do admin não vale,
+     é dedo em iPhone. */
+  border-top: 2px solid transparent;
+  font-family: var(--fh-font-heading);
+  font-size: var(--fh-text-micro);
+  color: var(--fh-text-secondary);
+  text-decoration: none;
+  transition:
+    background var(--fh-transition-fast),
+    color var(--fh-transition-fast);
+}
+
+.fh-admin-bottomnav__item[aria-current='page'] {
+  background: var(--fh-surface-inset);
+  border-top-color: var(--fh-onyx);
+  color: var(--fh-text-primary);
+  font-weight: var(--fh-weight-medium);
+}

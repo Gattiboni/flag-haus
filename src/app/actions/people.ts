@@ -4,68 +4,10 @@ import { z } from 'zod'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { toE164 } from '@/lib/utils/phone'
 import { isEligibleAge } from '@/lib/utils/age'
+import { POLICY_VERSION_CADASTRO } from '@/lib/legal/policy'
 
 const INVALID_PHONE_REASON =
   'Número inválido pra esse país — confere o DDD e a quantidade de dígitos?'
-
-export type FindPersonResult =
-  | { status: 'found'; person: PersonRecord }
-  | { status: 'not_found' }
-  | { status: 'invalid_phone'; reason: string }
-  | { status: 'error'; message: string }
-
-export type PersonRecord = {
-  id: string
-  phone: string
-  name: string | null
-  email: string | null
-  birth_date: string | null
-  lifecycle_stage: string
-  created_at: string
-}
-
-/**
- * Busca pessoa por telefone. Número é convertido pra E.164 (com o país)
- * antes da query. Retorna found / not_found / invalid_phone / error.
- * Nunca lança exceção pro caller — todos os caminhos retornam objeto.
- */
-export async function findPersonByPhone(
-  rawPhone: string,
-  country: string = 'BR'
-): Promise<FindPersonResult> {
-  const e164 = toE164(rawPhone ?? '', country)
-  if (!e164) {
-    console.warn('[findPersonByPhone] invalid format:', rawPhone, country)
-    return { status: 'invalid_phone', reason: INVALID_PHONE_REASON }
-  }
-
-  try {
-    const supabase = createAdminClient()
-    const { data, error } = await supabase
-      .from('people')
-      .select('id, phone, name, email, birth_date, lifecycle_stage, created_at')
-      .eq('phone', e164)
-      .is('deleted_at', null)
-      .maybeSingle()
-
-    if (error) {
-      console.error('[findPersonByPhone] supabase error:', error.message)
-      return { status: 'error', message: error.message }
-    }
-
-    if (!data) {
-      console.log('[findPersonByPhone] not_found:', e164)
-      return { status: 'not_found' }
-    }
-
-    console.log('[findPersonByPhone] found:', data.id)
-    return { status: 'found', person: data as PersonRecord }
-  } catch (e) {
-    const msg = e instanceof Error ? e.message : 'erro desconhecido'
-    console.error('[findPersonByPhone] throw:', msg)
-    return { status: 'error', message: msg }
-  }
-}
 
 // ─── getPersonProfileByPhone ───────────────────────────────
 
@@ -225,8 +167,8 @@ function translateRpcError(message: string): string {
 }
 
 /**
- * Submit único do form /cadastro. Valida, normaliza telefone,
- * monta o payload da RPC e chama submit_cadastro (transação única
+ * Submit único do form /cadastro. Valida, normaliza telefone, monta os consents
+ * com a POLICY_VERSION_CADASTRO e chama submit_cadastro (transação única
  * no Postgres: people + consents + motivations + events).
  */
 export async function submitCadastro(
@@ -244,12 +186,42 @@ export async function submitCadastro(
     return { status: 'invalid', reason: INVALID_PHONE_REASON }
   }
 
-  const consents: Array<{ type: string; granted: boolean; valid_months?: number }> = []
+  // Geo nunca bloqueia o cadastro — mas deixa de sumir em silêncio. Sem
+  // coordenada aqui = nem GPS nem sugestão do autocomplete chegaram ao payload
+  // (tipicamente digitação livre). O par bairro/cidade diz qual foi o caso.
+  if (p.lat === null || p.lng === null) {
+    console.warn(
+      '[submitCadastro] sem coordenadas — grava lat/lng null.',
+      'submission:', p.submission_id,
+      'bairro:', p.extra_data.neighborhood ?? '(vazio)',
+      'cidade:', p.extra_data.city ?? '(vazio)'
+    )
+  }
+
+  // Fonte única da versão: o client manda só os booleans dos steps; quem monta o
+  // consent é o servidor, e ele carimba POLICY_VERSION_CADASTRO em cada um.
+  // Nenhum valor de versão vindo do client é aceito. O `coalesce` da RPC vira
+  // no-op em operação normal e fica só como defesa em profundidade.
+  const consents: Array<{
+    type: string
+    granted: boolean
+    policy_version: string
+    valid_months?: number
+  }> = []
   if (p.lgpd_accepted !== null) {
-    consents.push({ type: 'lgpd', granted: p.lgpd_accepted, valid_months: 12 })
+    consents.push({
+      type: 'lgpd',
+      granted: p.lgpd_accepted,
+      policy_version: POLICY_VERSION_CADASTRO,
+      valid_months: 12,
+    })
   }
   if (p.marketing_opt_in !== null) {
-    consents.push({ type: 'marketing', granted: p.marketing_opt_in })
+    consents.push({
+      type: 'marketing',
+      granted: p.marketing_opt_in,
+      policy_version: POLICY_VERSION_CADASTRO,
+    })
   }
 
   try {

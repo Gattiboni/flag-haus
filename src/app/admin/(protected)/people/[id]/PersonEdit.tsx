@@ -12,8 +12,11 @@ import './person-edit.css'
 
 /**
  * Edição de pessoa com trava por campo (#4c §5-bis). "Admin ganha por padrão":
- * todo campo que muda de valor ganha um cadeado; a próxima submissão do form
- * (depois da migration do Alan) respeita a trava. Destravar é explícito.
+ * todo campo que muda de valor ganha um cadeado, e as RPCs `submit_cadastro` e
+ * `submit_anamnese` já respeitam esse cadeado — tanto em chaves de `extra_data`
+ * quanto nas colunas `name`/`email`/`birth_date` (`phone` o formulário nunca
+ * sobrescreve). Verificado no banco de produção em 09/08/2026. Ou seja: o que se
+ * trava aqui não volta pela próxima submissão do form. Destravar é explícito.
  *
  * A página abre em LEITURA: 99% das visitas são pra ler a pessoa, não pra
  * editar. Cada campo tem um ✎ que abre edição inline só naquela linha. O 🔒 só

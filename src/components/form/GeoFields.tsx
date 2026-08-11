@@ -219,8 +219,36 @@ export function GeoFields({
   const [locating, setLocating] = useState(false)
   const [hint, setHint] = useState<string | null>(null)
 
+  // De onde vieram as coords que estão no state do pai, quando vieram de uma
+  // sugestão. Guarda o texto exato selecionado pra detectar que o usuário
+  // digitou por cima depois — nesse caso a coordenada não vale mais.
+  // Fica null quando as coords vieram do GPS: digitar por cima do bairro que o
+  // reverse preencheu NÃO invalida uma coordenada real do aparelho.
+  const coordOriginRef = useRef<{
+    field: 'neighborhood' | 'city'
+    text: string
+  } | null>(null)
+
   const bias =
     typeof lat === 'number' && typeof lng === 'number' ? { lat, lng } : undefined
+
+  /** Digitação livre sobre o campo que originou as coords → descarta as coords. */
+  function invalidateIfTypedOver(field: 'neighborhood' | 'city', value: string) {
+    const origin = coordOriginRef.current
+    if (origin && origin.field === field && value !== origin.text) {
+      coordOriginRef.current = null
+      onCoords(null, null)
+    }
+  }
+
+  function handleNeighborhoodChange(v: string) {
+    invalidateIfTypedOver('neighborhood', v)
+    onNeighborhood(v)
+  }
+  function handleCityChange(v: string) {
+    invalidateIfTypedOver('city', v)
+    onCity(v)
+  }
 
   function handleLocate() {
     if (typeof navigator === 'undefined' || !navigator.geolocation) {
@@ -232,6 +260,8 @@ export function GeoFields({
     navigator.geolocation.getCurrentPosition(
       async (pos) => {
         const { latitude, longitude } = pos.coords
+        // GPS ganha de qualquer sugestão selecionada antes: é a coordenada real.
+        coordOriginRef.current = null
         onCoords(latitude, longitude)
         const geo = await reverseGeocode(latitude, longitude)
         // não sobrescreve o que o usuário já digitou
@@ -239,8 +269,12 @@ export function GeoFields({
         if (geo.city && !city.trim()) onCity(geo.city)
         setLocating(false)
       },
-      () => {
-        // negado / erro / timeout: silencioso, segue manual
+      (err) => {
+        // negado / erro / timeout: degrada pra manual, agora com rastro.
+        console.warn(
+          `[GeoFields] geolocation falhou (code=${err.code}): ${err.message} — segue manual, lat/lng null`
+        )
+        coordOriginRef.current = null
         onCoords(null, null)
         setLocating(false)
         setHint('Sem problema — é só digitar abaixo.')
@@ -249,14 +283,36 @@ export function GeoFields({
     )
   }
 
+  /**
+   * Selecionar sugestão carimba o centroide dela em lat/lng — é o caminho que
+   * até aqui perdia a coordenada. Sugestão sem geometry → mantém o que havia
+   * (não zera à toa) e loga.
+   */
+  function adoptCoords(s: PlaceSuggestion, field: 'neighborhood' | 'city', text: string) {
+    if (s.lat === null || s.lng === null) {
+      console.warn(
+        `[GeoFields] sugestão "${s.label}" (${field}) veio sem coordenada — lat/lng inalterados`
+      )
+      return
+    }
+    coordOriginRef.current = { field, text }
+    onCoords(s.lat, s.lng)
+  }
+
   // Bairro: se cidade vazia, preenche com a cidade da sugestão; se já tem, não
   // sobrescreve. Cidade: preenche só a cidade.
   function handleNeighborhoodSelect(s: PlaceSuggestion) {
     if (s.neighborhood) onNeighborhood(s.neighborhood)
     if (s.city && !city.trim()) onCity(s.city)
+    if (s.neighborhood) adoptCoords(s, 'neighborhood', s.neighborhood)
   }
   function handleCitySelect(s: PlaceSuggestion) {
-    if (s.city) onCity(s.city)
+    if (!s.city) return
+    onCity(s.city)
+    // Centroide de cidade é grosseiro: só assume se ainda não há coordenada
+    // (GPS ou bairro selecionado são estritamente melhores).
+    const hasCoords = typeof lat === 'number' && typeof lng === 'number'
+    if (!hasCoords) adoptCoords(s, 'city', s.city)
   }
 
   return (
@@ -277,7 +333,7 @@ export function GeoFields({
       <AutocompleteInput
         label="Bairro"
         value={neighborhood}
-        onChange={onNeighborhood}
+        onChange={handleNeighborhoodChange}
         onSelect={handleNeighborhoodSelect}
         kind="neighborhood"
         bias={bias}
@@ -287,7 +343,7 @@ export function GeoFields({
       <AutocompleteInput
         label="Cidade"
         value={city}
-        onChange={onCity}
+        onChange={handleCityChange}
         onSelect={handleCitySelect}
         kind="city"
         placeholder="Sua cidade"

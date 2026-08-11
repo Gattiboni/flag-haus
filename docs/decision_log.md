@@ -732,13 +732,6 @@ Estado documentado a revisar: `docs/stack.md`, `docs/arquitetura.md`.
 
 ---
 
-# Decision log — entradas novas
-
-**Cola no topo de `docs/decision_log.md`, abaixo do header existente, na ordem
-em que aparecem aqui.**
-
----
-
 ## Decision #015 — 2026-06-17
 
 ### Stack de aplicação migra para Next.js + Vercel; WordPress entra em modo legado
@@ -1464,105 +1457,6 @@ aprovado, UM commit único.
 ### Decisão: Idempotência real no /cadastro (Emenda D)
 
 **Contexto** Bug crítico em produção descoberto 2026-07-19: submits do
-`/cadastro` falhavam com "invalid_submission_id". Diagnóstico pelo log do
-Postgres identificou validação órfã deixada pela Emenda C — a checagem foi
-copiada da `submit_anamnese` sem que o front implementasse o campo. A esposa do
-Julio, primeira pessoa real a tentar se cadastrar pós-lançamento, encontrou o
-bug no step 18 do wizard. Alan reproduziu.
-
-**Duas rotas avaliadas:**
-
-- **A — Remover validação órfã da RPC.** Fix cirúrgico, RPC volta ao
-  comportamento pré-Emenda C. Custo: `/cadastro` sem idempotência real, duplo
-  clique geraria linhas duplicadas em `consents`, `events`, `motivations`
-  (people não duplica — ON CONFLICT por phone).
-- **B — Implementar idempotência real espelhando anamnese.** Alinha os dois
-  submits públicos, padrão único no projeto. Custo: mudanças em 2 arquivos de
-  código + 1 índice + reescrita da RPC.
-
-**Decisão adotada: rota B.**
-
-Justificativa: decisão #023 estabeleceu idempotência como padrão para submits
-públicos (via `submission_id` gerado no mount do form, checado no início da
-RPC). A rota A criaria uma exceção conceitual entre `/cadastro` e
-`/antes-da-sessao` que ninguém lembraria daqui a três meses. Zero dívida técnica
-é regra do projeto.
-
-**Padrão de implementação (espelha anamnese):**
-
-1. **UUID no mount:**
-   `const [submissionId] = useState(() => crypto.randomUUID())`. Preso ao mount
-   → "tenta de novo" após erro reusa o mesmo id (comportamento desejado). F5
-   gera id novo.
-2. **Zod valida no server:** `submission_id: z.string().uuid()` no schema —
-   payload sem o campo é barrado antes de chegar na RPC.
-3. **RPC valida formato de novo:** regex UUID como defense-in-depth (RPC pode
-   ser chamada de outros lugares no futuro).
-4. **Curto-circuito idempotente** antes de qualquer write: se já existe event
-   `form.cadastro_submitted` com aquele `submission_id`, retorna com
-   `duplicate: true` sem re-executar nada.
-5. **Índice único parcial** em `events((payload->>'submission_id'))` filtrado
-   por `event_type = 'form.cadastro_submitted'` garante que o SELECT seja O(log
-   n) e que dois inserts concorrentes com mesmo id colidam no banco
-   (defense-in-depth se o SELECT-antes-de-INSERT tiver race).
-
-**Decisão colateral tomada durante execução:** campo de retorno se chama
-`duplicate` (não `idempotent`), padronizando com `anamnese.ts:207` e `:296`.
-Semanticamente `idempotent` seria mais preciso ("essa operação foi tratada como
-idempotente"), mas `duplicate` já era o padrão instalado — o novo (cadastro) se
-ajusta ao velho (anamnese), não o contrário. Zero exceção conceitual entre os
-dois forms.
-
-**Onde armazenar o submission_id:** `events.payload->>'submission_id'`, filtrado
-por `event_type = 'form.cadastro_submitted'`. Não em `people.extra_data` (upsert
-por phone sobrescreveria o histórico). Não em `consents` ou `motivations`
-(múltiplos por submit). `events` é append-only e o `form.cadastro_submitted` é o
-"certificado" natural da submissão.
-
-**Onde não muda:** RPC `submit_anamnese` e todo o fluxo `/antes-da-sessao`
-preservados exatamente. O padrão estabelecido lá é a referência; o cadastro se
-alinha, não o contrário.
-
-**Fluxo de execução aprovado** Alan aplicou SQL via MCP (índice + 3 versões da
-RPC — as duas correções foram por erro do Claudinho no SQL inicial, não por
-mudança de escopo). Codinho aplicou código de aplicação após α aprovado e depois
-de Alan avisar "SQL aplicado". Comet validou UX (Rodadas 1 e 3), Claudinho
-validou lógica de idempotência via MCP direto (Rodada 2) — alternativa
-equivalente porque o Comet não tem acesso a DevTools/Replay XHR neste ambiente.
-Um commit único ao final.
-
-**Validação**
-
-- α (Codinho): tsc, build, lint — 2 erros pré-existentes de `CadastroForm.tsx`,
-  nenhum novo. Grep confirmou simetria 6 → 11 ocorrências de
-  `submission_id|submissionId` entre cadastro e anamnese.
-- β (Comet + MCP): 3 rodadas passaram. Idempotência confirmada por contagem no
-  banco (1 pessoa/1 event/1 consent/1 motivation após 2 chamadas com mesmo
-  submission_id).
-- Limpeza pós-teste: 4 pessoas removidas.
-
-**Impacto**
-
-- Bug em produção resolvido. `/cadastro` volta a funcionar.
-- Alinhamento total entre `/cadastro` e `/antes-da-sessao`: mesmo padrão de
-  idempotência, mesmo nome de campo no retorno (`duplicate`), mesmo padrão de
-  dicionário de erros (`RPC_EXCEPTIONS` + `translateRpcError()`).
-- Zero dívida conceitual entre os dois submits públicos.
-
-**Dívidas rastreadas separadas (não são desta decisão):**
-
-- Trigger `sync_people_location` sem `extensions.geography` qualificado
-  (descoberto durante β via MCP)
-- Repo sem `supabase/migrations/` versionado (as 3 migrations da Emenda D
-  ficaram no schema `supabase_migrations` do Supabase, não no repo)
-
----
-
-## Decision #028 — 2026-07-20
-
-### Decisão: Idempotência real no /cadastro (Emenda D)
-
-**Contexto** Bug crítico em produção descoberto 2026-07-19: submits do
 `/cadastro` falhavam com "invalid_submission_id". A Emenda C copiou a validação
 de `submission_id` da `submit_anamnese` pra `submit_cadastro` sem que o lado da
 aplicação jamais tivesse implementado o campo — validação órfã: declarada,
@@ -1648,6 +1542,152 @@ final em produção pelo Alan com geocoding real: PASS.
 migrations vivem no schema `supabase_migrations` do Supabase, não no repo.
 **Dívida removida:** o trigger `sync_people_location` apontado como "dívida"
 durante o β estava correto o tempo todo; o registro foi corrigido.
+
+---
+
+## Decision #029 — 2026-08-10
+
+### Geocoding: coordenada nasce no autocomplete, morre se o texto muda; procedência adiada
+
+**Contexto.** 17 de 22 pessoas sem lat/lng. Diagnóstico (Codinho, arquivo:linha)
+matou a hipótese de quota: o Photon respondia 200, mas `geo.ts` descartava
+`feature.geometry` — as coordenadas nunca existiram no estado do form. Só o
+botão de GPS gravava (os 5/22 com geo). Digitação livre e autocomplete gravavam
+null em silêncio total.
+
+**Decisão.** (1) **Coordenada é capturada na seleção da sugestão**
+(`extractCoords` com validação de faixa; `adoptCoords` no select): bairro sempre
+assume as coords; cidade só se ainda não houver (centroide de cidade não
+sobrescreve bairro nem GPS). (2) **`coordOriginRef` descarta coords quando o
+usuário digita por cima do campo que as originou** — melhor null honesto que
+centroide de Vila Mariana pra quem corrigiu pra Moema; coords de GPS nunca são
+destruídas por edição de texto. (3) **Falha de geocoding loga, nunca bloqueia**
+— 7 pontos de log; o único server-side é o warn de submit sem coordenada
+(people.ts, com submission_id), porque a cadeia roda client-side por design
+(#023). (4) **Backfill com procedência por evento**: os 17 reprocessados
+ganharam `admin.geo_backfill` com provider/precision no payload. (5) **Coluna de
+procedência GPS × centroide: adiada** — sem consumidor que exija precisão de
+endereço, é contrato novo sem uso; reavaliar se `people.lat/lng` alimentar
+cálculo de distância.
+
+**Alternativas descartadas.** Geocode-on-submit do texto livre (feature nova
+disfarçada de fix; mudaria o contrato de "coordenada só com fonte confiável");
+provider com chave (nenhum provider da cadeia usa chave — a hipótese de quota
+era falsa); proxy server-side pros logs (arquitetura nova pra ganho marginal).
+
+---
+
+## Decision #030 — 2026-08-10
+
+### Status operacional é computado em view, com precedência fixa; "retornante" é flag, não badge
+
+**Contexto.** A tela de Cadastros precisa de um status por pessoa, mas o dado
+primário são jobs + lifecycle. Denormalizar seria fonte dupla de verdade. Fatos
+do banco corrigiram o desenho inicial: não existe status `draft`; existe
+`no_response`, que não estava na lista aprovada.
+
+**Decisão.** (1) **View, nunca coluna** (`v_person_operational_status`): CASE
+com precedência fixa sessao_marcada > agendar > orcamento_enviado > orcar >
+sem_resposta > inativo > cliente > novo — o estado acionável vence. (2)
+**`sem_resposta` entra como 8º slug** (vocabulário que a Fila já usa; sem ele,
+job no_response cairia mentirosamente em outro badge). (3) **`retornante` vira
+flag `is_returning`** (executado + job aberto): badge único não carrega duas
+dimensões — retornante com orçamento aberto precisa mostrar "Orçar", que é a
+ação; o marcador vai ao lado, no padrão das flags. (4) **Inativo = 180 dias**
+sem interação e sem job aberto (ciclo longo de estúdio; 90 marcaria cliente
+normal entre projetos). (5) **`attention_rank` (1–8) vive na view**, não no
+front: PostgREST não ordena por CASE, e replicar o rank em JS seria segunda
+fonte de verdade que diverge calada — a constante do front foi deletada, não
+renumerada. (6) **"Cliente" no lugar de "Tatuado"** (pode virar cliente de
+piercing).
+
+**Alternativas descartadas.** Coluna denormalizada com trigger (fonte dupla,
+drift garantido); retornante como badge de precedência máxima (esconderia o
+estado acionável); rank em memória no server (teto de 2000 linhas e projeção
+dupla — existiu por um adendo e foi removido).
+
+---
+
+## Decision #031 — 2026-08-10
+
+### Última interação: precedência customer > operational > admin — edição interna nunca engaja cliente
+
+**Contexto.** "Última interação" na lista precisa responder "quando esse cliente
+se mexeu?" — mas a tabela `events` mistura ações do cliente, do sistema e do
+admin. Sem regra, uma edição de ficha faria a pessoa parecer recém-engajada.
+
+**Decisão.** (1) **Taxonomia por prefixo**: `form.%` = customer, `admin.%` =
+admin, resto (job.%, futuros whatsapp.%) = operational. (2) **Precedência na
+exibição, não no timestamp**: mostra o evento customer mais recente; só na
+ausência total, operational; só então admin. (3) **Labels humanos com fallback
+cru**: mapeamento na view (Cadastro enviado, Anamnese enviada, Job criado à mão,
+Localização atualizada, Ficha editada); tipo desconhecido exibe o slug — feio e
+visível é melhor que traduzido e errado. (4) A regra foi **provada com dado
+real**: 17 eventos admin de backfill criados de uma vez, zero pessoas com última
+interação contaminada.
+
+**Alternativas descartadas.** max(occurred_at) simples (admin contaminaria);
+tabela de classificação por tipo (manutenção eterna; prefixo é convenção que se
+auto-aplica a tipos futuros).
+
+---
+
+## Decision #032 — 2026-08-10
+
+### Views com security_invoker + revoke; revisão de view exige reloptions e grants, não só RLS
+
+**Contexto.** As 3 views do Bloco 3 foram criadas (pelo Claudinho, via MCP) sem
+`security_invoker` e com GRANT default a anon — view roda como owner e ignora
+RLS da tabela base. PII das 22 pessoas ficou legível com a anon key por ~1 dia,
+em produção. Detectado pelo Codinho na validação de contrato (advisor: 3× ERROR
+security_definer_view), verificado empiricamente (anon lia 22 linhas da view e 0
+da tabela).
+
+**Decisão.** (1) **Toda view do projeto nasce e permanece com
+`security_invoker = on`** + `revoke all from anon, authenticated` — o admin lê
+via service_role, que não precisa de grant. (2) **Regra de revisão nova**: criar
+ou alterar view exige conferir reloptions E grants, não apenas a RLS da tabela
+base; `create or replace view` pode resetar reloptions, então todo replace
+reaplica invoker + revoke no mesmo migration (padrão seguido em
+add_label_job_created_manual). (3) **Advisor do Supabase como gate**: ERROR de
+segurança bloqueia o fecho do bloco.
+
+**Alternativas descartadas.** Confiar na RLS da tabela base (é exatamente o que
+view sem invoker ignora); RLS nas próprias views (views não têm RLS; o mecanismo
+é invoker + ACL).
+
+---
+
+## Decision #033 — 2026-08-10
+
+### Operação do Julio: status de job derivado no server, nota sem vazamento, exclusão é soft-delete com nome digitado
+
+**Contexto.** Os dois itens prometidos em julho e nunca implementados (#4d job
+manual, observações) + o pedido de exclusão pela UI. Tudo roda na mão do Julio,
+no celular, com cliente na frente.
+
+**Decisão.** (1) **Status inicial do job manual é derivado, não escolhido**:
+nasce `quoted`; `confirmed` só com data + checkbox "sessão já combinada", regra
+aplicada no server (carimbos `quoted_at`/`confirmed_at` pela mesma regra do
+updateJob). Dropdown de status no form de criação não existe — status muda pelo
+Funil. (2) **datetime-local é interpretado como America/Sao_Paulo fixo** (Brasil
+sem DST desde 2019), ponto único em `admin/_ui/format.ts` — ler com o relógio do
+server (UTC na Vercel) jogaria toda sessão 3h pra frente. (3) **Nota vive em
+`extra_data.admin_notes`** com merge por spread; o evento registra QUE mudou
+(`{field, cleared}`), nunca O QUE — nota pode conter dado sensível dito pelo
+cliente. Nota apagada remove a chave. Nunca aparece em lista/busca. (4)
+**Exclusão = soft-delete** de pessoa + todos os jobs `deleted_at is null`
+(incluindo executed/cancelled — job vivo de pessoa morta é linha órfã), com
+modal exigindo o nome digitado (reconferido no server, sem acento/caixa) e
+evento `admin.person_deleted` ANTES do carimbo — evento falhou, exclusão aborta.
+Hard delete proibido; append-only (consents, events, clinical) intacto: atende
+eliminação LGPD das superfícies operacionais sem destruir trilha de auditoria.
+
+**Alternativas descartadas.** Dropdown de status na criação (usuário não-técnico
+escolheria errado; derivação é à prova de Julio); autosave na nota (digitação
+com cliente na frente salvaria frase pela metade); hard delete (destrói trilha e
+quebra FKs de append-only); coluna/tabela própria pra nota (JSONB é o lugar de
+dado operacional sem schema).
 
 ---
 

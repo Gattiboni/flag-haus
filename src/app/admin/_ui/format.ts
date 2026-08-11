@@ -29,6 +29,20 @@ export function formatDateTimeBR(input: string | Date | null | undefined): strin
 }
 
 /**
+ * timestamptz → "12/08/2026 · 14:00". Mesma informação de `formatDateTimeBR`,
+ * sem o "às": a coluna "Próxima sessão" da lista de cadastros é estreita e o
+ * conectivo não paga o espaço que ocupa. null/inválido → "—".
+ */
+export function formatDateTimeShortBR(
+  input: string | Date | null | undefined
+): string {
+  if (!input) return '—'
+  const d = typeof input === 'string' ? new Date(input) : input
+  if (Number.isNaN(d.getTime())) return '—'
+  return `${DATE.format(d)} · ${TIME.format(d)}`
+}
+
+/**
  * `date` (YYYY-MM-DD) → "10/05/2000". Trata a string de data pura sem passar
  * pelo fuso (senão a meia-noite UTC volta um dia em SP). null/inválido → "—".
  */

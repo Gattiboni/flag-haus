@@ -5,6 +5,7 @@ import { revalidatePath } from 'next/cache'
 import { requireOperator } from '@/lib/auth/gate'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { JOB_STATUSES } from '@/lib/domain/job-status'
+import { CADASTROS_PATH } from '@/app/admin/_ui/cadastros'
 
 /**
  * Texto opcional com trim + limite de tamanho. Vazio (após trim) vira null:
@@ -208,6 +209,185 @@ export async function updateJob(
   } catch (e) {
     const msg = e instanceof Error ? e.message : 'erro desconhecido'
     console.error('[updateJob] throw:', msg)
+    return { status: 'error', message: msg }
+  }
+}
+
+/* ------------------------------------------------------------------
+   Criação manual de job (#4d)
+   ------------------------------------------------------------------ */
+
+/**
+ * Relógio de parede de São Paulo → instante UTC. O `datetime-local` devolve
+ * "YYYY-MM-DDTHH:mm" SEM fuso nenhum; ler essa string com o relógio do servidor
+ * (UTC na Vercel) empurraria toda sessão três horas pra frente. O admin já
+ * EXIBE tudo em America/Sao_Paulo (`admin/_ui/format.ts`), então é nesse fuso
+ * que ela também é lida — o que o Julio digita é o que ele lê de volta.
+ *
+ * Offset fixo em -03:00 porque o Brasil não tem horário de verão desde 2019.
+ * Se voltar a ter, este é o único ponto a mudar.
+ */
+function saoPauloToISO(local: string): string | null {
+  const d = new Date(`${local}:00.000-03:00`)
+  return Number.isNaN(d.getTime()) ? null : d.toISOString()
+}
+
+const createJobSchema = z.object({
+  personId: z.string().uuid(),
+  description: optionalText(2000),
+  bodyRegion: optionalText(200),
+  style: optionalText(100),
+  sizeCm: z.number().positive().nullable().optional(),
+  quotedPrice: z.number().nonnegative().nullable().optional(),
+  /** Relógio de parede de São Paulo, direto do `datetime-local`. */
+  scheduledAt: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/, { message: 'Data da sessão inválida.' })
+    .nullable()
+    .optional(),
+  /** "A sessão já está combinada com o cliente" — só vale com data. */
+  sessionAgreed: z.boolean().optional(),
+})
+
+export type CreateJobInput = z.input<typeof createJobSchema>
+
+export type CreateJobResult =
+  | { status: 'ok'; jobId: string }
+  | { status: 'invalid'; reason: string }
+  | { status: 'error'; message: string }
+
+/**
+ * Job criado à mão pelo Julio, na ficha da pessoa (#4d). O caminho normal de um
+ * job é nascer do formulário público; este é o do cliente que chegou pelo
+ * WhatsApp, pela indicação ou pela porta da rua.
+ *
+ * O status NÃO é escolhido no formulário, é derivado — e a razão é que status
+ * aqui é consequência, não opinião: um job nasce `quoted` porque orçar é o
+ * primeiro trabalho que ele dá. Só quando existe data E o Julio confirma que a
+ * sessão está combinada com o cliente é que ele nasce `confirmed` (com o
+ * `confirmed_at` carimbado, mesma regra do `updateJob`). Dali em diante quem
+ * move o status é o Funil, como em qualquer job.
+ *
+ * `quoted_at` segue a mesma regra do `updateJob`: carimba quando o preço orçado
+ * existe, não quando o job existe.
+ */
+export async function createJob(raw: CreateJobInput): Promise<CreateJobResult> {
+  // SEMPRE a primeira linha. Sem exceção.
+  const { userId } = await requireOperator()
+
+  const parsed = createJobSchema.safeParse(raw)
+  if (!parsed.success) {
+    console.warn('[createJob] invalid payload:', parsed.error.message)
+    return {
+      status: 'invalid',
+      reason: parsed.error.issues[0]?.message ?? 'Dados inválidos.',
+    }
+  }
+  const {
+    personId,
+    description,
+    bodyRegion,
+    style,
+    sizeCm,
+    quotedPrice,
+    scheduledAt,
+    sessionAgreed,
+  } = parsed.data
+
+  let scheduledISO: string | null = null
+  if (scheduledAt) {
+    scheduledISO = saoPauloToISO(scheduledAt)
+    if (!scheduledISO) {
+      return { status: 'invalid', reason: 'Data da sessão inválida.' }
+    }
+  }
+
+  // Derivação do status. Sem data não há sessão combinada — o checkbox sozinho
+  // não confirma nada, e o client já o desabilita nesse caso.
+  const confirmed = scheduledISO !== null && sessionAgreed === true
+  const status = confirmed ? 'confirmed' : 'quoted'
+
+  try {
+    const admin = createAdminClient()
+
+    // A FK é ON DELETE RESTRICT, então um person_id inexistente estouraria no
+    // insert — mas com mensagem de banco. E pessoa soft-deletada passaria pela
+    // FK sem passar pela regra: ninguém cria job pra quem foi excluído.
+    const { data: person, error: readErr } = await admin
+      .from('people')
+      .select('id, deleted_at')
+      .eq('id', personId)
+      .maybeSingle()
+
+    if (readErr) {
+      console.error('[createJob] read error:', readErr.message)
+      return { status: 'error', message: readErr.message }
+    }
+    if (!person || person.deleted_at) {
+      return { status: 'error', message: 'Pessoa não encontrada.' }
+    }
+
+    const now = new Date().toISOString()
+    const insert: Record<string, unknown> = {
+      person_id: personId,
+      status,
+      description: description ?? null,
+      body_region: bodyRegion ?? null,
+      style: style ?? null,
+      size_cm: sizeCm ?? null,
+      quoted_price: quotedPrice ?? null,
+      scheduled_at: scheduledISO,
+    }
+    if (quotedPrice != null) insert.quoted_at = now
+    if (confirmed) insert.confirmed_at = now
+
+    const { data: created, error: writeErr } = await admin
+      .from('jobs')
+      .insert(insert)
+      .select('id')
+      .single()
+
+    if (writeErr || !created) {
+      const msg = writeErr?.message ?? 'insert não retornou o job.'
+      console.error('[createJob] write error:', msg)
+      return { status: 'error', message: msg }
+    }
+
+    // Auditoria. `job.%` cai como classe `operational` na taxonomia da
+    // `v_person_last_interaction` — criar job à mão É uma interação
+    // operacional, não uma edição de cadastro.
+    const { error: auditErr } = await admin.from('events').insert({
+      person_id: personId,
+      job_id: created.id,
+      event_type: 'job.created_manual',
+      source: 'admin',
+      actor_id: userId,
+      payload: {
+        created: {
+          status,
+          scheduled_at: scheduledISO,
+          quoted_price: quotedPrice ?? null,
+          body_region: bodyRegion ?? null,
+          style: style ?? null,
+          size_cm: sizeCm ?? null,
+          description: description ?? null,
+        },
+        session_agreed: confirmed,
+      },
+    })
+    if (auditErr) {
+      console.error('[createJob] audit insert failed:', auditErr.message)
+    }
+
+    // Fila (o job entra num grupo), ficha (Jobs ativos) e Cadastros (status
+    // operacional e "Próxima sessão" saem das views, que já enxergam o job).
+    revalidatePath('/admin')
+    revalidatePath(`/admin/people/${personId}`)
+    revalidatePath(CADASTROS_PATH)
+    return { status: 'ok', jobId: created.id }
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : 'erro desconhecido'
+    console.error('[createJob] throw:', msg)
     return { status: 'error', message: msg }
   }
 }

@@ -154,12 +154,15 @@ obrigatório: **WhatsApp (11) 97661-7569**.
 ## O `/cadastro`
 
 O `/cadastro` (formulário de cadastro puro, sem coleta de saúde) coleta apenas
-`lgpd` e `marketing`. Os textos são os mesmos deste documento.
+`lgpd` e `marketing`, e tem **texto próprio** — de mesmo sentido que o daqui, mas
+redação diferente. Ele grava `policy_version = 'cadastro-v1-2026-07'`.
 
-Ele grava `policy_version = 'cadastro-v1-2026-07'`, hoje aplicado como fallback
-dentro da própria RPC `submit_cadastro` — o formulário ainda não envia a versão no
-payload.
+O texto congelado dele está em
+[`consentimento_cadastro_v1.md`](consentimento_cadastro_v1.md). É lá que se olha
+qualquer consent do `/cadastro` — este documento cobre só o `/antes-da-sessao`.
 
-**Dívida rastreada:** quando o `/cadastro` for tocado, ele passa a enviar a versão
-explicitamente e o `coalesce` da RPC vira no-op. Não é bloqueante: nenhum cadastro
-real foi coletado ainda.
+**Dívida fechada em 2026-08-09.** O `/cadastro` passou a enviar a versão
+explicitamente no payload, a partir da constante `POLICY_VERSION_CADASTRO`. O
+`coalesce` da RPC `submit_cadastro` — que carimbava a versão enquanto o
+formulário não a mandava — permanece intacto como defesa em profundidade, mas em
+operação normal não dispara mais.

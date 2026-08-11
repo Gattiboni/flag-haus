@@ -6,7 +6,11 @@ import { Alert, Badge, Card, CardHeader } from '@/components/ui'
 import { requireOperator } from '@/lib/auth/gate'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { formatBRL, formatPhoneBR, formatRelativeTime } from '@/lib/format'
-import { formatDateBR, formatDateTimeBR } from '@/app/admin/_ui/format'
+import {
+  formatDateBR,
+  formatDateTimeBR,
+  formatDateTimeShortBR,
+} from '@/app/admin/_ui/format'
 import {
   EventList,
   resolveUserEmails,
@@ -14,6 +18,9 @@ import {
 } from '@/app/admin/_ui/events'
 import { LOCKABLE_FIELDS, type PersonField } from '@/app/admin/_ui/person-fields'
 import { PersonEdit } from './PersonEdit'
+import { PersonNotes } from './PersonNotes'
+import { PersonDelete } from './PersonDelete'
+import { NewJob } from './NewJob'
 import type { JobStatus } from '@/lib/domain/job-status'
 
 /**
@@ -62,6 +69,7 @@ type JobRow = {
   description: string | null
   quoted_price: number | string | null
   final_price: number | string | null
+  scheduled_at: string | null
   created_at: string
 }
 
@@ -85,13 +93,19 @@ function str(v: unknown): string {
 
 export default async function PersonDetailPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>
+  searchParams: Promise<Record<string, string | string[] | undefined>>
 }) {
   const { email: operatorEmail } = await requireOperator()
 
   const { id } = await params
   if (!z.string().uuid().safeParse(id).success) notFound()
+
+  // Atalho da tela de Cadastros (#4d): chega com o formulário de job já aberto.
+  const sp = await searchParams
+  const openNewJob = (Array.isArray(sp.novo_job) ? sp.novo_job[0] : sp.novo_job) === '1'
 
   const admin = createAdminClient()
 
@@ -120,7 +134,9 @@ export default async function PersonDetailPage({
     await Promise.all([
       admin
         .from('jobs')
-        .select('id, status, body_region, description, quoted_price, final_price, created_at')
+        .select(
+          'id, status, body_region, description, quoted_price, final_price, scheduled_at, created_at'
+        )
         .eq('person_id', id)
         .is('deleted_at', null)
         .order('created_at', { ascending: false }),
@@ -219,6 +235,17 @@ export default async function PersonDetailPage({
 
             <ExtraData data={person.extra_data} />
           </Card>
+
+          {/* Observações vivas (Bloco 5B). Card próprio, não uma linha do
+              PersonEdit: nota é texto corrido que se lê e se reescreve, não um
+              campo travável que o formulário público dispute. */}
+          <Card>
+            <CardHeader
+              title="Observações"
+              description="Só aparece aqui — nunca na lista de Cadastros nem na busca."
+            />
+            <PersonNotes personId={person.id} initial={str(extra.admin_notes)} />
+          </Card>
         </div>
 
         {/* ── Direita: jobs + consents + eventos ── */}
@@ -228,6 +255,7 @@ export default async function PersonDetailPage({
               title="Jobs ativos"
               action={<Badge variant="neutral">{active.length}</Badge>}
             />
+            <NewJob personId={person.id} defaultOpen={openNewJob} />
             <JobList jobs={active} />
           </Card>
 
@@ -277,6 +305,10 @@ export default async function PersonDetailPage({
           </Card>
         </div>
       </div>
+
+      {/* Zona inferior: a ação que encerra o cadastro fica longe de tudo que se
+          usa no dia a dia, e fora da lista. */}
+      <PersonDelete personId={person.id} displayName={displayName} />
     </div>
   )
 }
@@ -310,6 +342,11 @@ function JobList({ jobs, muted }: { jobs: JobRow[]; muted?: boolean }) {
                   {formatRelativeTime(j.created_at)}
                 </span>
               </div>
+              {j.scheduled_at && (
+                <div className="fh-micro fh-tnum mt-fh-1">
+                  Sessão · {formatDateTimeShortBR(j.scheduled_at)}
+                </div>
+              )}
             </Link>
           </li>
         )

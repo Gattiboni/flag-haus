@@ -942,3 +942,170 @@ migrations via MCP — incluindo os 3 erros próprios e suas correções —, ro
 diagnóstico do header)
 
 ---
+
+## 2026-08-10 — CRM: fundação de dados, tela de Cadastros e operação do Julio (Blocos 1–5)
+
+Sessão de 09–10/08. Cinco blocos de um plano de sete, executados em sequência
+com β individual por bloco e commit único no fecho. Abre com auditoria de estado
+real (docs/_auditoria/estado_real_20260809.md) que corrigiu três registros
+falsos da memória de trabalho: #4d e observações vivas nunca foram implementados
+(agora foram), e a Emenda C já estava aplicada nas RPCs (comentários do código é
+que mentiam).
+
+### Adicionado
+
+- **`jobs.scheduled_at timestamptz` — a data da sessão existe no modelo.**
+  Migration `add_scheduled_at_and_admin_views` via MCP.
+- **Status operacional computado — views `v_person_operational_status`,
+  `v_person_last_interaction`, `v_admin_cadastros`.** 8 slugs com precedência
+  (sessao_marcada > agendar > orcamento_enviado > orcar > sem_resposta > inativo
+  180d > cliente > novo), `is_returning` como flag booleana (executado
+  - job aberto), `attention_rank` 1–8 pra ordenação server-side via PostgREST.
+    Última interação com taxonomia por prefixo (form.% = customer > outros =
+    operational > admin.% = admin) — edição interna nunca faz cliente parecer
+    engajado, provado ao vivo: 17 eventos de backfill + edições de UI, zero
+    contaminação. Extensão `unaccent` + `f_norm(text)` immutable pra busca.
+    TRAP: `create or replace view` pode resetar reloptions — toda alteração de
+    view reaplica `security_invoker` e revoke (ver Corrigido).
+- **Tela `/admin/cadastros` + sidebar do admin.** Funil + Cadastros (bottom nav
+  no mobile com safe-area), contagem real, busca server-side por
+  nome/telefone/email/instagram normalizados (telefone em formato solto: "(11) 9
+  7349" acha), filtros e ordenações como dropdowns por coluna (multi-select,
+  contador, Limpar único, estado 100% na URL), paginação 25/50, inline edit
+  restrito (canal, bairro, VIP, atenção — status é computado e muda pelo Funil),
+  estados vazios diferenciados. Headers em ícone puro (lucide, mesmo set da
+  sidebar) com title + aria-label; tooltips incondicionais em Nome e Última
+  interação; larguras `minmax(0, …)` com nome como elástica prioritária (antes:
+  460px fixos deixavam ~68px pro nome). Zero dado clínico/consent/nascimento na
+  lista, por design.
+- **#4d — criação manual de job na ficha** (atalho no inline edit da lista).
+  Status derivado, sem dropdown: nasce `quoted`; com data + checkbox "sessão já
+  combinada" nasce `confirmed` (carimbos `quoted_at`/`confirmed_at` pela mesma
+  regra do updateJob). Evento `job.created_manual`. Fuso: datetime-local
+  interpretado como America/Sao_Paulo fixo em `admin/_ui/format.ts` — ponto
+  único de mudança se o DST voltar. Funil e ficha exibem a data da sessão
+  (micro-linha, sem coluna nova).
+- **Observações vivas** — `people.extra_data.admin_notes`, merge por spread
+  (bairro/instagram/locks intactos), nota apagada remove a chave. Evento
+  `admin.person_updated {field:'admin_notes', cleared}` — zero conteúdo no
+  payload. Nunca aparece em lista/busca; botão Salvar só quando há mudança; erro
+  não reverte o texto digitado.
+- **Exclusão de pessoa pela UI** — soft-delete (pessoa + todos os jobs com
+  `deleted_at is null`, incluindo executed/cancelled, pra não deixar linha
+  órfã), modal com digitação do nome reconferida no server (sem acento/caixa;
+  aceita dígitos do telefone), evento `admin.person_deleted` ANTES do carimbo —
+  se o evento falha, aborta. Hard delete proibido.
+- **`docs/legal/consentimento_cadastro_v1.md`** — texto legal congelado que
+  `cadastro-v1-2026-07` referencia (antes apontava pro nada);
+  consentimento_anamnese_v1.md §fonte virou ponteiro.
+- **`docs/_auditoria/estado_real_20260809.md`** — auditoria repo × docs × banco
+  que abriu a sessão.
+
+### Alterado
+
+- **Geocoding do autocomplete finalmente grava coordenada.** Causa real do
+  buraco de 17/22 sem geo: `geo.ts` descartava `feature.geometry` do Photon — as
+  coords nunca existiram no estado; só o botão de GPS gravava (explica os 5/22
+  com geo). Fix: `extractCoords()` com validação de faixa, coords no
+  `PlaceSuggestion`, `adoptCoords()` na seleção, `coordOriginRef` descarta
+  coords se o usuário digita por cima do campo que as originou (GPS nunca é
+  destruído). AnamneseForm ganhou de graça (GeoFields compartilhado). Fim do
+  silêncio: 7 pontos de log (o único server-side é o warn de submit sem
+  coordenada em people.ts, com submission_id — a cadeia roda client-side por
+  design, #023).
+- **Backfill de geo: 22/22 pessoas com coordenada.** 17 registros reprocessados
+  via Photon pelo Chrome + UPDATE via MCP, com 17 eventos `admin.geo_backfill`
+  (payload provider/precision) como procedência. Quality gate real: 1ª rodada
+  sem bias devolveu 2 lixos (CD da GM em Sorocaba pra "Centro"; Indaiatuba pra
+  "Jardim Iris") — recusados e refeitos com bias `lat=-23.5505&lon=-46.6333`, o
+  mesmo do app.
+- **`policy_version` no /cadastro espelha a anamnese** — constante
+  `POLICY_VERSION_CADASTRO` reafirmada no server (Zod não ganhou campo; o form
+  manda booleans, decisão estrutural do Codinho). O coalesce no banco vira
+  defesa em profundidade, deixa de ser dívida.
+- Next 16.2.9 → 16.3.0 + `npm audit fix` (0 vulns, matou 6 high).
+- Comentários mentirosos da Emenda C corrigidos (admin-people.ts,
+  PersonEdit.tsx) — as RPCs JÁ respeitavam locks, verificado no banco.
+- `scripts/moas.mjs` ganhou seção de views (o script só coletava relkind r/p —
+  MOAS não conseguia refletir as views), ordem topológica, `moas:check`
+  idempotente. Snapshot regenerado com security_invoker e ACLs visíveis.
+- Ordenação "Precisa de atenção" migrou de ranking em memória (projeção dupla,
+  teto 2000 com aviso) pra `order by attention_rank` direto — a lista nunca mais
+  mente sobre o próprio tamanho. Constante duplicada no front foi deletada em
+  vez de renumerada (uma fonte de verdade só).
+
+### Removido
+
+- Rota `/__health` inteira + `findPersonByPhone` órfã. Sem substituto, por
+  decisão.
+
+### Corrigido — vazamento de PII em produção (janela de ~1 dia)
+
+As 3 views do Bloco 3 foram criadas pelo Claudinho sem `security_invoker` e com
+GRANT a anon — view roda como owner e ignora RLS: nome, telefone, email,
+instagram e bairro das 22 pessoas legíveis com a anon key do bundle. Furo pego
+pelo Codinho na validação de contrato (advisor: 3× ERROR security_definer_view).
+Fix na mesma sessão: `security_invoker = on` + `revoke anon/authenticated` nas 3
+views; verificação empírica pós-fix: `set role anon` → permission denied;
+advisor limpo. Regra de revisão nova registrada: view exige conferir
+reloptions + grants, não só a RLS da tabela base (Decisão #032).
+
+### Validado (β)
+
+- Bloco 1: /__health 404; cadastro 18 steps + anamnese 27 steps com fake
+  (+5511977770001) → pessoa, 5 consents com policy_version, 1º job da história
+  do banco, Fila populada; limpeza → 22 ativas.
+- Bloco 2: fake 0002 seleciona sugestão → lat -23.5925361 / lng -46.6357123 no
+  banco (1ª coordenada via autocomplete); fake 0003 digita por cima → null +
+  warn no terminal do dev server com submission_id. Botão de GPS não testado em
+  runtime (caminho não tocado pelo fix; coberto por leitura).
+- Bloco 3: 22 reais conferidos + 6 pessoas sintéticas exercitando todos os
+  branches do CASE (sessao_marcada/agendar/orcamento_enviado/sem_resposta/
+  inativo com created_at −200d/orcar+is_returning). Regra de ouro provada com os
+  17 eventos admin reais do backfill: li_contaminada = 0.
+- Bloco 4: desktop + mobile (500–657px, mínimo físico do Chrome; 390 real fica
+  pro iPhone), busca solta, dropdowns, Z–A via ?sort=nome_desc, filtro vazio,
+  inline edit VIP → banco → evento → última interação intacta → toggle off.
+  Falha simulada de inline edit coberta por leitura, não por β.
+- Bloco 5: job manual → `confirmed` derivado, 15/08/2026 14:00 BRT correto no
+  banco (UTC + conversão), Funil "Aguardando sessão" com data, lista com badge
+  "Sessão marcada" + Próxima sessão; validação de erro testada sem querer (ano
+  202614 → "Data da sessão inválida" com form preservado); nota persiste a
+  reload com evento sem conteúdo; exclusão → contagem 21 → evento antes do
+  deleted_at confirmado por timestamp → restauração via MCP.
+- Estado final do banco: 22 ativas, 0 jobs, 0 fakes ativos, 22/22 com geo.
+
+### Dívidas rastreadas
+
+- `supabase/migrations/` segue não versionado no repo — mesma pendência da
+  Emenda D, agora com 4 migrations novas desta sessão no schema do Supabase
+  (add_scheduled_at_and_admin_views, fix_views_security_and_attention_rank,
+  add_label_job_created_manual + as da Emenda D).
+- Copy do consent LGPD não menciona os 12 meses de validade que o banco registra
+  (valid_until) — pendência de copy, confirmada em tela no β.
+- 2 erros ESLint pré-existentes em CadastroForm.tsx:159-160 (+2 em
+  design_system_v1/, fora de src/).
+- Procedência GPS × centroide sem coluna no schema — adiada por decisão (#029);
+  eventos de backfill dão rastreio parcial.
+- Teste mobile em 390px reais pendente (iPhone do Julio).
+- Bloco 6 (outreach/convites) condicionado à resposta do Julio sobre contatos e
+  agenda.
+
+### Impacto
+
+- Julio abre o admin e vê quem se cadastrou — a resposta direta à ata de 09/08
+  ("dado invisível = dado inexistente").
+- Pipeline completo funcionando de ponta a ponta pela 1ª vez: job manual →
+  status computado → Funil → lista, num só fluxo de dados.
+- Base 100% geocodificada alimenta o mapa de calor de bairros do planejamento de
+  mídia.
+- Vazamento de PII fechado no mesmo dia em que nasceu, com regra de revisão pra
+  não renascer.
+
+**Responsável:** Gattiboni (aprovações α, carimbos visuais, feedback de UI que
+virou os Adendos 3 e 4) · Claudinho (specs, migrations via MCP — incluindo o
+vazamento próprio e sua correção —, backfill, roteiros e execução dos β via
+Chrome+MCP) · Codinho (código de aplicação dos 5 blocos, detecção do vazamento,
+diagnóstico do geocoding com arquivo:linha)
+
+---

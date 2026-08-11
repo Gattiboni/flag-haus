@@ -173,13 +173,20 @@ export async function reverseGeocode(lat: number, lng: number): Promise<GeoResul
       if (result.neighborhood !== null) return result
       partials.push(result)
     } catch (err) {
-      console.warn(`[reverseGeocode] provider "${provider.name}" falhou:`, err)
+      console.warn(
+        `[reverseGeocode] provider "${provider.name}" falhou — lat=${lat} lng=${lng}:`,
+        err
+      )
     }
   }
 
   const withCity = partials.find((r) => r.city !== null)
   if (withCity) return withCity
 
+  console.error(
+    `[reverseGeocode] nenhum provider (${PROVIDERS.map((p) => p.name).join(', ')}) ` +
+      `resolveu bairro/cidade — lat=${lat} lng=${lng}`
+  )
   return { neighborhood: null, city: null }
 }
 
@@ -194,6 +201,9 @@ export type PlaceSuggestion = {
   neighborhood: string | null
   city: string | null
   state: string | null
+  /** Centroide do lugar (geometry.coordinates da Photon). null se ausente/inválido. */
+  lat: number | null
+  lng: number | null
 }
 
 const PHOTON_TIMEOUT_MS = 4000
@@ -220,7 +230,27 @@ type PhotonProperties = {
   state?: string
   country?: string
 }
-type PhotonFeature = { properties?: PhotonProperties }
+/** GeoJSON Point: coordinates é [lon, lat] — NESSA ordem. */
+type PhotonGeometry = { coordinates?: unknown }
+type PhotonFeature = { properties?: PhotonProperties; geometry?: PhotonGeometry }
+
+/**
+ * Extrai [lon, lat] do GeoJSON e devolve já no formato da app ({lat, lng}).
+ * Valida faixa: coordenada fora do globo (ou não-numérica) vira null — melhor
+ * gravar null do que sujar `people.lat/lng` com lixo.
+ */
+function extractCoords(g: PhotonGeometry | undefined): {
+  lat: number | null
+  lng: number | null
+} {
+  const c = g?.coordinates
+  if (!Array.isArray(c) || c.length < 2) return { lat: null, lng: null }
+  const [lng, lat] = c
+  if (typeof lat !== 'number' || typeof lng !== 'number') return { lat: null, lng: null }
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return { lat: null, lng: null }
+  if (Math.abs(lat) > 90 || Math.abs(lng) > 180) return { lat: null, lng: null }
+  return { lat, lng }
+}
 
 /**
  * Monta label legível: "Nome — contexto1, contexto2". Descarta partes de
@@ -241,7 +271,8 @@ function buildLabel(name: string, context: Array<string | undefined>): string {
 
 function toSuggestion(
   p: PhotonProperties,
-  kind: 'neighborhood' | 'city'
+  kind: 'neighborhood' | 'city',
+  coords: { lat: number | null; lng: number | null }
 ): PlaceSuggestion {
   const name = p.name as string // garantido não-nulo pelo chamador
   const state = p.state ?? null
@@ -251,6 +282,7 @@ function toSuggestion(
       neighborhood: name,
       city: p.city ?? null,
       state,
+      ...coords,
     }
   }
   return {
@@ -258,6 +290,7 @@ function toSuggestion(
     neighborhood: null,
     city: name,
     state,
+    ...coords,
   }
 }
 
@@ -276,7 +309,13 @@ function processFeatures(
     const key = normalize(`${p.name}|${p.state ?? ''}|${p.country ?? ''}`)
     if (seen.has(key)) continue
     seen.add(key)
-    out.push(toSuggestion(p, kind))
+    const coords = extractCoords(f.geometry)
+    if (coords.lat === null) {
+      console.warn(
+        `[searchPlaces] sugestão "${p.name}" (${kind}) sem geometry utilizável — vai selecionar com lat/lng null`
+      )
+    }
+    out.push(toSuggestion(p, kind, coords))
     if (out.length >= 5) break
   }
   return out
@@ -311,10 +350,28 @@ export async function searchPlaces(
 
   try {
     const res = await fetch(url, { signal: ctrl.signal })
-    if (!res.ok) return []
+    if (!res.ok) {
+      console.error(
+        `[searchPlaces] provider "photon" HTTP ${res.status} — q="${q}" kind=${kind}`
+      )
+      return []
+    }
     const data = (await res.json()) as { features?: PhotonFeature[] }
-    return processFeatures(data.features ?? [], kind)
-  } catch {
+    const out = processFeatures(data.features ?? [], kind)
+    if (out.length === 0) {
+      console.warn(
+        `[searchPlaces] provider "photon" sem sugestão utilizável — q="${q}" kind=${kind} features=${data.features?.length ?? 0}`
+      )
+    }
+    return out
+  } catch (err) {
+    // abort é fluxo normal (tecla nova supersede a busca anterior), não falha.
+    if (!(err instanceof DOMException && err.name === 'AbortError')) {
+      console.error(
+        `[searchPlaces] provider "photon" falhou — q="${q}" kind=${kind}:`,
+        err
+      )
+    }
     return []
   } finally {
     clearTimeout(timer)

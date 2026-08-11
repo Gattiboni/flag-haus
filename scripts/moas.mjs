@@ -151,6 +151,74 @@ const SECTIONS = [
       order by c.relname, tg.tgname;`,
   },
   {
+    id: 'views',
+    title: 'Views',
+    // `depends_on` sai do pg_rewrite: uma view que lê outra view precisa ser
+    // criada depois dela no replay, e ordem alfabética não garante isso
+    // (v_admin_cadastros vem antes das duas v_person_* de que depende).
+    sql: `
+      with dep as (
+        select distinct dv.oid as view_oid, sv.oid as source_oid
+        from pg_depend d
+        join pg_rewrite r on r.oid = d.objid and d.classid = 'pg_rewrite'::regclass
+        join pg_class dv on dv.oid = r.ev_class
+        join pg_class sv on sv.oid = d.refobjid
+        join pg_namespace dn on dn.oid = dv.relnamespace
+        join pg_namespace sn on sn.oid = sv.relnamespace
+        where dv.relkind in ('v','m') and sv.relkind in ('v','m')
+          and dv.oid <> sv.oid
+          and dn.nspname = 'public' and sn.nspname = 'public'
+      )
+      select c.relname as view_name,
+             c.relkind as kind,
+             c.reloptions,
+             pg_get_viewdef(c.oid, true) as definition,
+             obj_description(c.oid, 'pg_class') as comment,
+             -- ::text é obrigatório: array de \`name\` (oid 1003) o node-postgres
+             -- devolve como string crua; text[] (oid 1009) ele parseia.
+             coalesce((
+               select array_agg(s.relname::text order by s.relname)
+               from dep join pg_class s on s.oid = dep.source_oid
+               where dep.view_oid = c.oid
+             ), '{}'::text[]) as depends_on
+      from pg_class c
+      join pg_namespace n on n.oid = c.relnamespace
+      where n.nspname = 'public' and c.relkind in ('v','m')
+      order by c.relname;`,
+  },
+  {
+    id: 'view_columns',
+    title: 'Colunas de view',
+    sql: `
+      select c.relname as view_name,
+             a.attnum  as position,
+             a.attname as column_name,
+             format_type(a.atttypid, a.atttypmod) as type,
+             col_description(c.oid, a.attnum) as comment
+      from pg_attribute a
+      join pg_class c on c.oid = a.attrelid
+      join pg_namespace n on n.oid = c.relnamespace
+      where n.nspname = 'public'
+        and c.relkind in ('v','m')
+        and a.attnum > 0
+        and not a.attisdropped
+      order by c.relname, a.attnum;`,
+  },
+  {
+    id: 'view_acl',
+    title: 'Grants de view',
+    sql: `
+      select c.relname as view_name,
+             coalesce(nullif(a.grantee::regrole::text, '-'), 'PUBLIC') as grantee,
+             a.privilege_type,
+             a.is_grantable
+      from pg_class c
+      join pg_namespace n on n.oid = c.relnamespace
+      cross join lateral aclexplode(coalesce(c.relacl, acldefault('r', c.relowner))) a
+      where n.nspname = 'public' and c.relkind in ('v','m')
+      order by c.relname, grantee, a.privilege_type;`,
+  },
+  {
     id: 'functions',
     title: 'Funções',
     // deptype='e' remove as funções do PostGIS — voltam com create extension.
@@ -268,6 +336,55 @@ function groupEnums(rows) {
 
 const sortRoles = (roles) => (Array.isArray(roles) ? [...roles].sort() : []);
 const permWord = (p) => (String(p).toUpperCase().startsWith('PERM') ? 'permissive' : 'restrictive');
+
+const byNameAsc = (a, b) => (a < b ? -1 : a > b ? 1 : 0);
+
+/**
+ * Array do Postgres → array de JS. O driver já entrega text[] parseado, mas um
+ * tipo sem parser volta como `{a,b}` cru — espalhar essa string vira uma lista
+ * de caracteres, e o bug passa silencioso (uma view sai antes da que ela lê).
+ * Aceita as duas formas e falha alto em nenhuma.
+ */
+function pgArray(v) {
+  if (Array.isArray(v)) return v;
+  if (typeof v !== 'string') return [];
+  const inner = v.replace(/^\{/, '').replace(/\}$/, '').trim();
+  return inner ? inner.split(',').map((s) => s.replace(/^"|"$/g, '')) : [];
+}
+
+/**
+ * Views em ordem de dependência: quem é lido vem antes de quem lê. Determinístico
+ * — o desempate é alfabético, então o mesmo banco sempre gera o mesmo arquivo.
+ */
+function orderViews(views) {
+  const byName = new Map(views.map((v) => [v.view_name, v]));
+  const state = new Map();
+  const out = [];
+
+  function visit(name) {
+    const v = byName.get(name);
+    if (!v) return; // dependência fora do schema public: não é nossa pra criar
+    if (state.get(name)) return; // 'visiting' (ciclo, impossível em views) ou 'done'
+    state.set(name, 'visiting');
+    for (const dep of pgArray(v.depends_on).sort(byNameAsc)) visit(dep);
+    state.set(name, 'done');
+    out.push(v);
+  }
+
+  for (const v of [...views].sort((a, b) => byNameAsc(a.view_name, b.view_name))) {
+    visit(v.view_name);
+  }
+  return out;
+}
+
+/** reloptions (ex.: security_invoker) → cláusula `with (...)`, ou string vazia. */
+function viewOptions(reloptions) {
+  if (!Array.isArray(reloptions) || reloptions.length === 0) return '';
+  return ` with (${[...reloptions].sort().join(', ')})`;
+}
+
+/** pg_get_viewdef vem com `;` final; o emissor põe o dele. */
+const viewBody = (def) => String(def).replace(/\r\n/g, '\n').trim().replace(/;$/, '');
 
 // ---------------------------------------------------------------------------
 // EMISSÃO — Markdown
@@ -408,6 +525,69 @@ function renderMarkdown(data) {
       }
       L.push('');
     }
+  }
+
+  // Views
+  L.push('## Views');
+  L.push('');
+  if (data.views.length) {
+    const vcols = groupBy(data.view_columns, 'view_name');
+    const vacl = groupBy(data.view_acl, 'view_name');
+
+    for (const v of orderViews(data.views)) {
+      L.push(`### ${v.view_name}`);
+      L.push('');
+      if (v.comment) {
+        L.push(cell(v.comment));
+        L.push('');
+      }
+      L.push(`**Tipo:** ${v.kind === 'm' ? 'materialized view' : 'view'}`);
+      L.push('');
+      // security_invoker decide se a view respeita a RLS de quem consulta ou
+      // a do dono. Ausente = false = roda como dono = RLS das tabelas-base
+      // NÃO se aplica. É informação de segurança; fica visível no snapshot.
+      const opts = Array.isArray(v.reloptions) ? [...v.reloptions].sort() : [];
+      L.push(`**Opções:** ${opts.length ? opts.join(', ') : '_nenhuma_ (security_invoker = false)'}`);
+      L.push('');
+      const deps = pgArray(v.depends_on).sort(byNameAsc);
+      if (deps.length) {
+        L.push(`**Depende de:** ${deps.map((d) => `\`${d}\``).join(', ')}`);
+        L.push('');
+      }
+
+      L.push('**Colunas**');
+      L.push('');
+      L.push('| # | Coluna | Tipo | Comentário |');
+      L.push('| --- | --- | --- | --- |');
+      for (const c of vcols.get(v.view_name) ?? []) {
+        L.push(
+          `| ${c.position} | ${cell(c.column_name)} | ${cell(c.type)} | ${cell(c.comment)} |`,
+        );
+      }
+      L.push('');
+
+      L.push('**Definição**');
+      L.push('');
+      L.push('```sql');
+      L.push(viewBody(v.definition));
+      L.push('```');
+      L.push('');
+
+      const gRows = vacl.get(v.view_name) ?? [];
+      if (gRows.length) {
+        L.push('**Grants**');
+        L.push('');
+        L.push('| Grantee | Privilégio |');
+        L.push('| --- | --- |');
+        for (const g of gRows) {
+          L.push(`| ${cell(g.grantee)} | ${cell(g.privilege_type)} |`);
+        }
+        L.push('');
+      }
+    }
+  } else {
+    L.push('_nenhuma_');
+    L.push('');
   }
 
   // Funções
@@ -562,8 +742,20 @@ function renderSql(data) {
   }
   L.push('');
 
-  // 8. RLS
-  L.push('-- 8. row level security');
+  // 8. views (depois das tabelas e funções de que dependem, em ordem topológica)
+  L.push('-- 8. views');
+  for (const v of orderViews(data.views)) {
+    const kind = v.kind === 'm' ? 'materialized view' : 'view';
+    L.push(
+      `create ${kind} "public".${q(v.view_name)}${viewOptions(v.reloptions)} as\n${viewBody(
+        v.definition,
+      )};`,
+    );
+    L.push('');
+  }
+
+  // 9. RLS
+  L.push('-- 9. row level security');
   for (const t of data.tables) {
     if (t.rls_enabled) {
       L.push(`alter table "public".${q(t.table_name)} enable row level security;`);
@@ -574,8 +766,8 @@ function renderSql(data) {
   }
   L.push('');
 
-  // 9. policies
-  L.push('-- 9. policies');
+  // 10. policies
+  L.push('-- 10. policies');
   for (const p of data.policies) {
     const parts = [`create policy ${q(p.policyname)} on "public".${q(p.tablename)}`];
     parts.push(`  as ${permWord(p.permissive)}`);
@@ -587,13 +779,24 @@ function renderSql(data) {
   }
   L.push('');
 
-  // 10. grants (revoke baseline + grants exatos)
-  L.push('-- 10. grants');
+  // 11. grants (revoke baseline + grants exatos)
+  L.push('-- 11. grants');
   const tacl = groupBy(data.table_acl, 'table_name');
   for (const t of data.tables) {
     const tgt = `"public".${q(t.table_name)}`;
     L.push(`revoke all on table ${tgt} from public, anon, authenticated, service_role;`);
     for (const g of tacl.get(t.table_name) ?? []) {
+      const who = g.grantee === 'PUBLIC' ? 'public' : g.grantee;
+      const opt = g.is_grantable ? ' with grant option' : '';
+      L.push(`grant ${g.privilege_type.toLowerCase()} on table ${tgt} to ${who}${opt};`);
+    }
+  }
+  L.push('');
+  const vacl = groupBy(data.view_acl, 'view_name');
+  for (const v of orderViews(data.views)) {
+    const tgt = `"public".${q(v.view_name)}`;
+    L.push(`revoke all on table ${tgt} from public, anon, authenticated, service_role;`);
+    for (const g of vacl.get(v.view_name) ?? []) {
       const who = g.grantee === 'PUBLIC' ? 'public' : g.grantee;
       const opt = g.is_grantable ? ' with grant option' : '';
       L.push(`grant ${g.privilege_type.toLowerCase()} on table ${tgt} to ${who}${opt};`);

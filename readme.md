@@ -139,8 +139,6 @@ A aplicação sobe em `http://localhost:3000`.
 
 - `/` — formulário de renovação de cadastro
 - `/antes-da-sessao` — formulário de anamnese pré-sessão
-- `/__health` — rota técnica de teste de conexão (será removida antes do
-  lançamento público)
 
 ---
 

@@ -11,15 +11,23 @@ import {
   COLUMN_FIELDS,
   type PersonField,
 } from '@/app/admin/_ui/person-fields'
+import { CADASTROS_PATH } from '@/app/admin/_ui/cadastros'
 
 /**
  * Edição de pessoa pelo admin, com trava por campo (#4c §5-bis).
  *
  * Modelo: "admin ganha por padrão, com destrava explícita". Todo campo que o
  * admin muda de valor ganha uma entrada em `extra_data.admin_locks`. Enquanto a
- * chave existir, a intenção é que as RPCs `submit_*` NÃO sobrescrevam aquele
- * campo — mas essa parte depende de uma migration do Alan (Emenda C): **até ela
- * rodar, a trava só vive no lado do admin.** Nada nesta camada altera as RPCs.
+ * chave existir, as RPCs `submit_cadastro`/`submit_anamnese` NÃO sobrescrevem
+ * aquele campo — a trava vale ponta a ponta, não só no admin:
+ *
+ * - chaves de `extra_data`: subtraídas do patch do formulário antes do merge;
+ * - colunas diretas (`name`, `email`, `birth_date`): `case` sobre os locks no
+ *   `on conflict do update`, que mantém o valor atual quando travado;
+ * - `phone`: nunca sobrescrito pelo formulário, travado ou não.
+ *
+ * Verificado lendo as funções no banco de produção em 09/08/2026. Nada nesta
+ * camada altera as RPCs.
  *
  * Nenhum campo clínico entra aqui (anamnese/consents/motivations são declarações
  * da pessoa sobre o próprio corpo — o admin não fala por ela).
@@ -216,6 +224,287 @@ export async function updatePerson(
   } catch (e) {
     const msg = e instanceof Error ? e.message : 'erro desconhecido'
     console.error('[updatePerson] throw:', msg)
+    return { status: 'error', message: msg }
+  }
+}
+
+/* ------------------------------------------------------------------
+   Observações vivas (Bloco 5B)
+   ------------------------------------------------------------------ */
+
+/** Nota operacional é parágrafo, não dossiê. Teto generoso, mas com teto. */
+const NOTES_MAX = 4000
+
+export type UpdatePersonNotesInput = { personId: string; notes: string }
+
+export type UpdatePersonNotesResult =
+  | { status: 'ok'; cleared: boolean }
+  | { status: 'invalid'; reason: string }
+  | { status: 'error'; message: string }
+
+/**
+ * A caderneta do Julio sobre a pessoa: "não gosta de agulha fina", "vai voltar
+ * em março", "irmã do Léo". Mora em `people.extra_data.admin_notes` porque é
+ * nota operacional de um operador só — coluna nova ou tabela nova seriam
+ * estrutura demais pra um texto livre que ninguém consulta em massa.
+ *
+ * Três regras que essa nota não pode quebrar:
+ *
+ * 1. NÃO entra em `admin_locks`. Trava existe pra campo que o formulário
+ *    público também escreve; `admin_notes` nenhum formulário escreve, então não
+ *    há o que travar — carimbar um lock aqui só sujaria o JSON.
+ * 2. O merge preserva as outras chaves do `extra_data` (bairro, instagram,
+ *    locks…). Escrever `{ admin_notes }` seco apagaria o cadastro inteiro.
+ * 3. O evento registra QUE a nota mudou, nunca O QUE ela diz. A pessoa pode ter
+ *    contado algo sensível na conversa, e `events` é append-only: o que entra
+ *    ali não sai. Por isso o payload leva só o nome do campo.
+ */
+export async function updatePersonNotes(
+  input: UpdatePersonNotesInput
+): Promise<UpdatePersonNotesResult> {
+  // SEMPRE a primeira linha. Sem exceção.
+  const { userId } = await requireOperator()
+
+  const personId = z.string().uuid().safeParse(input?.personId)
+  if (!personId.success) {
+    return { status: 'invalid', reason: 'Pessoa inválida.' }
+  }
+
+  const parsedNotes = z
+    .string()
+    .transform((s) => s.trim())
+    .refine((s) => s.length <= NOTES_MAX, {
+      message: `A observação passou de ${NOTES_MAX} caracteres.`,
+    })
+    .safeParse(input?.notes ?? '')
+
+  if (!parsedNotes.success) {
+    return {
+      status: 'invalid',
+      reason: parsedNotes.error.issues[0]?.message ?? 'Observação inválida.',
+    }
+  }
+  const notes = parsedNotes.data
+
+  try {
+    const admin = createAdminClient()
+
+    const { data: current, error: readErr } = await admin
+      .from('people')
+      .select('id, extra_data, deleted_at')
+      .eq('id', personId.data)
+      .maybeSingle()
+
+    if (readErr) {
+      console.error('[updatePersonNotes] read error:', readErr.message)
+      return { status: 'error', message: readErr.message }
+    }
+    if (!current || current.deleted_at) {
+      return { status: 'error', message: 'Pessoa não encontrada.' }
+    }
+
+    const extra: ExtraData = { ...((current.extra_data as ExtraData | null) ?? {}) }
+    const before = typeof extra.admin_notes === 'string' ? extra.admin_notes : ''
+
+    if (before === notes) {
+      // Salvou sem ter mexido: não grava nem audita.
+      return { status: 'ok', cleared: notes === '' }
+    }
+
+    // Nota apagada some do JSON em vez de virar "": a chave existir com string
+    // vazia sugeriria que há uma nota, e não há.
+    if (notes === '') delete extra.admin_notes
+    else extra.admin_notes = notes
+
+    const { error: writeErr } = await admin
+      .from('people')
+      .update({ extra_data: extra })
+      .eq('id', personId.data)
+      .is('deleted_at', null)
+
+    if (writeErr) {
+      console.error('[updatePersonNotes] write error:', writeErr.message)
+      return { status: 'error', message: writeErr.message }
+    }
+
+    // Mesmo tipo de evento das outras edições de pessoa. `field` diz o que
+    // mudou; `cleared` diz se foi apagada. O texto não entra aqui — nunca.
+    const { error: auditErr } = await admin.from('events').insert({
+      person_id: personId.data,
+      event_type: 'admin.person_updated',
+      source: 'admin',
+      actor_id: userId,
+      payload: { field: 'admin_notes', cleared: notes === '' },
+    })
+    if (auditErr) {
+      console.error('[updatePersonNotes] audit insert failed:', auditErr.message)
+    }
+
+    revalidatePath(`/admin/people/${personId.data}`)
+    return { status: 'ok', cleared: notes === '' }
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : 'erro desconhecido'
+    console.error('[updatePersonNotes] throw:', msg)
+    return { status: 'error', message: msg }
+  }
+}
+
+/* ------------------------------------------------------------------
+   Exclusão de pessoa (Bloco 5C)
+   ------------------------------------------------------------------ */
+
+export type DeletePersonInput = { personId: string; confirmName: string }
+
+export type DeletePersonResult =
+  | { status: 'ok'; jobsDeleted: number }
+  | { status: 'invalid'; reason: string }
+  | { status: 'error'; message: string }
+
+/** Comparação tolerante do nome digitado: sem acento, sem caixa, sem espaço duplo. */
+function normName(s: string): string {
+  return s
+    .normalize('NFD')
+    .replace(/\p{Diacritic}/gu, '')
+    .toLowerCase()
+    .replace(/\s+/g, ' ')
+    .trim()
+}
+
+function digitsOf(s: string | null | undefined): string {
+  return (s ?? '').replace(/\D/g, '')
+}
+
+/**
+ * "Excluir cadastro" da ficha (pedido de 09/08). SOFT-DELETE, sempre: carimba
+ * `deleted_at` na pessoa e nos jobs dela. Nunca `delete from`.
+ *
+ * O que some: a pessoa sai das listas, do Funil e das views (todas filtram
+ * `deleted_at is null`). O que fica: consents, events, motivations e registros
+ * clínicos, que são append-only — são a prova de que um consentimento foi dado
+ * e de que uma sessão aconteceu, e apagá-los destruiria a defesa do estúdio,
+ * não a privacidade de ninguém. Se um dia vier um pedido de eliminação da LGPD,
+ * ele é outro procedimento, com outra decisão por trás.
+ *
+ * O evento entra ANTES do carimbo: um `admin.person_deleted` gravado depois
+ * seria um evento sobre uma pessoa que, para todo o resto do sistema, já não
+ * existe. E `{reason: 'admin_ui'}` distingue esta exclusão de qualquer limpeza
+ * futura feita por script.
+ *
+ * Reversível só tecnicamente: `deleted_at = null` de volta, pelo banco. Não há
+ * botão de desfazer, e é por isso que o modal exige digitar o nome.
+ */
+export async function deletePerson(
+  input: DeletePersonInput
+): Promise<DeletePersonResult> {
+  // SEMPRE a primeira linha. Sem exceção.
+  const { userId } = await requireOperator()
+
+  const personId = z.string().uuid().safeParse(input?.personId)
+  if (!personId.success) {
+    return { status: 'invalid', reason: 'Pessoa inválida.' }
+  }
+
+  const confirmName = z.string().max(200).safeParse(input?.confirmName ?? '')
+  if (!confirmName.success) {
+    return { status: 'invalid', reason: 'Confirmação inválida.' }
+  }
+
+  try {
+    const admin = createAdminClient()
+
+    const { data: person, error: readErr } = await admin
+      .from('people')
+      .select('id, name, phone, deleted_at')
+      .eq('id', personId.data)
+      .maybeSingle()
+
+    if (readErr) {
+      console.error('[deletePerson] read error:', readErr.message)
+      return { status: 'error', message: readErr.message }
+    }
+    if (!person) {
+      return { status: 'error', message: 'Pessoa não encontrada.' }
+    }
+    if (person.deleted_at) {
+      // Já excluída (duplo clique, aba velha): não re-carimba nem audita de novo.
+      return { status: 'ok', jobsDeleted: 0 }
+    }
+
+    // O modal já trava o botão sem o nome certo; o server confere de novo porque
+    // a Server Action é um endpoint como qualquer outro — a trava do client é
+    // ergonomia, não garantia.
+    const typed = normName(confirmName.data)
+    const expected = normName(person.name ?? '')
+    const matches =
+      (expected !== '' && typed === expected) ||
+      // Sem nome, a ficha se identifica pelo telefone — é ele que o Julio vê e
+      // é ele que ele digita.
+      (expected === '' && digitsOf(confirmName.data) !== '' &&
+        digitsOf(confirmName.data) === digitsOf(person.phone))
+
+    if (!matches) {
+      return {
+        status: 'invalid',
+        reason: 'O nome digitado não confere com o do cadastro.',
+      }
+    }
+
+    // 1. Evento ANTES do carimbo.
+    const { error: auditErr } = await admin.from('events').insert({
+      person_id: personId.data,
+      event_type: 'admin.person_deleted',
+      source: 'admin',
+      actor_id: userId,
+      payload: { reason: 'admin_ui' },
+    })
+    if (auditErr) {
+      // Aqui a falha ABORTA: uma exclusão sem rastro é exatamente o que não
+      // pode acontecer com dado de pessoa. Nada foi carimbado ainda.
+      console.error('[deletePerson] audit insert failed:', auditErr.message)
+      return { status: 'error', message: 'Não deu pra registrar a exclusão.' }
+    }
+
+    const now = new Date().toISOString()
+
+    // 2. A pessoa.
+    const { error: personErr } = await admin
+      .from('people')
+      .update({ deleted_at: now })
+      .eq('id', personId.data)
+      .is('deleted_at', null)
+
+    if (personErr) {
+      console.error('[deletePerson] person soft-delete failed:', personErr.message)
+      return { status: 'error', message: personErr.message }
+    }
+
+    // 3. Os jobs vivos dela — todos, não só os de status aberto: um job
+    // executado de uma pessoa excluída seria uma linha órfã em toda query que
+    // parte de `jobs`. O histórico continua no banco, só carimbado.
+    const { data: deletedJobs, error: jobsErr } = await admin
+      .from('jobs')
+      .update({ deleted_at: now })
+      .eq('person_id', personId.data)
+      .is('deleted_at', null)
+      .select('id')
+
+    if (jobsErr) {
+      // A pessoa já saiu das listas; os jobs dela não. Estado parcial, e o
+      // Julio precisa saber — não devolve 'ok'.
+      console.error('[deletePerson] jobs soft-delete failed:', jobsErr.message)
+      return {
+        status: 'error',
+        message: 'A pessoa foi excluída, mas os jobs dela não. Avisa o Alan.',
+      }
+    }
+
+    revalidatePath('/admin')
+    revalidatePath(CADASTROS_PATH)
+    revalidatePath(`/admin/people/${personId.data}`)
+    return { status: 'ok', jobsDeleted: deletedJobs?.length ?? 0 }
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : 'erro desconhecido'
+    console.error('[deletePerson] throw:', msg)
     return { status: 'error', message: msg }
   }
 }

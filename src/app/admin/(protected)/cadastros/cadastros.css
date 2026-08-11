@@ -1,0 +1,524 @@
+/* ============================================================
+   Flag Haus — Tela de Cadastros (Bloco 4)
+   Só aparência, lendo tokens. Layout é Tailwind, como manda a
+   Spec #4c-visual.
+   ============================================================ */
+
+/* ------------------------------------------------------------
+   Grade da linha
+
+   Celular (padrão): duas linhas de conteúdo à esquerda, contato e
+   editar empilhados à direita ocupando as duas. Nada de tabela
+   espremida — o Julio abre isso no iPhone com o cliente esperando.
+
+   Desktop (>=768px): uma linha, colunas fixas para que o cabeçalho
+   e as linhas caiam no mesmo lugar sem subgrid.
+
+   Adendo 4 (10/08) — repartição das larguras. A grade anterior dava
+   três larguras fixas generosas (170/130/120) e sobrava o resto pras
+   duas elásticas. Numa viewport de ~960px isso deixava ~68px pro NOME:
+   as colunas que NÃO variam de conteúdo ficavam folgadas e a única que
+   varia de verdade era a que truncava. Invertido:
+
+   - NOME é a elástica prioritária (1fr) — é o dado que identifica a
+     linha, e é o único que o Julio lê em voz alta pro cliente;
+   - STATUS, PRÓXIMA SESSÃO e CANAL passam a `max-content`: são chip,
+     data e ícone, conteúdo de largura conhecida, não têm o que fazer
+     com espaço sobrando;
+   - ÚLTIMA INTERAÇÃO continua elástica, mas em fração menor — é ela
+     que paga a conta, e é por isso que ela ganhou tooltip junto com o
+     nome. `minmax(0, …)` em todas: sob aperto elas encolhem em vez de
+     estourar a linha (a grade antiga somava 460px fixos + gaps e
+     transbordava o Card abaixo de ~860px).
+   ------------------------------------------------------------ */
+
+.fh-cad-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto auto;
+  grid-template-areas:
+    'nome      status canal acoes'
+    'interacao sessao canal acoes';
+  column-gap: var(--fh-space-3);
+  row-gap: var(--fh-space-1);
+  align-items: center;
+}
+
+.fh-cad-grid__nome { grid-area: nome; min-width: 0; }
+.fh-cad-grid__status { grid-area: status; min-width: 0; }
+.fh-cad-grid__interacao { grid-area: interacao; min-width: 0; }
+.fh-cad-grid__sessao { grid-area: sessao; min-width: 0; }
+.fh-cad-grid__canal { grid-area: canal; min-width: 0; }
+.fh-cad-grid__acoes { grid-area: acoes; }
+
+@media (min-width: 768px) {
+  .fh-cad-grid {
+    grid-template-columns:
+      minmax(0, 1fr)
+      minmax(0, max-content)
+      minmax(0, 0.3fr)
+      minmax(0, max-content)
+      minmax(0, max-content)
+      auto;
+    grid-template-areas: 'nome status interacao sessao canal acoes';
+  }
+}
+
+/* Acima de ~1120px o espaço para de ser disputado: a interação volta a
+   respirar e o gap folga. O nome segue mandando. */
+@media (min-width: 1120px) {
+  .fh-cad-grid {
+    grid-template-columns:
+      minmax(0, 1fr)
+      minmax(0, max-content)
+      minmax(0, 0.7fr)
+      minmax(0, max-content)
+      minmax(0, max-content)
+      auto;
+    column-gap: var(--fh-space-4);
+  }
+}
+
+.fh-cad-row {
+  border-bottom: var(--fh-border-width) solid var(--fh-border-subtle);
+}
+
+.fh-cad-row:last-child {
+  border-bottom: none;
+}
+
+.fh-cad-row[data-saving='true'] {
+  opacity: 0.6;
+}
+
+.fh-cad-row__name {
+  font-family: var(--fh-font-heading);
+  font-weight: var(--fh-weight-medium);
+  color: var(--fh-text-primary);
+  text-decoration: none;
+}
+
+.fh-cad-row__name:hover {
+  color: var(--fh-action-tertiary-text-hover);
+  text-decoration: underline;
+  text-underline-offset: 0.18em;
+}
+
+/* ------------------------------------------------------------
+   Chip de status operacional
+
+   O <Badge> do DS só conhece o enum job_status; `operational_status`
+   é outro vocabulário (uma pessoa "cliente" não é um job "executado").
+   Em vez de inventar um componente, reusa a base .fh-badge e troca só
+   as cores — todas de token, nenhum hex, nenhum Oxblood (reservado
+   pela regra 10/90 para ação e alerta crítico).
+
+   Dois classes na regra de propósito: bate .fh-badge em especificidade
+   independente da ordem de import dos CSS.
+   ------------------------------------------------------------ */
+
+/* Novo — contorno nítido, sem preenchimento: chegou agora, pede triagem */
+.fh-badge.fh-cad-status--novo {
+  background: var(--fh-white);
+  border-color: var(--fh-border-strong);
+  color: var(--fh-onyx);
+}
+
+/* Orçar / Agendar — a bola está com o Julio. Terracota (corpo, narrativa);
+   a borda mais densa separa "Agendar" de "Orçar" sem inventar cor. */
+.fh-badge.fh-cad-status--orcar {
+  background: var(--fh-terracota-050);
+  border-color: var(--fh-terracota);
+  color: var(--fh-terracota-700);
+}
+
+.fh-badge.fh-cad-status--agendar {
+  background: var(--fh-terracota-050);
+  border-color: var(--fh-terracota-700);
+  color: var(--fh-terracota-700);
+}
+
+/* Orçamento enviado — mesmos tokens do chip "A orçar" da Fila: quieto,
+   a bola está do outro lado */
+.fh-badge.fh-cad-status--orcamento_enviado {
+  background: var(--fh-status-toquote-bg);
+  border-color: var(--fh-status-toquote-border);
+  color: var(--fh-status-toquote-text);
+}
+
+/* Sem resposta — exatamente o chip "Sem resposta" da Fila (Adendo 09/08:
+   mesmo vocabulário) */
+.fh-badge.fh-cad-status--sem_resposta {
+  background: var(--fh-status-quoted-bg);
+  border-color: var(--fh-status-quoted-border);
+  color: var(--fh-status-quoted-text);
+}
+
+/* Sessão marcada — combinado, firme */
+.fh-badge.fh-cad-status--sessao_marcada {
+  background: var(--fh-gray-100);
+  border-color: var(--fh-graphite-100);
+  color: var(--fh-graphite-200);
+}
+
+/* Cliente — sólido Onyx, como o "Executado" da Fila: concluído, calmo */
+.fh-badge.fh-cad-status--cliente {
+  background: var(--fh-onyx);
+  border-color: var(--fh-onyx);
+  color: var(--fh-white);
+}
+
+/* Inativo — recuado, texto apagado */
+.fh-badge.fh-cad-status--inativo {
+  background: var(--fh-whisper);
+  border-color: var(--fh-gray-200);
+  color: var(--fh-text-muted);
+}
+
+/* ------------------------------------------------------------
+   Marcadores (VIP · atenção · retornante)
+   Ícones discretos ao lado do badge, todos no mesmo padrão visual.
+   ------------------------------------------------------------ */
+
+.fh-cad-marker {
+  display: inline-flex;
+  align-items: center;
+  color: var(--fh-text-secondary);
+}
+
+.fh-cad-marker--vip {
+  color: var(--fh-terracota-700);
+}
+
+.fh-cad-marker--atencao {
+  color: var(--fh-danger-text);
+}
+
+/* ------------------------------------------------------------
+   Cabeçalho de coluna e dropdowns (Adendo 3, 09/08)
+
+   O cabeçalho virou a barra de filtro. O gatilho é o próprio rótulo
+   da coluna: nenhuma caixa nova, só a flechinha e — quando há algo
+   ligado — o contador e o peso médio. Painel aberto = branco sobre o
+   branco do Card, separado por um fio Onyx. Elevação por contraste de
+   borda, nunca sombra (§6.9.3).
+   ------------------------------------------------------------ */
+
+.fh-cad-head {
+  /* Contexto de empilhamento pro painel passar por cima das linhas. */
+  position: relative;
+  z-index: 1;
+}
+
+.fh-cad-menu {
+  position: relative;
+  display: inline-flex;
+  min-width: 0;
+}
+
+.fh-cad-menu__trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--fh-space-1);
+  max-width: 100%;
+  /* Herda o .fh-eyebrow do cabeçalho: mesma família, caixa alta e cor
+     dos rótulos que ele substitui — o cabeçalho não deve PARECER outra
+     coisa só por ter ficado clicável. */
+  font: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+  color: inherit;
+  background: none;
+  border: 0;
+  padding: var(--fh-space-1) 0;
+  cursor: pointer;
+  text-align: left;
+  transition: color var(--fh-transition-fast);
+}
+
+.fh-cad-menu__trigger:hover,
+.fh-cad-menu__trigger[aria-expanded='true'] {
+  color: var(--fh-text-primary);
+}
+
+.fh-cad-menu__trigger[data-active='true'] {
+  color: var(--fh-text-primary);
+  font-weight: var(--fh-weight-medium);
+}
+
+.fh-cad-menu__count {
+  color: var(--fh-text-secondary);
+  font-weight: var(--fh-weight-regular);
+}
+
+.fh-cad-menu__caret {
+  flex-shrink: 0;
+  transition: transform var(--fh-transition-fast);
+}
+
+.fh-cad-menu__trigger[aria-expanded='true'] .fh-cad-menu__caret {
+  transform: rotate(180deg);
+}
+
+.fh-cad-menu__icon {
+  display: inline-flex;
+  flex-shrink: 0;
+}
+
+/* ---- Cabeçalho em ícone (Adendo 4, 10/08) ----
+
+   Decisão do Alan, com o risco de aprendizado aceito: no desktop os
+   rótulos das colunas viram ícones. O que NÃO muda: a flechinha, o
+   contador quando há filtro ligado, e o nome por extenso em `title` +
+   `aria-label` — o cabeçalho continua dizendo o que é pra quem passa o
+   mouse e pra quem usa leitor de tela. O painel do celular
+   ("Filtrar/Ordenar") segue com os nomes escritos: lá o texto orienta e
+   largura não é o problema. */
+
+.fh-cad-menu__trigger--icon {
+  padding: var(--fh-space-1);
+  color: var(--fh-text-secondary);
+}
+
+.fh-cad-menu__trigger--icon[data-active='true'] {
+  color: var(--fh-text-primary);
+}
+
+/* "Canal" não tem menu — é rótulo puro. Mesmo tratamento visual dos
+   outros cabeçalhos pra a fileira não ficar com um item destoando. */
+.fh-cad-head__icon {
+  display: inline-flex;
+  align-items: center;
+  padding: var(--fh-space-1);
+  color: var(--fh-text-secondary);
+}
+
+/* Botão "Filtrar/Ordenar" do celular: mesmo painel, mas aqui o gatilho
+   não está num cabeçalho, então precisa da caixa pra existir. */
+.fh-cad-menu__trigger--button {
+  min-height: var(--fh-hit-min);
+  padding: var(--fh-space-1) var(--fh-space-3);
+  border: var(--fh-border-width) solid var(--fh-border-subtle);
+  border-radius: var(--fh-radius-sm);
+  background: var(--fh-surface);
+  font-family: var(--fh-font-heading);
+  font-size: var(--fh-text-micro);
+  letter-spacing: normal;
+  text-transform: none;
+  color: var(--fh-text-secondary);
+  white-space: nowrap;
+}
+
+.fh-cad-menu__trigger--button[data-active='true'] {
+  border-color: var(--fh-border-active);
+}
+
+/* ---- Painel ---- */
+
+.fh-cad-menu__panel {
+  position: absolute;
+  top: calc(100% + var(--fh-space-2));
+  z-index: 30;
+  min-width: 14rem;
+  max-width: min(20rem, calc(100vw - 2 * var(--fh-space-4)));
+  max-height: min(70vh, 26rem);
+  overflow-y: auto;
+  padding: var(--fh-space-3) 0;
+  background: var(--fh-surface);
+  border: var(--fh-border-width) solid var(--fh-border-active);
+  border-radius: var(--fh-radius-md);
+  /* O painel tem tipografia própria: o cabeçalho é versalete, a lista
+     de opções é texto normal e legível. */
+  font-family: var(--fh-font-heading);
+  font-size: var(--fh-text-micro);
+  letter-spacing: normal;
+  text-transform: none;
+  font-weight: var(--fh-weight-regular);
+  color: var(--fh-text-primary);
+}
+
+.fh-cad-menu__panel[data-align='start'] { left: 0; }
+.fh-cad-menu__panel[data-align='end'] { right: 0; }
+
+.fh-cad-menu__group + .fh-cad-menu__group {
+  margin-top: var(--fh-space-2);
+  padding-top: var(--fh-space-2);
+  border-top: var(--fh-border-width) solid var(--fh-border-subtle);
+}
+
+.fh-cad-menu__grouplabel {
+  padding: 0 var(--fh-space-3) var(--fh-space-1);
+}
+
+.fh-cad-menu__item {
+  display: flex;
+  align-items: center;
+  gap: var(--fh-space-2);
+  width: 100%;
+  min-height: var(--fh-hit-min);
+  padding: 0 var(--fh-space-3);
+  color: var(--fh-text-secondary);
+  text-decoration: none;
+  transition:
+    background var(--fh-transition-fast),
+    color var(--fh-transition-fast);
+}
+
+.fh-cad-menu__item:hover {
+  background: var(--fh-surface-sunken);
+  color: var(--fh-text-primary);
+  text-decoration: none;
+}
+
+.fh-cad-menu__item[data-active='true'] {
+  background: var(--fh-surface-inset);
+  color: var(--fh-text-primary);
+  font-weight: var(--fh-weight-medium);
+}
+
+.fh-cad-menu__check {
+  flex-shrink: 0;
+  /* `visibility` e não `display`: o rótulo não anda 22px ao ligar. */
+  visibility: hidden;
+}
+
+.fh-cad-menu__item[data-active='true'] .fh-cad-menu__check {
+  visibility: visible;
+}
+
+/* ---- Painel do celular: os quatro menus empilhados num só ---- */
+
+.fh-cad-menu__column + .fh-cad-menu__column {
+  margin-top: var(--fh-space-3);
+  padding-top: var(--fh-space-3);
+  border-top: var(--fh-border-width) solid var(--fh-border-hover);
+}
+
+/* Título da coluna dentro do painel do celular: precisa vencer os
+   rótulos de seção ("Ordenar", "Marcadores") que vêm logo abaixo, senão
+   os dois níveis viram uma lista só. */
+.fh-cad-menu__columnlabel {
+  padding: 0 var(--fh-space-3) var(--fh-space-1);
+  font-weight: var(--fh-weight-medium);
+  color: var(--fh-text-primary);
+}
+
+/* Primeira seção logo abaixo do título da coluna não repete o fio. */
+.fh-cad-menu__column .fh-cad-menu__group + .fh-cad-menu__group {
+  border-top-color: var(--fh-border-subtle);
+}
+
+/* ------------------------------------------------------------
+   Chips (paginação por página)
+   ------------------------------------------------------------ */
+
+.fh-cad-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--fh-space-2);
+  min-height: var(--fh-hit-min);
+  padding: var(--fh-space-1) var(--fh-space-3);
+  border: var(--fh-border-width) solid var(--fh-border-subtle);
+  border-radius: var(--fh-radius-sm);
+  background: var(--fh-surface);
+  color: var(--fh-text-secondary);
+  font-family: var(--fh-font-heading);
+  font-size: var(--fh-text-micro);
+  line-height: 1.4;
+  white-space: nowrap;
+  text-decoration: none;
+  transition:
+    background var(--fh-transition-fast),
+    border-color var(--fh-transition-fast),
+    color var(--fh-transition-fast);
+}
+
+.fh-cad-chip:hover {
+  border-color: var(--fh-border-hover);
+  color: var(--fh-text-primary);
+  text-decoration: none;
+}
+
+.fh-cad-chip[data-active='true'] {
+  background: var(--fh-onyx);
+  border-color: var(--fh-onyx);
+  color: var(--fh-white);
+  font-weight: var(--fh-weight-medium);
+}
+
+.fh-cad-chip[data-active='true']:hover {
+  color: var(--fh-white);
+}
+
+/* Limpar — texto puro, sem competir com os chips ativos */
+.fh-cad-clear {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--fh-space-1);
+  min-height: var(--fh-hit-min);
+  padding: 0 var(--fh-space-2);
+  font-family: var(--fh-font-heading);
+  font-size: var(--fh-text-micro);
+  color: var(--fh-text-secondary);
+  text-decoration: underline;
+  text-underline-offset: 0.18em;
+  white-space: nowrap;
+}
+
+.fh-cad-clear:hover {
+  color: var(--fh-action-tertiary-text-hover);
+}
+
+/* ------------------------------------------------------------
+   Ações de linha (WhatsApp, editar, paginação)
+   ------------------------------------------------------------ */
+
+.fh-cad-iconlink {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--fh-space-2);
+  min-width: var(--fh-hit-min);
+  min-height: var(--fh-hit-min);
+  padding: 0 var(--fh-space-2);
+  border: var(--fh-border-width) solid transparent;
+  border-radius: var(--fh-radius-md);
+  color: var(--fh-text-primary);
+  font-size: var(--fh-text-micro);
+  text-decoration: none;
+  transition:
+    background var(--fh-transition-fast),
+    border-color var(--fh-transition-fast);
+}
+
+.fh-cad-iconlink:hover {
+  background: var(--fh-surface-sunken);
+  border-color: var(--fh-border-subtle);
+  text-decoration: none;
+}
+
+.fh-cad-iconlink[aria-disabled='true'] {
+  color: var(--fh-text-muted);
+  pointer-events: none;
+}
+
+/* Rótulo do canal ao lado do ícone de WhatsApp. Só entra quando há
+   espaço de sobra (Adendo 4): no celular a coluna é um ícone de contato
+   e entre 768 e 1120px esses ~50px valem mais no nome — o ícone e o
+   `title` do link já dizem o que a palavra diria. */
+.fh-cad-canal__label {
+  display: none;
+}
+
+@media (min-width: 1120px) {
+  .fh-cad-canal__label {
+    display: inline;
+  }
+}
+
+/* Painel do inline edit: fundo rebaixado marca "aqui você está mexendo" */
+.fh-cad-editor {
+  background: var(--fh-surface-sunken);
+  border: var(--fh-border-width) solid var(--fh-border-subtle);
+  border-radius: var(--fh-radius-md);
+  padding: var(--fh-space-4);
+}

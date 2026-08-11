@@ -23,8 +23,10 @@ const EVENT_LABELS: Record<string, string> = {
   'admin.job_updated': 'Job atualizado',
   'admin.person_updated': 'Pessoa atualizada',
   'admin.person_field_unlocked': 'Campo destravado',
+  'admin.person_deleted': 'Cadastro excluído',
   'form.anamnese_submitted': 'Anamnese enviada',
   'form.cadastro_submitted': 'Cadastro enviado',
+  'job.created_manual': 'Job criado à mão',
 }
 
 /**

@@ -21,6 +21,7 @@ create extension if not exists "pgcrypto" with schema "extensions";
 create extension if not exists "plpgsql" with schema "pg_catalog";
 create extension if not exists "postgis" with schema "extensions";
 create extension if not exists "supabase_vault" with schema "vault";
+create extension if not exists "unaccent" with schema "public";
 create extension if not exists "uuid-ossp" with schema "extensions";
 
 -- 2. enums
@@ -30,6 +31,12 @@ create type "public"."lifecycle_stage" as enum ('lead', 'prospect', 'opportunity
 create type "public"."user_role" as enum ('admin', 'viewer');
 
 -- 3. funções
+CREATE OR REPLACE FUNCTION public.f_norm(t text)
+ RETURNS text
+ LANGUAGE sql
+ IMMUTABLE PARALLEL SAFE
+AS $function$ select lower(public.unaccent(coalesce(t,''))) $function$;
+
 CREATE OR REPLACE FUNCTION public.set_updated_at()
  RETURNS trigger
  LANGUAGE plpgsql
@@ -491,7 +498,8 @@ create table "public"."jobs" (
   "extra_data" jsonb default '{}'::jsonb not null,
   "created_at" timestamp with time zone default now() not null,
   "updated_at" timestamp with time zone default now() not null,
-  "deleted_at" timestamp with time zone
+  "deleted_at" timestamp with time zone,
+  "scheduled_at" timestamp with time zone
 );
 
 create table "public"."lifecycle_transitions" (
@@ -620,7 +628,131 @@ CREATE TRIGGER people_set_updated_at BEFORE UPDATE ON public.people FOR EACH ROW
 CREATE TRIGGER people_sync_location BEFORE INSERT OR UPDATE OF lat, lng ON public.people FOR EACH ROW EXECUTE FUNCTION sync_people_location();
 CREATE TRIGGER user_roles_set_updated_at BEFORE UPDATE ON public.user_roles FOR EACH ROW EXECUTE FUNCTION set_updated_at();
 
--- 8. row level security
+-- 8. views
+create view "public"."v_person_last_interaction" with (security_invoker=on) as
+WITH classified AS (
+         SELECT e.person_id,
+            e.event_type,
+            e.occurred_at,
+                CASE
+                    WHEN e.event_type ~~ 'form.%'::text THEN 'customer'::text
+                    WHEN e.event_type ~~ 'admin.%'::text THEN 'admin'::text
+                    ELSE 'operational'::text
+                END AS klass
+           FROM events e
+          WHERE e.person_id IS NOT NULL
+        ), ranked AS (
+         SELECT DISTINCT ON (classified.person_id, classified.klass) classified.person_id,
+            classified.klass,
+            classified.event_type,
+            classified.occurred_at
+           FROM classified
+          ORDER BY classified.person_id, classified.klass, classified.occurred_at DESC
+        )
+ SELECT p.id AS person_id,
+    pick.occurred_at AS last_interaction_at,
+    pick.klass AS last_interaction_class,
+        CASE pick.event_type
+            WHEN 'form.cadastro_submitted'::text THEN 'Cadastro enviado'::text
+            WHEN 'form.anamnese_submitted'::text THEN 'Anamnese enviada'::text
+            WHEN 'admin.geo_backfill'::text THEN 'Localização atualizada'::text
+            WHEN 'admin.person_updated'::text THEN 'Ficha editada'::text
+            WHEN 'job.created_manual'::text THEN 'Job criado'::text
+            ELSE COALESCE(pick.event_type, NULL::text)
+        END AS last_interaction_label
+   FROM people p
+     LEFT JOIN LATERAL ( SELECT r.person_id,
+            r.klass,
+            r.event_type,
+            r.occurred_at
+           FROM ranked r
+          WHERE r.person_id = p.id
+          ORDER BY (
+                CASE r.klass
+                    WHEN 'customer'::text THEN 1
+                    WHEN 'operational'::text THEN 2
+                    ELSE 3
+                END)
+         LIMIT 1) pick ON true
+  WHERE p.deleted_at IS NULL;
+
+create view "public"."v_person_operational_status" with (security_invoker=on) as
+SELECT id AS person_id,
+        CASE
+            WHEN (EXISTS ( SELECT 1
+               FROM jobs j
+              WHERE j.person_id = p.id AND j.deleted_at IS NULL AND j.status = 'confirmed'::job_status AND j.scheduled_at IS NOT NULL AND j.scheduled_at >= now())) THEN 'sessao_marcada'::text
+            WHEN (EXISTS ( SELECT 1
+               FROM jobs j
+              WHERE j.person_id = p.id AND j.deleted_at IS NULL AND j.status = 'confirmed'::job_status)) THEN 'agendar'::text
+            WHEN (EXISTS ( SELECT 1
+               FROM jobs j
+              WHERE j.person_id = p.id AND j.deleted_at IS NULL AND j.status = 'quoted'::job_status AND j.quoted_price IS NOT NULL)) THEN 'orcamento_enviado'::text
+            WHEN (EXISTS ( SELECT 1
+               FROM jobs j
+              WHERE j.person_id = p.id AND j.deleted_at IS NULL AND j.status = 'quoted'::job_status)) THEN 'orcar'::text
+            WHEN (EXISTS ( SELECT 1
+               FROM jobs j
+              WHERE j.person_id = p.id AND j.deleted_at IS NULL AND j.status = 'no_response'::job_status)) THEN 'sem_resposta'::text
+            WHEN NOT (EXISTS ( SELECT 1
+               FROM jobs j
+              WHERE j.person_id = p.id AND j.deleted_at IS NULL AND (j.status = ANY (ARRAY['quoted'::job_status, 'confirmed'::job_status, 'no_response'::job_status])))) AND COALESCE(( SELECT max(e.occurred_at) AS max
+               FROM events e
+              WHERE e.person_id = p.id), created_at) < (now() - '180 days'::interval) THEN 'inativo'::text
+            WHEN (EXISTS ( SELECT 1
+               FROM jobs j
+              WHERE j.person_id = p.id AND j.deleted_at IS NULL AND j.status = 'executed'::job_status)) THEN 'cliente'::text
+            ELSE 'novo'::text
+        END AS operational_status,
+    (EXISTS ( SELECT 1
+           FROM jobs je
+          WHERE je.person_id = p.id AND je.deleted_at IS NULL AND je.status = 'executed'::job_status)) AND (EXISTS ( SELECT 1
+           FROM jobs jo
+          WHERE jo.person_id = p.id AND jo.deleted_at IS NULL AND (jo.status = ANY (ARRAY['quoted'::job_status, 'confirmed'::job_status, 'no_response'::job_status])))) AS is_returning
+   FROM people p
+  WHERE deleted_at IS NULL;
+
+create view "public"."v_admin_cadastros" with (security_invoker=on) as
+SELECT p.id AS person_id,
+    p.name,
+    f_norm(p.name) AS name_norm,
+    p.phone,
+    regexp_replace(p.phone, '\D'::text, ''::text, 'g'::text) AS phone_digits,
+    p.email,
+    lower(p.email) AS email_norm,
+    p.extra_data ->> 'instagram'::text AS instagram,
+    NULLIF(replace(f_norm(p.extra_data ->> 'instagram'::text), '@'::text, ''::text), ''::text) AS instagram_norm,
+    p.extra_data ->> 'preferred_channel'::text AS preferred_channel,
+    p.extra_data ->> 'neighborhood'::text AS neighborhood,
+    p.vip_flag AS is_vip,
+    p.difficult_flag AS is_difficult,
+    s.operational_status,
+    s.is_returning,
+    ns.next_session_at,
+    li.last_interaction_at,
+    li.last_interaction_class,
+    li.last_interaction_label,
+    p.created_at,
+        CASE s.operational_status
+            WHEN 'orcar'::text THEN 1
+            WHEN 'agendar'::text THEN 2
+            WHEN 'orcamento_enviado'::text THEN 3
+            WHEN 'sem_resposta'::text THEN 4
+            WHEN 'sessao_marcada'::text THEN 5
+            WHEN 'novo'::text THEN 6
+            WHEN 'cliente'::text THEN 7
+            WHEN 'inativo'::text THEN 8
+            ELSE 9
+        END AS attention_rank
+   FROM people p
+     JOIN v_person_operational_status s ON s.person_id = p.id
+     JOIN v_person_last_interaction li ON li.person_id = p.id
+     LEFT JOIN LATERAL ( SELECT min(j.scheduled_at) AS next_session_at
+           FROM jobs j
+          WHERE j.person_id = p.id AND j.deleted_at IS NULL AND (j.status = ANY (ARRAY['quoted'::job_status, 'confirmed'::job_status])) AND j.scheduled_at >= now()) ns ON true
+  WHERE p.deleted_at IS NULL;
+
+-- 9. row level security
 alter table "public"."clinical_records" enable row level security;
 alter table "public"."consents" enable row level security;
 alter table "public"."customer_segments_snapshot" enable row level security;
@@ -632,7 +764,7 @@ alter table "public"."motivations" enable row level security;
 alter table "public"."people" enable row level security;
 alter table "public"."user_roles" enable row level security;
 
--- 9. policies
+-- 10. policies
 create policy "deny_anon_select" on "public"."clinical_records"
   as permissive
   for select
@@ -854,7 +986,7 @@ create policy "deny_authenticated_write" on "public"."user_roles"
   using (false)
   with check (false);
 
--- 10. grants
+-- 11. grants
 revoke all on table "public"."clinical_records" from public, anon, authenticated, service_role;
 grant delete on table "public"."clinical_records" to anon;
 grant insert on table "public"."clinical_records" to anon;
@@ -1186,6 +1318,64 @@ grant trigger on table "public"."user_roles" to service_role;
 grant truncate on table "public"."user_roles" to service_role;
 grant update on table "public"."user_roles" to service_role;
 
+revoke all on table "public"."v_person_last_interaction" from public, anon, authenticated, service_role;
+grant delete on table "public"."v_person_last_interaction" to postgres;
+grant insert on table "public"."v_person_last_interaction" to postgres;
+grant maintain on table "public"."v_person_last_interaction" to postgres;
+grant references on table "public"."v_person_last_interaction" to postgres;
+grant select on table "public"."v_person_last_interaction" to postgres;
+grant trigger on table "public"."v_person_last_interaction" to postgres;
+grant truncate on table "public"."v_person_last_interaction" to postgres;
+grant update on table "public"."v_person_last_interaction" to postgres;
+grant delete on table "public"."v_person_last_interaction" to service_role;
+grant insert on table "public"."v_person_last_interaction" to service_role;
+grant maintain on table "public"."v_person_last_interaction" to service_role;
+grant references on table "public"."v_person_last_interaction" to service_role;
+grant select on table "public"."v_person_last_interaction" to service_role;
+grant trigger on table "public"."v_person_last_interaction" to service_role;
+grant truncate on table "public"."v_person_last_interaction" to service_role;
+grant update on table "public"."v_person_last_interaction" to service_role;
+revoke all on table "public"."v_person_operational_status" from public, anon, authenticated, service_role;
+grant delete on table "public"."v_person_operational_status" to postgres;
+grant insert on table "public"."v_person_operational_status" to postgres;
+grant maintain on table "public"."v_person_operational_status" to postgres;
+grant references on table "public"."v_person_operational_status" to postgres;
+grant select on table "public"."v_person_operational_status" to postgres;
+grant trigger on table "public"."v_person_operational_status" to postgres;
+grant truncate on table "public"."v_person_operational_status" to postgres;
+grant update on table "public"."v_person_operational_status" to postgres;
+grant delete on table "public"."v_person_operational_status" to service_role;
+grant insert on table "public"."v_person_operational_status" to service_role;
+grant maintain on table "public"."v_person_operational_status" to service_role;
+grant references on table "public"."v_person_operational_status" to service_role;
+grant select on table "public"."v_person_operational_status" to service_role;
+grant trigger on table "public"."v_person_operational_status" to service_role;
+grant truncate on table "public"."v_person_operational_status" to service_role;
+grant update on table "public"."v_person_operational_status" to service_role;
+revoke all on table "public"."v_admin_cadastros" from public, anon, authenticated, service_role;
+grant delete on table "public"."v_admin_cadastros" to postgres;
+grant insert on table "public"."v_admin_cadastros" to postgres;
+grant maintain on table "public"."v_admin_cadastros" to postgres;
+grant references on table "public"."v_admin_cadastros" to postgres;
+grant select on table "public"."v_admin_cadastros" to postgres;
+grant trigger on table "public"."v_admin_cadastros" to postgres;
+grant truncate on table "public"."v_admin_cadastros" to postgres;
+grant update on table "public"."v_admin_cadastros" to postgres;
+grant delete on table "public"."v_admin_cadastros" to service_role;
+grant insert on table "public"."v_admin_cadastros" to service_role;
+grant maintain on table "public"."v_admin_cadastros" to service_role;
+grant references on table "public"."v_admin_cadastros" to service_role;
+grant select on table "public"."v_admin_cadastros" to service_role;
+grant trigger on table "public"."v_admin_cadastros" to service_role;
+grant truncate on table "public"."v_admin_cadastros" to service_role;
+grant update on table "public"."v_admin_cadastros" to service_role;
+
+revoke all on function "public"."f_norm"(t text) from public, anon, authenticated, service_role;
+grant execute on function "public"."f_norm"(t text) to anon;
+grant execute on function "public"."f_norm"(t text) to authenticated;
+grant execute on function "public"."f_norm"(t text) to postgres;
+grant execute on function "public"."f_norm"(t text) to public;
+grant execute on function "public"."f_norm"(t text) to service_role;
 revoke all on function "public"."set_updated_at"() from public, anon, authenticated, service_role;
 grant execute on function "public"."set_updated_at"() to anon;
 grant execute on function "public"."set_updated_at"() to authenticated;

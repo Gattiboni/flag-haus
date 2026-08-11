@@ -17,6 +17,12 @@ export type DialogProps = {
   onConfirm?: () => void
   /** Desabilita o botão de confirmar enquanto uma ação corre. */
   loading?: boolean
+  /**
+   * Trava o confirmar sem spinner: o modal tem um pré-requisito no corpo
+   * (digitar o nome do cadastro, marcar um aceite) que ainda não foi cumprido.
+   * Diferente de `loading`, que diz "já está acontecendo".
+   */
+  confirmDisabled?: boolean
   /** Corpo custom entre a descrição e as ações. */
   children?: ReactNode
 }
@@ -35,6 +41,7 @@ export function Dialog({
   variant = 'default',
   onConfirm,
   loading = false,
+  confirmDisabled = false,
   children,
 }: DialogProps) {
   const titleId = useId()
@@ -117,6 +124,7 @@ export function Dialog({
             variant={variant === 'danger' ? 'danger' : 'primary'}
             onClick={onConfirm}
             loading={loading}
+            disabled={confirmDisabled}
           >
             {confirmLabel}
           </Button>

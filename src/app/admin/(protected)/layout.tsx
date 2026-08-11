@@ -3,6 +3,7 @@ import Link from 'next/link'
 import { Search } from 'lucide-react'
 import { requireOperator } from '@/lib/auth/gate'
 import { signOutAdmin } from '@/app/actions/auth-admin'
+import { AdminBottomNav, AdminSidebar } from '@/app/admin/_ui/AdminNav'
 import { Button, Input } from '@/components/ui'
 
 /**
@@ -11,6 +12,10 @@ import { Button, Input } from '@/components/ui'
  * (loop de redirect). URLs não mudam: (protected)/page.tsx = /admin.
  *
  * Todas as páginas de #4b–#4d entram neste grupo e herdam o gate + o header.
+ *
+ * Bloco 4 acrescenta a navegação de duas seções (Funil / Cadastros): sidebar no
+ * desktop, barra inferior no celular. O header não mudou — letreiro, busca
+ * global e Sair seguem acessíveis nos dois contextos.
  *
  * `data-density="compact"` mora aqui: é a raiz de tudo que o Julio usa DURANTE
  * a sessão, com o cliente esperando. O formulário público fica na densidade
@@ -56,9 +61,17 @@ export default async function AdminProtectedLayout({
         </div>
       </header>
 
-      <main className="flex-1 w-full max-w-[1100px] mx-auto px-fh-5 sm:px-fh-6 py-fh-6">
-        {children}
-      </main>
+      <div className="flex-1 flex min-h-0">
+        <AdminSidebar />
+
+        {/* pb no celular = altura da barra inferior + safe area do iPhone, pra
+            a última linha da lista não ficar debaixo da navegação. */}
+        <main className="flex-1 min-w-0 w-full max-w-[1100px] mx-auto px-fh-5 sm:px-fh-6 py-fh-6 pb-[calc(72px+env(safe-area-inset-bottom))] md:pb-fh-6">
+          {children}
+        </main>
+      </div>
+
+      <AdminBottomNav />
     </div>
   )
 }

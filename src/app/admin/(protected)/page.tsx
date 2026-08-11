@@ -1,6 +1,7 @@
 import { requireOperator } from '@/lib/auth/gate'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { formatBRL, formatPhoneBR, formatRelativeTime } from '@/lib/format'
+import { formatDateTimeShortBR } from '@/app/admin/_ui/format'
 import { QueueTable, type QueueJob } from './QueueTable'
 import type { JobStatus } from '@/lib/domain/job-status'
 import { Alert, Badge, Card, CardHeader } from '@/components/ui'
@@ -37,6 +38,7 @@ type JobRow = {
   quoted_price: number | string | null
   final_price: number | string | null
   created_at: string
+  scheduled_at: string | null
   description: string | null
   body_region: string | null
   people: PersonJoin | PersonJoin[]
@@ -58,6 +60,9 @@ function toQueueJob(row: JobRow): QueueJob {
     description: truncate(row.description),
     quotedPriceLabel: formatBRL(row.quoted_price),
     ageLabel: formatRelativeTime(row.created_at),
+    // Vazio (não "—") quando não há data: a linha não reserva espaço pra uma
+    // sessão que não existe. Quem tem data é minoria fora de "Aguardando sessão".
+    scheduledLabel: row.scheduled_at ? formatDateTimeShortBR(row.scheduled_at) : '',
     status: row.status,
     finalPrice: toNum(row.final_price),
   }
@@ -70,7 +75,7 @@ export default async function AdminQueuePage() {
   const { data, error } = await admin
     .from('jobs')
     .select(
-      'id, status, quoted_price, final_price, created_at, description, body_region, people(name, phone)'
+      'id, status, quoted_price, final_price, created_at, scheduled_at, description, body_region, people(name, phone)'
     )
     .is('deleted_at', null)
     .in('status', ['quoted', 'confirmed', 'no_response'])

@@ -12,6 +12,7 @@
 | plpgsql | 1.0 | pg_catalog |
 | postgis | 3.3.7 | extensions |
 | supabase_vault | 0.3.1 | vault |
+| unaccent | 1.1 | public |
 | uuid-ossp | 1.1 | extensions |
 
 ## Enums
@@ -456,6 +457,7 @@ Cada orçamento/trabalho/cancelamento do Flag Haus. status discrimina o estado a
 | 15 | created_at | timestamp with time zone | não | now() |  |
 | 16 | updated_at | timestamp with time zone | não | now() |  |
 | 17 | deleted_at | timestamp with time zone | sim |  |  |
+| 18 | scheduled_at | timestamp with time zone | sim |  | Data/hora da sessão. Distinto dos carimbos de transição (confirmed_at etc.). |
 
 **Constraints**
 
@@ -841,7 +843,285 @@ Mapeia auth.users.id → role. Lido pelo Auth Hook que injeta app_role no JWT.
 | service_role | TRUNCATE |
 | service_role | UPDATE |
 
+## Views
+
+### v_person_last_interaction
+
+Precedência customer > operational > admin: edição interna nunca faz cliente parecer engajado.
+
+**Tipo:** view
+
+**Opções:** security_invoker=on
+
+**Colunas**
+
+| # | Coluna | Tipo | Comentário |
+| --- | --- | --- | --- |
+| 1 | person_id | uuid |  |
+| 2 | last_interaction_at | timestamp with time zone |  |
+| 3 | last_interaction_class | text |  |
+| 4 | last_interaction_label | text |  |
+
+**Definição**
+
+```sql
+WITH classified AS (
+         SELECT e.person_id,
+            e.event_type,
+            e.occurred_at,
+                CASE
+                    WHEN e.event_type ~~ 'form.%'::text THEN 'customer'::text
+                    WHEN e.event_type ~~ 'admin.%'::text THEN 'admin'::text
+                    ELSE 'operational'::text
+                END AS klass
+           FROM events e
+          WHERE e.person_id IS NOT NULL
+        ), ranked AS (
+         SELECT DISTINCT ON (classified.person_id, classified.klass) classified.person_id,
+            classified.klass,
+            classified.event_type,
+            classified.occurred_at
+           FROM classified
+          ORDER BY classified.person_id, classified.klass, classified.occurred_at DESC
+        )
+ SELECT p.id AS person_id,
+    pick.occurred_at AS last_interaction_at,
+    pick.klass AS last_interaction_class,
+        CASE pick.event_type
+            WHEN 'form.cadastro_submitted'::text THEN 'Cadastro enviado'::text
+            WHEN 'form.anamnese_submitted'::text THEN 'Anamnese enviada'::text
+            WHEN 'admin.geo_backfill'::text THEN 'Localização atualizada'::text
+            WHEN 'admin.person_updated'::text THEN 'Ficha editada'::text
+            WHEN 'job.created_manual'::text THEN 'Job criado'::text
+            ELSE COALESCE(pick.event_type, NULL::text)
+        END AS last_interaction_label
+   FROM people p
+     LEFT JOIN LATERAL ( SELECT r.person_id,
+            r.klass,
+            r.event_type,
+            r.occurred_at
+           FROM ranked r
+          WHERE r.person_id = p.id
+          ORDER BY (
+                CASE r.klass
+                    WHEN 'customer'::text THEN 1
+                    WHEN 'operational'::text THEN 2
+                    ELSE 3
+                END)
+         LIMIT 1) pick ON true
+  WHERE p.deleted_at IS NULL
+```
+
+**Grants**
+
+| Grantee | Privilégio |
+| --- | --- |
+| postgres | DELETE |
+| postgres | INSERT |
+| postgres | MAINTAIN |
+| postgres | REFERENCES |
+| postgres | SELECT |
+| postgres | TRIGGER |
+| postgres | TRUNCATE |
+| postgres | UPDATE |
+| service_role | DELETE |
+| service_role | INSERT |
+| service_role | MAINTAIN |
+| service_role | REFERENCES |
+| service_role | SELECT |
+| service_role | TRIGGER |
+| service_role | TRUNCATE |
+| service_role | UPDATE |
+
+### v_person_operational_status
+
+Badge da lista admin. Precedência: sessão marcada > agendar > orçamento enviado > orçar > sem resposta > inativo(180d) > cliente > novo. Nunca denormalizar.
+
+**Tipo:** view
+
+**Opções:** security_invoker=on
+
+**Colunas**
+
+| # | Coluna | Tipo | Comentário |
+| --- | --- | --- | --- |
+| 1 | person_id | uuid |  |
+| 2 | operational_status | text |  |
+| 3 | is_returning | boolean |  |
+
+**Definição**
+
+```sql
+SELECT id AS person_id,
+        CASE
+            WHEN (EXISTS ( SELECT 1
+               FROM jobs j
+              WHERE j.person_id = p.id AND j.deleted_at IS NULL AND j.status = 'confirmed'::job_status AND j.scheduled_at IS NOT NULL AND j.scheduled_at >= now())) THEN 'sessao_marcada'::text
+            WHEN (EXISTS ( SELECT 1
+               FROM jobs j
+              WHERE j.person_id = p.id AND j.deleted_at IS NULL AND j.status = 'confirmed'::job_status)) THEN 'agendar'::text
+            WHEN (EXISTS ( SELECT 1
+               FROM jobs j
+              WHERE j.person_id = p.id AND j.deleted_at IS NULL AND j.status = 'quoted'::job_status AND j.quoted_price IS NOT NULL)) THEN 'orcamento_enviado'::text
+            WHEN (EXISTS ( SELECT 1
+               FROM jobs j
+              WHERE j.person_id = p.id AND j.deleted_at IS NULL AND j.status = 'quoted'::job_status)) THEN 'orcar'::text
+            WHEN (EXISTS ( SELECT 1
+               FROM jobs j
+              WHERE j.person_id = p.id AND j.deleted_at IS NULL AND j.status = 'no_response'::job_status)) THEN 'sem_resposta'::text
+            WHEN NOT (EXISTS ( SELECT 1
+               FROM jobs j
+              WHERE j.person_id = p.id AND j.deleted_at IS NULL AND (j.status = ANY (ARRAY['quoted'::job_status, 'confirmed'::job_status, 'no_response'::job_status])))) AND COALESCE(( SELECT max(e.occurred_at) AS max
+               FROM events e
+              WHERE e.person_id = p.id), created_at) < (now() - '180 days'::interval) THEN 'inativo'::text
+            WHEN (EXISTS ( SELECT 1
+               FROM jobs j
+              WHERE j.person_id = p.id AND j.deleted_at IS NULL AND j.status = 'executed'::job_status)) THEN 'cliente'::text
+            ELSE 'novo'::text
+        END AS operational_status,
+    (EXISTS ( SELECT 1
+           FROM jobs je
+          WHERE je.person_id = p.id AND je.deleted_at IS NULL AND je.status = 'executed'::job_status)) AND (EXISTS ( SELECT 1
+           FROM jobs jo
+          WHERE jo.person_id = p.id AND jo.deleted_at IS NULL AND (jo.status = ANY (ARRAY['quoted'::job_status, 'confirmed'::job_status, 'no_response'::job_status])))) AS is_returning
+   FROM people p
+  WHERE deleted_at IS NULL
+```
+
+**Grants**
+
+| Grantee | Privilégio |
+| --- | --- |
+| postgres | DELETE |
+| postgres | INSERT |
+| postgres | MAINTAIN |
+| postgres | REFERENCES |
+| postgres | SELECT |
+| postgres | TRIGGER |
+| postgres | TRUNCATE |
+| postgres | UPDATE |
+| service_role | DELETE |
+| service_role | INSERT |
+| service_role | MAINTAIN |
+| service_role | REFERENCES |
+| service_role | SELECT |
+| service_role | TRIGGER |
+| service_role | TRUNCATE |
+| service_role | UPDATE |
+
+### v_admin_cadastros
+
+Contrato da tela /admin/cadastros (Bloco 4). Composta de v_person_operational_status + v_person_last_interaction. Sem dado clínico/consent por design.
+
+**Tipo:** view
+
+**Opções:** security_invoker=on
+
+**Depende de:** `v_person_last_interaction`, `v_person_operational_status`
+
+**Colunas**
+
+| # | Coluna | Tipo | Comentário |
+| --- | --- | --- | --- |
+| 1 | person_id | uuid |  |
+| 2 | name | text |  |
+| 3 | name_norm | text |  |
+| 4 | phone | text |  |
+| 5 | phone_digits | text |  |
+| 6 | email | text |  |
+| 7 | email_norm | text |  |
+| 8 | instagram | text |  |
+| 9 | instagram_norm | text |  |
+| 10 | preferred_channel | text |  |
+| 11 | neighborhood | text |  |
+| 12 | is_vip | boolean |  |
+| 13 | is_difficult | boolean |  |
+| 14 | operational_status | text |  |
+| 15 | is_returning | boolean |  |
+| 16 | next_session_at | timestamp with time zone |  |
+| 17 | last_interaction_at | timestamp with time zone |  |
+| 18 | last_interaction_class | text |  |
+| 19 | last_interaction_label | text |  |
+| 20 | created_at | timestamp with time zone |  |
+| 21 | attention_rank | integer |  |
+
+**Definição**
+
+```sql
+SELECT p.id AS person_id,
+    p.name,
+    f_norm(p.name) AS name_norm,
+    p.phone,
+    regexp_replace(p.phone, '\D'::text, ''::text, 'g'::text) AS phone_digits,
+    p.email,
+    lower(p.email) AS email_norm,
+    p.extra_data ->> 'instagram'::text AS instagram,
+    NULLIF(replace(f_norm(p.extra_data ->> 'instagram'::text), '@'::text, ''::text), ''::text) AS instagram_norm,
+    p.extra_data ->> 'preferred_channel'::text AS preferred_channel,
+    p.extra_data ->> 'neighborhood'::text AS neighborhood,
+    p.vip_flag AS is_vip,
+    p.difficult_flag AS is_difficult,
+    s.operational_status,
+    s.is_returning,
+    ns.next_session_at,
+    li.last_interaction_at,
+    li.last_interaction_class,
+    li.last_interaction_label,
+    p.created_at,
+        CASE s.operational_status
+            WHEN 'orcar'::text THEN 1
+            WHEN 'agendar'::text THEN 2
+            WHEN 'orcamento_enviado'::text THEN 3
+            WHEN 'sem_resposta'::text THEN 4
+            WHEN 'sessao_marcada'::text THEN 5
+            WHEN 'novo'::text THEN 6
+            WHEN 'cliente'::text THEN 7
+            WHEN 'inativo'::text THEN 8
+            ELSE 9
+        END AS attention_rank
+   FROM people p
+     JOIN v_person_operational_status s ON s.person_id = p.id
+     JOIN v_person_last_interaction li ON li.person_id = p.id
+     LEFT JOIN LATERAL ( SELECT min(j.scheduled_at) AS next_session_at
+           FROM jobs j
+          WHERE j.person_id = p.id AND j.deleted_at IS NULL AND (j.status = ANY (ARRAY['quoted'::job_status, 'confirmed'::job_status])) AND j.scheduled_at >= now()) ns ON true
+  WHERE p.deleted_at IS NULL
+```
+
+**Grants**
+
+| Grantee | Privilégio |
+| --- | --- |
+| postgres | DELETE |
+| postgres | INSERT |
+| postgres | MAINTAIN |
+| postgres | REFERENCES |
+| postgres | SELECT |
+| postgres | TRIGGER |
+| postgres | TRUNCATE |
+| postgres | UPDATE |
+| service_role | DELETE |
+| service_role | INSERT |
+| service_role | MAINTAIN |
+| service_role | REFERENCES |
+| service_role | SELECT |
+| service_role | TRIGGER |
+| service_role | TRUNCATE |
+| service_role | UPDATE |
+
 ## Funções
+
+### f_norm(t text)
+
+```sql
+CREATE OR REPLACE FUNCTION public.f_norm(t text)
+ RETURNS text
+ LANGUAGE sql
+ IMMUTABLE PARALLEL SAFE
+AS $function$ select lower(public.unaccent(coalesce(t,''))) $function$
+```
+
+Grants: anon → EXECUTE, authenticated → EXECUTE, postgres → EXECUTE, PUBLIC → EXECUTE, service_role → EXECUTE
 
 ### set_updated_at()
 
@@ -1262,3 +1542,6 @@ _Referência — a fonte da verdade do DDL é `schema.sql`._
 | 20260720034258 | emenda_d_rename_idempotent_to_duplicate |
 | 20260720041048 | emenda_d_fix_ambiguous_payload |
 | 20260720045409 | emenda_d_restore_original_header |
+| 20260810013341 | add_scheduled_at_and_admin_views |
+| 20260810020309 | fix_views_security_and_attention_rank |
+| 20260810185522 | add_label_job_created_manual |
