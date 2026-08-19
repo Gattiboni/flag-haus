@@ -458,11 +458,14 @@ Cada orçamento/trabalho/cancelamento do Flag Haus. status discrimina o estado a
 | 16 | updated_at | timestamp with time zone | não | now() |  |
 | 17 | deleted_at | timestamp with time zone | sim |  |  |
 | 18 | scheduled_at | timestamp with time zone | sim |  | Data/hora da sessão. Distinto dos carimbos de transição (confirmed_at etc.). |
+| 19 | service_type | text | não | 'tattoo'::text |  |
+| 20 | artist | text | não | 'julio'::text |  |
 
 **Constraints**
 
 - `jobs_final_price_non_negative` — CHECK (((final_price IS NULL) OR (final_price >= (0)::numeric)))
 - `jobs_quoted_price_non_negative` — CHECK (((quoted_price IS NULL) OR (quoted_price >= (0)::numeric)))
+- `jobs_service_type_check` — CHECK ((service_type = ANY (ARRAY['tattoo'::text, 'piercing'::text])))
 - `jobs_size_non_negative` — CHECK (((size_cm IS NULL) OR (size_cm >= (0)::numeric)))
 - `jobs_person_id_fkey` — FOREIGN KEY (person_id) REFERENCES people(id) ON DELETE RESTRICT
 - `jobs_pkey` — PRIMARY KEY (id)
@@ -1545,3 +1548,4 @@ _Referência — a fonte da verdade do DDL é `schema.sql`._
 | 20260810013341 | add_scheduled_at_and_admin_views |
 | 20260810020309 | fix_views_security_and_attention_rank |
 | 20260810185522 | add_label_job_created_manual |
+| 20260818040603 | add_service_type_and_artist_to_jobs |

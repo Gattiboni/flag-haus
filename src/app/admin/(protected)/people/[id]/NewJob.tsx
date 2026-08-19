@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState, useTransition } from 'react'
 import { Plus } from 'lucide-react'
 import { createJob, type CreateJobInput } from '@/app/actions/admin-jobs'
-import { Button, Checkbox, Input, Textarea } from '@/components/ui'
+import { Button, Checkbox, Input, RadioGroup, Select, Textarea } from '@/components/ui'
 
 /**
  * Criação manual de job (#4d) — o cliente que chegou pelo WhatsApp, pela
@@ -30,6 +30,20 @@ function parseNum(raw: string, positive: boolean): NumParse {
   return { ok: true, value: n }
 }
 
+/**
+ * Artista: o valor gravado é string livre em lowercase (guest de temporada não
+ * vira enum no banco). A UI não é livre à toa — Select com os dois nomes da
+ * casa + "Outro", que abre um campo de texto. Escolher é o caminho de 99% dos
+ * jobs; digitar é a exceção, e fica visivelmente como exceção.
+ */
+type ArtistChoice = 'julio' | 'lethicia' | 'outro'
+
+const ARTIST_OPTIONS: Array<{ value: ArtistChoice; label: string }> = [
+  { value: 'julio', label: 'Julio' },
+  { value: 'lethicia', label: 'Lethicia' },
+  { value: 'outro', label: 'Outro' },
+]
+
 const EMPTY = {
   description: '',
   bodyRegion: '',
@@ -38,6 +52,11 @@ const EMPTY = {
   quotedPrice: '',
   scheduledAt: '',
   sessionAgreed: false,
+  // Defaults do estúdio: o job comum é tatuagem do Julio. Diferente disso, o
+  // Julio troca em dois toques — mas nunca precisa preencher o caso comum.
+  serviceType: 'tattoo' as 'tattoo' | 'piercing',
+  artistChoice: 'julio' as ArtistChoice,
+  artistOther: '',
 }
 
 export function NewJob({
@@ -83,6 +102,14 @@ export function NewJob({
     const price = parseNum(form.quotedPrice, false)
     if (!price.ok) return setError('Preço orçado inválido.')
 
+    // "Outro" sem nome não vira job: o server aplica a mesma regra (artist
+    // não-vazio), mas o erro é melhor aqui, ao lado do campo.
+    const artist =
+      form.artistChoice === 'outro'
+        ? form.artistOther.trim().toLowerCase()
+        : form.artistChoice
+    if (!artist) return setError('Informe quem vai executar o job.')
+
     const payload: CreateJobInput = {
       personId,
       description: form.description,
@@ -93,6 +120,8 @@ export function NewJob({
       scheduledAt: form.scheduledAt.trim() === '' ? null : form.scheduledAt,
       // Sem data não há sessão combinada — o server aplica a mesma regra.
       sessionAgreed: form.scheduledAt.trim() !== '' && form.sessionAgreed,
+      serviceType: form.serviceType,
+      artist,
     }
 
     startSaving(async () => {
@@ -144,6 +173,44 @@ export function NewJob({
         autoFocus
         onChange={(e) => set('description', e.target.value)}
       />
+
+      {/* Tipo e artista logo depois da descrição, antes dos detalhes físicos:
+          respondem "o que é" e "de quem é" — e é à luz deles que região,
+          tamanho e estilo se leem. Empilhados (não no grid de 2 colunas) porque
+          em 390px um RadioGroup e um Select lado a lado ficam ilegíveis. */}
+      <RadioGroup
+        legend="Tipo"
+        name="service-type"
+        value={form.serviceType}
+        disabled={saving}
+        onChange={(v) => set('serviceType', v === 'piercing' ? 'piercing' : 'tattoo')}
+        options={[
+          { value: 'tattoo', label: 'Tatuagem' },
+          { value: 'piercing', label: 'Piercing' },
+        ]}
+      />
+
+      <Select
+        label="Artista"
+        value={form.artistChoice}
+        disabled={saving}
+        options={ARTIST_OPTIONS}
+        onChange={(e) => set('artistChoice', e.target.value as ArtistChoice)}
+      />
+
+      {form.artistChoice === 'outro' && (
+        <Input
+          label="Nome do artista"
+          type="text"
+          placeholder="Quem vai executar"
+          maxLength={60}
+          helperText="Guest, parceria — fica gravado em minúsculas."
+          value={form.artistOther}
+          disabled={saving}
+          autoFocus
+          onChange={(e) => set('artistOther', e.target.value)}
+        />
+      )}
 
       <div className="grid grid-cols-2 gap-fh-4">
         <Input

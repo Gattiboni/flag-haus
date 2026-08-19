@@ -232,6 +232,14 @@ function saoPauloToISO(local: string): string | null {
   return Number.isNaN(d.getTime()) ? null : d.toISOString()
 }
 
+/**
+ * Espelho do check do banco: `jobs.service_type in ('tattoo','piercing')`.
+ * Literal aqui (e não numa constante compartilhada) porque este módulo é
+ * 'use server' — constante exportada daqui chega `undefined` no client (ver
+ * `lib/domain/job-status.ts`), e o escopo desta entrega não abre `lib/domain`.
+ */
+const SERVICE_TYPES = ['tattoo', 'piercing'] as const
+
 const createJobSchema = z.object({
   personId: z.string().uuid(),
   description: optionalText(2000),
@@ -247,6 +255,18 @@ const createJobSchema = z.object({
     .optional(),
   /** "A sessão já está combinada com o cliente" — só vale com data. */
   sessionAgreed: z.boolean().optional(),
+  /** Tatuagem ou piercing. Ausente → default do banco ('tattoo'). */
+  serviceType: z.enum(SERVICE_TYPES).optional(),
+  /**
+   * Quem executa. String livre (guest de temporada não vira enum), normalizada
+   * aqui: trim + lowercase, como o valor canônico gravado. Ausente → 'julio'.
+   */
+  artist: z
+    .string()
+    .transform((a) => a.trim().toLowerCase())
+    .refine((a) => a.length > 0, { message: 'Informe quem vai executar.' })
+    .refine((a) => a.length <= 60, { message: 'Nome do artista muito longo.' })
+    .optional(),
 })
 
 export type CreateJobInput = z.input<typeof createJobSchema>
@@ -292,6 +312,8 @@ export async function createJob(raw: CreateJobInput): Promise<CreateJobResult> {
     quotedPrice,
     scheduledAt,
     sessionAgreed,
+    serviceType,
+    artist,
   } = parsed.data
 
   let scheduledISO: string | null = null
@@ -337,6 +359,10 @@ export async function createJob(raw: CreateJobInput): Promise<CreateJobResult> {
       size_cm: sizeCm ?? null,
       quoted_price: quotedPrice ?? null,
       scheduled_at: scheduledISO,
+      // Colunas NOT NULL com default no banco: manda explícito o que a tela
+      // mostrou, não o que o banco supõe.
+      service_type: serviceType ?? 'tattoo',
+      artist: artist ?? 'julio',
     }
     if (quotedPrice != null) insert.quoted_at = now
     if (confirmed) insert.confirmed_at = now
@@ -365,6 +391,8 @@ export async function createJob(raw: CreateJobInput): Promise<CreateJobResult> {
       payload: {
         created: {
           status,
+          service_type: serviceType ?? 'tattoo',
+          artist: artist ?? 'julio',
           scheduled_at: scheduledISO,
           quoted_price: quotedPrice ?? null,
           body_region: bodyRegion ?? null,

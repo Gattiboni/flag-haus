@@ -499,7 +499,9 @@ create table "public"."jobs" (
   "created_at" timestamp with time zone default now() not null,
   "updated_at" timestamp with time zone default now() not null,
   "deleted_at" timestamp with time zone,
-  "scheduled_at" timestamp with time zone
+  "scheduled_at" timestamp with time zone,
+  "service_type" text default 'tattoo'::text not null,
+  "artist" text default 'julio'::text not null
 );
 
 create table "public"."lifecycle_transitions" (
@@ -567,6 +569,7 @@ alter table "public"."identity_links" add constraint "identity_links_anonymous_i
 alter table "public"."jobs" add constraint "jobs_pkey" PRIMARY KEY (id);
 alter table "public"."jobs" add constraint "jobs_final_price_non_negative" CHECK (((final_price IS NULL) OR (final_price >= (0)::numeric)));
 alter table "public"."jobs" add constraint "jobs_quoted_price_non_negative" CHECK (((quoted_price IS NULL) OR (quoted_price >= (0)::numeric)));
+alter table "public"."jobs" add constraint "jobs_service_type_check" CHECK ((service_type = ANY (ARRAY['tattoo'::text, 'piercing'::text])));
 alter table "public"."jobs" add constraint "jobs_size_non_negative" CHECK (((size_cm IS NULL) OR (size_cm >= (0)::numeric)));
 alter table "public"."lifecycle_transitions" add constraint "lifecycle_transitions_pkey" PRIMARY KEY (id);
 alter table "public"."lifecycle_transitions" add constraint "lifecycle_transitions_stages_differ" CHECK (((from_stage IS NULL) OR (from_stage <> to_stage)));

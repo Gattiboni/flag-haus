@@ -27,6 +27,9 @@ export type PersonProfile = {
     interests?: string
     preferred_channel?: string
     circulation_areas?: string
+    /** Interesse declarado no /cadastro. Mesmos valores de `jobs.service_type`
+     *  mais `both` — quem quer os dois ainda não é um job, é um lead. */
+    interest?: 'tattoo' | 'piercing' | 'both'
   }
   lgpd_valid: boolean
   marketing_opt_in: boolean | null
@@ -139,7 +142,18 @@ const cadastroPayloadSchema = z.object({
     .record(z.string(), z.union([z.string(), z.boolean()]))
     .refine((e) => typeof e.city === 'string' && e.city.trim().length > 0, {
       message: 'Cidade é obrigatória.',
-    }),
+    })
+    // `interest` é livre no shape (extra_data é record), mas não no valor: o
+    // vocabulário acompanha `jobs.service_type` (+ `both`). Ausente é válido —
+    // returning que já respondeu não reenvia o step.
+    .refine(
+      (e) =>
+        e.interest === undefined ||
+        e.interest === 'tattoo' ||
+        e.interest === 'piercing' ||
+        e.interest === 'both',
+      { message: 'Interesse inválido.' }
+    ),
   lgpd_accepted: z.boolean().nullable(),      // null = step não exibido (pulado)
   marketing_opt_in: z.boolean().nullable(),   // null = step não exibido
   motivation: z.string().nullable(),

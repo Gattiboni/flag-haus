@@ -39,6 +39,13 @@ const STATUS_LABELS: Record<JobStatus, string> = {
   no_response: 'Sem resposta',
 }
 
+// Espelho do check de `jobs.service_type`. Qualquer valor fora do par cai no
+// próprio texto do banco em vez de sumir da tela.
+const SERVICE_TYPE_LABELS: Record<string, string> = {
+  tattoo: 'Tatuagem',
+  piercing: 'Piercing',
+}
+
 const CONSENT_LABELS: Record<string, string> = {
   procedure: 'Procedimento',
   health: 'Saúde',
@@ -65,6 +72,8 @@ type PersonRow = {
 type JobRow = {
   id: string
   status: JobStatus
+  service_type: string
+  artist: string
   body_region: string | null
   description: string | null
   quoted_price: number | string | null
@@ -89,6 +98,11 @@ function truncate(s: string | null | undefined, n = 60): string {
 
 function str(v: unknown): string {
   return typeof v === 'string' ? v : ''
+}
+
+/** Artista é gravado em minúsculas; na tela ele tem nome próprio. */
+function capitalize(s: string | null | undefined): string {
+  return s ? s.charAt(0).toUpperCase() + s.slice(1) : '—'
 }
 
 export default async function PersonDetailPage({
@@ -135,7 +149,7 @@ export default async function PersonDetailPage({
       admin
         .from('jobs')
         .select(
-          'id, status, body_region, description, quoted_price, final_price, scheduled_at, created_at'
+          'id, status, service_type, artist, body_region, description, quoted_price, final_price, scheduled_at, created_at'
         )
         .eq('person_id', id)
         .is('deleted_at', null)
@@ -335,6 +349,14 @@ function JobList({ jobs, muted }: { jobs: JobRow[]; muted?: boolean }) {
                 <span className="fh-micro fh-tnum whitespace-nowrap">
                   {formatBRL(price)}
                 </span>
+              </div>
+              {/* Tipo e artista numa linha micro própria, no mesmo lugar em
+                  todo job: linha fixa se lê varrendo a coluna, e sobrevive a
+                  390px melhor que um segundo badge disputando a primeira
+                  linha com o status. */}
+              <div className="fh-micro mt-fh-1">
+                {SERVICE_TYPE_LABELS[j.service_type] ?? j.service_type ?? '—'} ·{' '}
+                {capitalize(j.artist)}
               </div>
               <div className="flex items-baseline justify-between gap-fh-3 mt-fh-1">
                 <span className="fh-micro truncate">{truncate(j.description)}</span>

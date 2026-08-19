@@ -1109,3 +1109,84 @@ Chrome+MCP) · Codinho (código de aplicação dos 5 blocos, detecção do vazam
 diagnóstico do geocoding com arquivo:linha)
 
 ---
+
+## 2026-08-18 — CRM: interesse no cadastro + tipo de serviço e artista no job (P1)
+
+Pré-requisito do Bloco 6. O estúdio passou a operar dois serviços (tatuagem e
+piercing) e mais de um artista (Julio; Lethicia no piercing; guests sazonais no
+horizonte). Três entregas num commit: o `/cadastro` pergunta o interesse da
+pessoa, o job manual ganha tipo e artista, e o histórico exibe os dois.
+Migration aplicada por fora (MCP) antes do código, como sempre.
+
+### Adicionado
+
+- **`jobs.service_type` + `jobs.artist` — o modelo sabe o que foi feito e por
+  quem.** Migration `add_service_type_and_artist_to_jobs` (versão
+  20260818040603), via MCP. `service_type text not null default 'tattoo'` com
+  check `in ('tattoo','piercing')`; `artist text not null default 'julio'` como
+  **texto livre** — guest entra e sai sem migration (pedido do Julio na call de
+  11/08). Snapshot `docs/db/schema.sql` regenerado (`npm run moas`) e diffado
+  contra `29c6101`: exatamente 4 hunks esperados, zero surpresas. TRAP: as
+  colunas nasceram sem `comment on column` — ver Pendências.
+- **Step de interesse no wizard `/cadastro`** (step 8 de 19 no fluxo novo):
+  Tatuagem/Piercing/Os dois, obrigatório (Alert em branco testado), gravado em
+  `extra_data.interest` (`tattoo`/`piercing`/`both`). **Zero mudança na RPC** —
+  o merge de `extra_data` do `submit_cadastro` engole a chave nova; idempotência
+  por `submission_id` intacta. Returning não é reperguntado: wizard encolhe
+  19→14 steps e o `interest` gravado é preservado. Eventos carregam
+  `mode: new/returning`.
+- **Tipo e artista no job manual** (`NewJob.tsx` + `admin-jobs.ts`): radio
+  Tatuagem/Piercing + artista Julio/Lethicia/texto livre, defaults nos valores
+  do banco. Validação server-side espelha o check do banco; artista trim +
+  lowercase no banco, inicial maiúscula na UI. Payload do `job.created_manual`
+  ganhou os dois campos. Derivação de status intocada (`quoted`/`confirmed`).
+- **Exibição no histórico da pessoa** (`people/[id]/page.tsx`): micro-linha
+  "Piercing · Lethicia" / "Tatuagem · Julio" por job, no padrão visual da ficha.
+
+### Validado (β) — 6/6, em produção via dev local
+
+- β1: cadastro fake escolhendo Piercing → `extra_data->>'interest'` = `piercing`
+  no banco.
+- β2: mesmo telefone repete o wizard → fluxo returning, pergunta ausente,
+  `interest` preservado (não sobrescrito nem apagado).
+- β3: job manual Piercing + Lethicia → `piercing | lethicia` (lowercase), status
+  `quoted`, evento `job.created_manual` com os 2 campos no payload.
+- β4: job sem tocar nos campos novos → `tattoo | julio` (defaults do banco).
+- β5: micro-linhas "Piercing · Lethicia" e "Tatuagem · Julio" na ficha,
+  capitalizadas.
+- β6: 390px — CDP do Codinho (19 steps + NewJob, zero overflow em 390×844
+  real) + smoke visual sem overflow. Ressalva honesta: o resize de janela no
+  Windows não aplicou 390 reais no browser do β final.
+- Limpeza: soft-delete pela UI com confirmação por nome, `deleted_at` setado,
+  evento `admin.person_deleted` gravado, base de volta a 24 ativas.
+- Bônus validado de graça no caminho: modal de exclusão (copy honesta sobre
+  reversibilidade), eventos de auditoria com e-mail do operador, badge "A orçar"
+  na derivação de status.
+
+### Incidente registrado (fora do escopo do P1)
+
+- Crash "Jest worker" no `next dev` (Turbopack, Windows) ao compilar a árvore
+  `/admin` — reproduzível 2×, **não é código do P1**: build de produção compila
+  e roda tudo, provado nesta sessão. Workaround: `npm run build` + `npm start`
+  pra validação local quando o dev quebrar. Investigação fica fora do ciclo.
+
+### Pendências reconhecidas
+
+- `comment on column` ausente em `jobs.service_type` e `jobs.artist` — gap
+  cosmético do snapshot, entra na próxima migration que tocar a tabela.
+- `supabase/migrations/` segue não versionado — mesma pendência das entradas
+  anteriores, agora com `add_service_type_and_artist_to_jobs` na conta.
+- Copy do consent LGPD sem os 12 meses de validade (herdada de 2026-08-10).
+- 2 erros ESLint pré-existentes em CadastroForm.tsx:159-160 (herdada).
+- 390px em iPhone físico do Julio segue pendente — o CDP 390×844 atenua, não
+  fecha (herdada).
+- Anamnese de piercing: bloco clínico é entrega separada, aguardando validação
+  de conteúdo.
+- Bloco 6 condicionado à base de contatos do Julio (herdada).
+
+### Decisões relacionadas
+
+- Decisão #034 — service_type com check, artist como texto livre.
+- Decisão #035 — interesse em extra_data, perguntado uma vez, RPC intocável.
+
+---

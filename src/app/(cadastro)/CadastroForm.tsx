@@ -43,6 +43,8 @@ type FormState = {
   lat: number | null
   lng: number | null
   acquisition_source: string
+  interest: string // '' | 'tattoo' | 'piercing' | 'both'
+  interestError: string | null
   is_first_tattoo: string // '' | 'yes' | 'no'
   instagram: string
   occupation: string
@@ -63,7 +65,13 @@ type FormState = {
 // (step 6, data de nascimento) é obrigatório e foi movido pra logo após o
 // reconhecimento (step 3), antes de qualquer outra pergunta. O antigo step 6
 // "opcional" foi removido — migrou pra cá, não duplicou.
-const ALL_STEPS = [1, 2, 3, 6, 4, 5, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18]
+//
+// O step 19 (interesse: tatuagem/piercing/os dois) é numerado 19 porque a
+// numeração é identidade, não posição — mas roda ANTES do 8, abrindo o bloco de
+// qualificação: é a pergunta que diz qual serviço a pessoa procura, e as
+// seguintes ("como chegou", "primeira tatuagem", "que tipo te atrai") já se
+// leem à luz dela.
+const ALL_STEPS = [1, 2, 3, 6, 4, 5, 7, 19, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18]
 
 /** Lista de steps visíveis: por campo, não por modo (Spec #3b). */
 function computeVisible(
@@ -78,6 +86,10 @@ function computeVisible(
         // Sem data (ou data inválida/menor) → renderiza (perguntar ou bloquear).
         if (!profile.birth_date) return true
         return (calculateAge(profile.birth_date) ?? -1) < 18
+      case 19:
+        // já declarou o interesse alguma vez: não repergunta (mesma regra dos
+        // outros campos de qualificação — 8, 9, 11, 16).
+        return !profile.extra.interest
       case 8:
         return !profile.extra.acquisition_source
       case 9:
@@ -113,6 +125,8 @@ const initialState: FormState = {
   lat: null,
   lng: null,
   acquisition_source: '',
+  interest: '',
+  interestError: null,
   is_first_tattoo: '',
   instagram: '',
   occupation: '',
@@ -245,6 +259,7 @@ export function CadastroForm({ getProfileAction, submitAction }: Props) {
           instagram: p.extra.instagram ?? '',
           interests: p.extra.interests ?? '',
           acquisition_source: p.extra.acquisition_source ?? '',
+          interest: p.extra.interest ?? '',
           occupation: p.extra.occupation ?? '',
           circulation_areas: p.extra.circulation_areas ?? '',
           preferred_channel: p.extra.preferred_channel ?? '',
@@ -309,6 +324,16 @@ export function CadastroForm({ getProfileAction, submitAction }: Props) {
     advance()
   }
 
+  function handleInterestNext() {
+    // obrigatória: qualifica o lead na entrada e não tem resposta neutra.
+    if (!state.interest) {
+      set({ interestError: 'Escolhe uma opção pra seguir.' })
+      return
+    }
+    set({ interestError: null })
+    advance()
+  }
+
   function handleEmailNext() {
     const v = state.email.trim()
     if (v && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)) {
@@ -335,6 +360,9 @@ export function CadastroForm({ getProfileAction, submitAction }: Props) {
     // step 7 (sempre visível): bairro opcional, cidade obrigatória (sempre vai)
     if (state.neighborhood.trim()) extra.neighborhood = state.neighborhood.trim()
     extra.city = state.city.trim()
+    // step 19 (interesse) — mesma chave que o admin lê; vocabulário alinhado
+    // com jobs.service_type (+ 'both').
+    if (visible(19) && state.interest) extra.interest = state.interest
     // step 8
     if (visible(8) && state.acquisition_source)
       extra.acquisition_source = state.acquisition_source
@@ -416,6 +444,8 @@ export function CadastroForm({ getProfileAction, submitAction }: Props) {
         return handleGateNext()
       case 7:
         return handleLocationNext()
+      case 19:
+        return handleInterestNext()
       case 5:
         return handleEmailNext()
       case 17:
@@ -653,6 +683,35 @@ export function CadastroForm({ getProfileAction, submitAction }: Props) {
               lng={state.lng}
               cityError={state.cityError}
             />
+          </div>
+        )
+
+      // 19 — Interesse (obrigatório, sem default: a pessoa escolhe ativamente)
+      case 19:
+        return (
+          <div>
+            <h2 className={h2Cls}>O que você procura?</h2>
+            <p className={mutedCls}>
+              A casa faz tatuagem e piercing. Saber o que te trouxe ajuda a te
+              encaminhar pra pessoa certa.
+            </p>
+            <OptionPills
+              value={state.interest}
+              onChange={(v) => set({ interest: v, interestError: null })}
+              options={[
+                { value: 'tattoo', label: 'Tatuagem' },
+                { value: 'piercing', label: 'Piercing' },
+                { value: 'both', label: 'Os dois' },
+              ]}
+            />
+            {/* O OptionPills não expõe `error` (API congelada pelas ~20 chamadas
+                dos dois formulários), então o aviso sai em Alert — mesmo
+                caminho do step 17. */}
+            {state.interestError && (
+              <Alert variant="warning" className="mt-fh-4">
+                {state.interestError}
+              </Alert>
+            )}
           </div>
         )
 

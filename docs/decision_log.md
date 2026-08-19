@@ -1691,4 +1691,61 @@ dado operacional sem schema).
 
 ---
 
+## Decision #034 — 2026-08-18
+
+### jobs.service_type com check constraint; jobs.artist como texto livre com default
+
+**Data:** 2026-08-18 · **Owner:** Gattiboni
+
+**Contexto.** O estúdio passou a operar piercing (Lethicia) além de tatuagem
+(Julio), com guests sazonais no horizonte (call de 11/08). O modelo de `jobs`
+não sabia o que foi feito nem por quem — todo job era implicitamente
+tattoo/Julio.
+
+**Decisão.** (1) **`service_type` nasce com check `in ('tattoo','piercing')`**:
+são os dois únicos serviços que a Flag Haus opera; serviço novo é decisão de
+negócio e merece migration explícita. (2) **`artist` é texto livre com default
+`'julio'`**: guest entra e sai sem migration — flexibilidade onde a rotatividade
+é esperada, rigidez onde não é. (3) **Valores canônicos lowercase no banco,
+capitalização na UI** — consistência com `jobs.status`. (4) **Defaults nos dois
+campos** (`tattoo`/`julio`): todo job legado e todo job criado sem tocar nos
+campos fica correto pro caso majoritário, sem backfill.
+
+**Alternativas descartadas.** ENUM Postgres pros dois campos (alterar ENUM é
+mais cerimônia que check, e artist mudaria com frequência); tabela `artists` com
+FK (normalização prematura pra 2 nomes — reavaliar se artistas ganharem
+atributos próprios, ex. agenda ou comissão); artist também com check (guest
+exigiria migration a cada temporada).
+
+---
+
+## Decision #035 — 2026-08-18
+
+### Interesse do cliente vive em extra_data.interest, perguntado uma vez; RPC segue intocável
+
+**Data:** 2026-08-18 · **Owner:** Gattiboni
+
+**Contexto.** O `/cadastro` precisava capturar se a pessoa quer tatuagem,
+piercing ou os dois. A RPC `submit_cadastro` já faz merge de
+`payload->'extra_data'` respeitando `admin_locks` — chave nova persiste sem
+nenhuma mudança server-side.
+
+**Decisão.** (1) **`extra_data.interest` com valores `tattoo`/`piercing`/
+`both`**, não coluna dedicada: mesmo princípio das Decisões anteriores sobre
+JSONB (dado operacional sem massa crítica não ganha coluna); promoção fica pra
+quando houver padrão de consulta. (2) **Perguntado uma vez, obrigatório no fluxo
+novo, ausente no returning**: quem já respondeu não é reperguntado e o valor
+gravado é preservado — returning re-submeter não sobrescreve nem apaga. (3)
+**RPC e idempotência por `submission_id` intocáveis** — a entrega provou que o
+contrato de merge da `submit_cadastro` absorve chave nova sem deploy de banco, e
+essa é a via padrão pra campos futuros do wizard.
+
+**Alternativas descartadas.** Coluna `people.interest` (schema change pra dado
+ainda sem uso analítico); repergunta no returning com pré-seleção (fricção no
+wizard sem ganho — o dado muda na prática via job manual, não via re-cadastro);
+mexer na RPC pra validar a chave (validação Zod client/action já cobre; RPC
+enxuta é a regra desde a Emenda D).
+
+---
+
 _(Novas entradas devem seguir este mesmo formato.)_
