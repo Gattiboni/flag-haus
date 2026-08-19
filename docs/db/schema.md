@@ -24,6 +24,140 @@
 
 ## Tabelas
 
+### calendar_events
+
+Espelho de eventos das fontes externas + eventos criados pelo CRM (write-through). Propriedade de campo no contrato §6: Google-owned vs CRM-owned.
+
+**RLS:** habilitada
+
+**Colunas**
+
+| # | Coluna | Tipo | Nulo | Default | Comentário |
+| --- | --- | --- | --- | --- | --- |
+| 1 | id | uuid | não | uuid_generate_v7() |  |
+| 2 | source_id | uuid | não |  | Fonte do evento. Par com external_id é a chave do upsert do sync. |
+| 3 | external_id | text | não |  | ID do evento no provider. |
+| 4 | title | text | sim |  | Google-owned: sobrescrito em todo sync. |
+| 5 | description | text | sim |  | Google-owned: sobrescrito em todo sync. Onde o matcher procura telefone. |
+| 6 | starts_at | timestamp with time zone | não |  | Google-owned. UTC no banco; conversão pra America/Sao_Paulo em ponto único no app. |
+| 7 | ends_at | timestamp with time zone | sim |  | Google-owned. |
+| 8 | all_day | boolean | não | false | Google-owned. Evento de dia inteiro. |
+| 9 | status | text | não | 'confirmed'::text | Google-owned. Cancelou no Google vira cancelled; a RPC filtra. Nunca DELETE: histórico. |
+| 10 | origin | text | não |  | Setado UMA vez (crm no write-through, google no sync pra evento desconhecido) e preservado pelo upsert. Define editable. |
+| 11 | creator_email | text | sim |  | Google-owned. Insumo do parser de artista. |
+| 12 | category | text | não | 'outros'::text | sessao\|outros. Parser no sync recomputa SÓ se meta_source.category_manual=false. aniversario não mora aqui: é computado na RPC. |
+| 13 | artist | text | sim |  | Lowercase, mesmo vocabulário de jobs.artist. Parser recomputa SÓ se meta_source.artist_manual=false. |
+| 14 | meta_source | jsonb | não | '{}'::jsonb | Flags de trava do recompute: {artist_manual, category_manual}. CRM-owned. |
+| 15 | person_id | uuid | sim |  | Vínculo evento->contato. Matcher só preenche quando NULL; vínculo manual nunca é sobrescrito. |
+| 16 | match_source | text | sim |  | phone (matcher automático) \| manual (bandeja/drawer). Auditoria do vínculo. |
+| 17 | created_at | timestamp with time zone | não | now() |  |
+| 18 | updated_at | timestamp with time zone | não | now() |  |
+
+**Constraints**
+
+- `calendar_events_category_check` — CHECK ((category = ANY (ARRAY['sessao'::text, 'outros'::text])))
+- `calendar_events_match_source_check` — CHECK ((match_source = ANY (ARRAY['phone'::text, 'manual'::text])))
+- `calendar_events_origin_check` — CHECK ((origin = ANY (ARRAY['google'::text, 'crm'::text])))
+- `calendar_events_status_check` — CHECK ((status = ANY (ARRAY['confirmed'::text, 'cancelled'::text])))
+- `calendar_events_person_id_fkey` — FOREIGN KEY (person_id) REFERENCES people(id)
+- `calendar_events_source_id_fkey` — FOREIGN KEY (source_id) REFERENCES calendar_sources(id)
+- `calendar_events_pkey` — PRIMARY KEY (id)
+- `calendar_events_source_external_unique` — UNIQUE (source_id, external_id)
+
+**Índices**
+
+- `idx_calendar_events_person_id` — CREATE INDEX idx_calendar_events_person_id ON public.calendar_events USING btree (person_id)
+- `idx_calendar_events_starts_at` — CREATE INDEX idx_calendar_events_starts_at ON public.calendar_events USING btree (starts_at)
+
+**Triggers**
+
+- `trg_calendar_events_updated_at` — CREATE TRIGGER trg_calendar_events_updated_at BEFORE UPDATE ON public.calendar_events FOR EACH ROW EXECUTE FUNCTION set_updated_at()
+
+**Policies**
+
+| Nome | Comando | Roles | Using | With check |
+| --- | --- | --- | --- | --- |
+| deny_anon_select | SELECT |  | false |  |
+| deny_anon_write | ALL |  | false | false |
+| deny_authenticated_select | SELECT |  | false |  |
+| deny_authenticated_write | ALL |  | false | false |
+
+**Grants**
+
+| Grantee | Privilégio |
+| --- | --- |
+| postgres | DELETE |
+| postgres | INSERT |
+| postgres | MAINTAIN |
+| postgres | REFERENCES |
+| postgres | SELECT |
+| postgres | TRIGGER |
+| postgres | TRUNCATE |
+| postgres | UPDATE |
+| service_role | DELETE |
+| service_role | INSERT |
+| service_role | MAINTAIN |
+| service_role | REFERENCES |
+| service_role | SELECT |
+| service_role | TRIGGER |
+| service_role | TRUNCATE |
+| service_role | UPDATE |
+
+### calendar_sources
+
+Fontes de agenda espelhadas. Plural desde o berço: agenda nova = INSERT, zero refactor.
+
+**RLS:** habilitada
+
+**Colunas**
+
+| # | Coluna | Tipo | Nulo | Default | Comentário |
+| --- | --- | --- | --- | --- | --- |
+| 1 | id | uuid | não | uuid_generate_v7() |  |
+| 2 | provider | text | não |  | v1 só google; check afrouxa por migration quando houver segundo provider. |
+| 3 | external_id | text | não |  | Calendar ID no provider. |
+| 4 | label | text | não |  | Nome de exibição/log da fonte. |
+| 5 | is_active | boolean | não | true | Desligar a fonte sem apagar histórico. |
+| 6 | sync_token | text | sim |  | Token de sync incremental do Google. Invalidado (410): limpar e refazer janela cheia (-90d/+400d). |
+| 7 | last_synced_at | timestamp with time zone | sim |  | Alimenta o carimbo "Última sincronização" da UI. |
+| 8 | created_at | timestamp with time zone | não | now() |  |
+
+**Constraints**
+
+- `calendar_sources_provider_check` — CHECK ((provider = 'google'::text))
+- `calendar_sources_pkey` — PRIMARY KEY (id)
+- `calendar_sources_provider_external_unique` — UNIQUE (provider, external_id)
+
+**Policies**
+
+| Nome | Comando | Roles | Using | With check |
+| --- | --- | --- | --- | --- |
+| deny_anon_select | SELECT |  | false |  |
+| deny_anon_write | ALL |  | false | false |
+| deny_authenticated_select | SELECT |  | false |  |
+| deny_authenticated_write | ALL |  | false | false |
+
+**Grants**
+
+| Grantee | Privilégio |
+| --- | --- |
+| postgres | DELETE |
+| postgres | INSERT |
+| postgres | MAINTAIN |
+| postgres | REFERENCES |
+| postgres | SELECT |
+| postgres | TRIGGER |
+| postgres | TRUNCATE |
+| postgres | UPDATE |
+| service_role | DELETE |
+| service_role | INSERT |
+| service_role | MAINTAIN |
+| service_role | REFERENCES |
+| service_role | SELECT |
+| service_role | TRIGGER |
+| service_role | TRUNCATE |
+| service_role | UPDATE |
+
 ### clinical_records
 
 Anamnese clínica por job/sessão. Append-only. Dados sensíveis LGPD separados de people.
@@ -705,6 +839,7 @@ Entidade central. Identidade frouxa: phone obrigatório, demais atributos preenc
 | 14 | created_at | timestamp with time zone | não | now() |  |
 | 15 | updated_at | timestamp with time zone | não | now() |  |
 | 16 | deleted_at | timestamp with time zone | sim |  |  |
+| 17 | tags | text[] | não | '{}'::text[] | Array de SLUGS do catálogo tags. Escrito exclusivamente pelas actions de tag (família A); submit_cadastro, sync e imports nunca tocam. Órfã (slug sem catálogo) é estado legítimo tratado na UI. |
 
 **Constraints**
 
@@ -716,6 +851,7 @@ Entidade central. Identidade frouxa: phone obrigatório, demais atributos preenc
 
 **Índices**
 
+- `idx_people_tags_gin` — CREATE INDEX idx_people_tags_gin ON public.people USING gin (tags)
 - `people_email_idx` — CREATE INDEX people_email_idx ON public.people USING btree (lower(email)) WHERE ((deleted_at IS NULL) AND (email IS NOT NULL))
 - `people_lifecycle_stage_idx` — CREATE INDEX people_lifecycle_stage_idx ON public.people USING btree (lifecycle_stage) WHERE (deleted_at IS NULL)
 - `people_location_gix` — CREATE INDEX people_location_gix ON public.people USING gist (location) WHERE ((deleted_at IS NULL) AND (location IS NOT NULL))
@@ -755,6 +891,58 @@ Entidade central. Identidade frouxa: phone obrigatório, demais atributos preenc
 | authenticated | TRIGGER |
 | authenticated | TRUNCATE |
 | authenticated | UPDATE |
+| postgres | DELETE |
+| postgres | INSERT |
+| postgres | MAINTAIN |
+| postgres | REFERENCES |
+| postgres | SELECT |
+| postgres | TRIGGER |
+| postgres | TRUNCATE |
+| postgres | UPDATE |
+| service_role | DELETE |
+| service_role | INSERT |
+| service_role | MAINTAIN |
+| service_role | REFERENCES |
+| service_role | SELECT |
+| service_role | TRIGGER |
+| service_role | TRUNCATE |
+| service_role | UPDATE |
+
+### tags
+
+Catálogo de tags de contato. Indireção slug->(name,color) resolvida no render; mudar aqui dispersa em todas as telas sem tocar em contato.
+
+**RLS:** habilitada
+
+**Colunas**
+
+| # | Coluna | Tipo | Nulo | Default | Comentário |
+| --- | --- | --- | --- | --- | --- |
+| 1 | id | uuid | não | uuid_generate_v7() | PK uuid v7, padrão do projeto. |
+| 2 | name | text | não |  | Nome de exibição. MUTÁVEL: rename escreve só aqui e dispersa via indireção. |
+| 3 | slug | text | não |  | Identidade da tag. IMUTÁVEL pós-criação (garantido na action, único escritor). Colisão é de slug, não de nome. |
+| 4 | color | text | não |  | Hex da paleta fixa (constante única em código, contraste >=4.5:1 provado em teste). |
+| 5 | is_active | boolean | não | true | Desativar = soft: bloqueia entrada em contato novo, preserva quem tem, destrava saída no editor. |
+| 6 | created_at | timestamp with time zone | não | now() | Auditoria mínima. |
+
+**Constraints**
+
+- `tags_pkey` — PRIMARY KEY (id)
+- `tags_slug_key` — UNIQUE (slug)
+
+**Policies**
+
+| Nome | Comando | Roles | Using | With check |
+| --- | --- | --- | --- | --- |
+| deny_anon_select | SELECT |  | false |  |
+| deny_anon_write | ALL |  | false | false |
+| deny_authenticated_select | SELECT |  | false |  |
+| deny_authenticated_write | ALL |  | false | false |
+
+**Grants**
+
+| Grantee | Privilégio |
+| --- | --- |
 | postgres | DELETE |
 | postgres | INSERT |
 | postgres | MAINTAIN |
@@ -1113,6 +1301,79 @@ SELECT p.id AS person_id,
 | service_role | UPDATE |
 
 ## Funções
+
+### calendar_events_between(p_start timestamp with time zone, p_end timestamp with time zone)
+
+```sql
+CREATE OR REPLACE FUNCTION public.calendar_events_between(p_start timestamp with time zone, p_end timestamp with time zone)
+ RETURNS TABLE(event_id uuid, kind text, title text, starts_at timestamp with time zone, ends_at timestamp with time zone, all_day boolean, category text, origin text, editable boolean, artist text, person_id uuid, person_name text, person_phone text, person_tags text[], meta jsonb)
+ LANGUAGE sql
+ STABLE
+AS $function$
+  select
+    e.id as event_id,
+    'event'::text as kind,
+    e.title,
+    e.starts_at,
+    e.ends_at,
+    e.all_day,
+    e.category,
+    e.origin,
+    (e.origin = 'crm') as editable,
+    e.artist,
+    e.person_id,
+    p.name as person_name,
+    p.phone as person_phone,
+    p.tags as person_tags,
+    jsonb_build_object(
+      'description', e.description,
+      'creator_email', e.creator_email,
+      'match_source', e.match_source,
+      'flags', e.meta_source
+    ) as meta
+  from public.calendar_events e
+  join public.calendar_sources s on s.id = e.source_id and s.is_active
+  left join public.people p on p.id = e.person_id and p.deleted_at is null
+  where e.status = 'confirmed'
+    and e.starts_at < p_end
+    and coalesce(e.ends_at, e.starts_at) >= p_start
+
+  union all
+
+  select
+    null::uuid as event_id,
+    'birthday'::text as kind,
+    'Aniversário — ' || p.name as title,
+    b.occ_start as starts_at,
+    b.occ_start + interval '1 day' as ends_at,
+    true as all_day,
+    'aniversario'::text as category,
+    'birthday'::text as origin,
+    false as editable,
+    null::text as artist,
+    p.id as person_id,
+    p.name as person_name,
+    p.phone as person_phone,
+    p.tags as person_tags,
+    '{}'::jsonb as meta
+  from public.people p
+  cross join generate_series(
+    extract(year from (p_start at time zone 'America/Sao_Paulo'))::int,
+    extract(year from (p_end   at time zone 'America/Sao_Paulo'))::int
+  ) as y
+  cross join lateral (
+    select (
+      (p.birth_date + make_interval(years => y - extract(year from p.birth_date)::int))::date::timestamp
+    ) at time zone 'America/Sao_Paulo' as occ_start
+  ) b
+  where p.deleted_at is null
+    and p.birth_date is not null
+    and b.occ_start < p_end
+    and b.occ_start + interval '1 day' >= p_start
+$function$
+```
+
+Grants: postgres → EXECUTE, service_role → EXECUTE
 
 ### f_norm(t text)
 
@@ -1549,3 +1810,5 @@ _Referência — a fonte da verdade do DDL é `schema.sql`._
 | 20260810020309 | fix_views_security_and_attention_rank |
 | 20260810185522 | add_label_job_created_manual |
 | 20260818040603 | add_service_type_and_artist_to_jobs |
+| 20260819034439 | add_tags_foundation |
+| 20260819034656 | add_calendar_mirror |

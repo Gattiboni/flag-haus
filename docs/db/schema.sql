@@ -31,6 +31,73 @@ create type "public"."lifecycle_stage" as enum ('lead', 'prospect', 'opportunity
 create type "public"."user_role" as enum ('admin', 'viewer');
 
 -- 3. funções
+CREATE OR REPLACE FUNCTION public.calendar_events_between(p_start timestamp with time zone, p_end timestamp with time zone)
+ RETURNS TABLE(event_id uuid, kind text, title text, starts_at timestamp with time zone, ends_at timestamp with time zone, all_day boolean, category text, origin text, editable boolean, artist text, person_id uuid, person_name text, person_phone text, person_tags text[], meta jsonb)
+ LANGUAGE sql
+ STABLE
+AS $function$
+  select
+    e.id as event_id,
+    'event'::text as kind,
+    e.title,
+    e.starts_at,
+    e.ends_at,
+    e.all_day,
+    e.category,
+    e.origin,
+    (e.origin = 'crm') as editable,
+    e.artist,
+    e.person_id,
+    p.name as person_name,
+    p.phone as person_phone,
+    p.tags as person_tags,
+    jsonb_build_object(
+      'description', e.description,
+      'creator_email', e.creator_email,
+      'match_source', e.match_source,
+      'flags', e.meta_source
+    ) as meta
+  from public.calendar_events e
+  join public.calendar_sources s on s.id = e.source_id and s.is_active
+  left join public.people p on p.id = e.person_id and p.deleted_at is null
+  where e.status = 'confirmed'
+    and e.starts_at < p_end
+    and coalesce(e.ends_at, e.starts_at) >= p_start
+
+  union all
+
+  select
+    null::uuid as event_id,
+    'birthday'::text as kind,
+    'Aniversário — ' || p.name as title,
+    b.occ_start as starts_at,
+    b.occ_start + interval '1 day' as ends_at,
+    true as all_day,
+    'aniversario'::text as category,
+    'birthday'::text as origin,
+    false as editable,
+    null::text as artist,
+    p.id as person_id,
+    p.name as person_name,
+    p.phone as person_phone,
+    p.tags as person_tags,
+    '{}'::jsonb as meta
+  from public.people p
+  cross join generate_series(
+    extract(year from (p_start at time zone 'America/Sao_Paulo'))::int,
+    extract(year from (p_end   at time zone 'America/Sao_Paulo'))::int
+  ) as y
+  cross join lateral (
+    select (
+      (p.birth_date + make_interval(years => y - extract(year from p.birth_date)::int))::date::timestamp
+    ) at time zone 'America/Sao_Paulo' as occ_start
+  ) b
+  where p.deleted_at is null
+    and p.birth_date is not null
+    and b.occ_start < p_end
+    and b.occ_start + interval '1 day' >= p_start
+$function$;
+
 CREATE OR REPLACE FUNCTION public.f_norm(t text)
  RETURNS text
  LANGUAGE sql
@@ -412,6 +479,38 @@ AS $function$
 $function$;
 
 -- 4. tabelas
+create table "public"."calendar_events" (
+  "id" uuid default uuid_generate_v7() not null,
+  "source_id" uuid not null,
+  "external_id" text not null,
+  "title" text,
+  "description" text,
+  "starts_at" timestamp with time zone not null,
+  "ends_at" timestamp with time zone,
+  "all_day" boolean default false not null,
+  "status" text default 'confirmed'::text not null,
+  "origin" text not null,
+  "creator_email" text,
+  "category" text default 'outros'::text not null,
+  "artist" text,
+  "meta_source" jsonb default '{}'::jsonb not null,
+  "person_id" uuid,
+  "match_source" text,
+  "created_at" timestamp with time zone default now() not null,
+  "updated_at" timestamp with time zone default now() not null
+);
+
+create table "public"."calendar_sources" (
+  "id" uuid default uuid_generate_v7() not null,
+  "provider" text not null,
+  "external_id" text not null,
+  "label" text not null,
+  "is_active" boolean default true not null,
+  "sync_token" text,
+  "last_synced_at" timestamp with time zone,
+  "created_at" timestamp with time zone default now() not null
+);
+
 create table "public"."clinical_records" (
   "id" uuid default uuid_generate_v7() not null,
   "person_id" uuid not null,
@@ -541,7 +640,17 @@ create table "public"."people" (
   "identified_at" timestamp with time zone,
   "created_at" timestamp with time zone default now() not null,
   "updated_at" timestamp with time zone default now() not null,
-  "deleted_at" timestamp with time zone
+  "deleted_at" timestamp with time zone,
+  "tags" text[] default '{}'::text[] not null
+);
+
+create table "public"."tags" (
+  "id" uuid default uuid_generate_v7() not null,
+  "name" text not null,
+  "slug" text not null,
+  "color" text not null,
+  "is_active" boolean default true not null,
+  "created_at" timestamp with time zone default now() not null
 );
 
 create table "public"."user_roles" (
@@ -553,6 +662,15 @@ create table "public"."user_roles" (
 );
 
 -- 5. constraints
+alter table "public"."calendar_events" add constraint "calendar_events_pkey" PRIMARY KEY (id);
+alter table "public"."calendar_events" add constraint "calendar_events_source_external_unique" UNIQUE (source_id, external_id);
+alter table "public"."calendar_events" add constraint "calendar_events_category_check" CHECK ((category = ANY (ARRAY['sessao'::text, 'outros'::text])));
+alter table "public"."calendar_events" add constraint "calendar_events_match_source_check" CHECK ((match_source = ANY (ARRAY['phone'::text, 'manual'::text])));
+alter table "public"."calendar_events" add constraint "calendar_events_origin_check" CHECK ((origin = ANY (ARRAY['google'::text, 'crm'::text])));
+alter table "public"."calendar_events" add constraint "calendar_events_status_check" CHECK ((status = ANY (ARRAY['confirmed'::text, 'cancelled'::text])));
+alter table "public"."calendar_sources" add constraint "calendar_sources_pkey" PRIMARY KEY (id);
+alter table "public"."calendar_sources" add constraint "calendar_sources_provider_external_unique" UNIQUE (provider, external_id);
+alter table "public"."calendar_sources" add constraint "calendar_sources_provider_check" CHECK ((provider = 'google'::text));
 alter table "public"."clinical_records" add constraint "clinical_records_pkey" PRIMARY KEY (id);
 alter table "public"."clinical_records" add constraint "clinical_pregnancy_valid" CHECK (((pregnancy_status IS NULL) OR (pregnancy_status = ANY (ARRAY['pregnant'::text, 'breastfeeding'::text, 'no'::text, 'prefer_not_say'::text, 'not_applicable'::text]))));
 alter table "public"."clinical_records" add constraint "clinical_substances_valid" CHECK (((recent_substances IS NULL) OR (recent_substances = ANY (ARRAY['will_not'::text, 'will'::text, 'discuss_in_session'::text]))));
@@ -580,7 +698,11 @@ alter table "public"."people" add constraint "people_email_format" CHECK (((emai
 alter table "public"."people" add constraint "people_lat_range" CHECK (((lat IS NULL) OR ((lat >= ('-90'::integer)::double precision) AND (lat <= (90)::double precision))));
 alter table "public"."people" add constraint "people_lng_range" CHECK (((lng IS NULL) OR ((lng >= ('-180'::integer)::double precision) AND (lng <= (180)::double precision))));
 alter table "public"."people" add constraint "people_phone_not_blank" CHECK ((length(TRIM(BOTH FROM phone)) > 0));
+alter table "public"."tags" add constraint "tags_pkey" PRIMARY KEY (id);
+alter table "public"."tags" add constraint "tags_slug_key" UNIQUE (slug);
 alter table "public"."user_roles" add constraint "user_roles_pkey" PRIMARY KEY (id);
+alter table "public"."calendar_events" add constraint "calendar_events_person_id_fkey" FOREIGN KEY (person_id) REFERENCES people(id);
+alter table "public"."calendar_events" add constraint "calendar_events_source_id_fkey" FOREIGN KEY (source_id) REFERENCES calendar_sources(id);
 alter table "public"."clinical_records" add constraint "clinical_records_job_id_fkey" FOREIGN KEY (job_id) REFERENCES jobs(id) ON DELETE SET NULL;
 alter table "public"."clinical_records" add constraint "clinical_records_person_id_fkey" FOREIGN KEY (person_id) REFERENCES people(id) ON DELETE RESTRICT;
 alter table "public"."consents" add constraint "consents_job_id_fkey" FOREIGN KEY (job_id) REFERENCES jobs(id) ON DELETE SET NULL;
@@ -595,6 +717,8 @@ alter table "public"."motivations" add constraint "motivations_job_id_fkey" FORE
 alter table "public"."motivations" add constraint "motivations_person_id_fkey" FOREIGN KEY (person_id) REFERENCES people(id) ON DELETE CASCADE;
 
 -- 6. índices
+CREATE INDEX idx_calendar_events_person_id ON public.calendar_events USING btree (person_id);
+CREATE INDEX idx_calendar_events_starts_at ON public.calendar_events USING btree (starts_at);
 CREATE INDEX clinical_records_job_id_idx ON public.clinical_records USING btree (job_id) WHERE (job_id IS NOT NULL);
 CREATE INDEX clinical_records_person_id_idx ON public.clinical_records USING btree (person_id, filled_at DESC);
 CREATE INDEX consents_job_id_idx ON public.consents USING btree (job_id, granted_at DESC) WHERE (job_id IS NOT NULL);
@@ -619,6 +743,7 @@ CREATE INDEX lifecycle_transitions_person_id_idx ON public.lifecycle_transitions
 CREATE INDEX lifecycle_transitions_to_stage_idx ON public.lifecycle_transitions USING btree (to_stage, changed_at DESC);
 CREATE INDEX motivations_job_id_idx ON public.motivations USING btree (job_id) WHERE (job_id IS NOT NULL);
 CREATE INDEX motivations_person_id_idx ON public.motivations USING btree (person_id, recorded_at DESC);
+CREATE INDEX idx_people_tags_gin ON public.people USING gin (tags);
 CREATE INDEX people_email_idx ON public.people USING btree (lower(email)) WHERE ((deleted_at IS NULL) AND (email IS NOT NULL));
 CREATE INDEX people_lifecycle_stage_idx ON public.people USING btree (lifecycle_stage) WHERE (deleted_at IS NULL);
 CREATE INDEX people_location_gix ON public.people USING gist (location) WHERE ((deleted_at IS NULL) AND (location IS NOT NULL));
@@ -626,6 +751,7 @@ CREATE UNIQUE INDEX people_phone_unique ON public.people USING btree (phone) WHE
 CREATE UNIQUE INDEX user_roles_user_id_unique ON public.user_roles USING btree (user_id);
 
 -- 7. triggers
+CREATE TRIGGER trg_calendar_events_updated_at BEFORE UPDATE ON public.calendar_events FOR EACH ROW EXECUTE FUNCTION set_updated_at();
 CREATE TRIGGER jobs_set_updated_at BEFORE UPDATE ON public.jobs FOR EACH ROW EXECUTE FUNCTION set_updated_at();
 CREATE TRIGGER people_set_updated_at BEFORE UPDATE ON public.people FOR EACH ROW EXECUTE FUNCTION set_updated_at();
 CREATE TRIGGER people_sync_location BEFORE INSERT OR UPDATE OF lat, lng ON public.people FOR EACH ROW EXECUTE FUNCTION sync_people_location();
@@ -756,6 +882,8 @@ SELECT p.id AS person_id,
   WHERE p.deleted_at IS NULL;
 
 -- 9. row level security
+alter table "public"."calendar_events" enable row level security;
+alter table "public"."calendar_sources" enable row level security;
 alter table "public"."clinical_records" enable row level security;
 alter table "public"."consents" enable row level security;
 alter table "public"."customer_segments_snapshot" enable row level security;
@@ -765,9 +893,54 @@ alter table "public"."jobs" enable row level security;
 alter table "public"."lifecycle_transitions" enable row level security;
 alter table "public"."motivations" enable row level security;
 alter table "public"."people" enable row level security;
+alter table "public"."tags" enable row level security;
 alter table "public"."user_roles" enable row level security;
 
 -- 10. policies
+create policy "deny_anon_select" on "public"."calendar_events"
+  as permissive
+  for select
+  to 
+  using (false);
+create policy "deny_anon_write" on "public"."calendar_events"
+  as permissive
+  for all
+  to 
+  using (false)
+  with check (false);
+create policy "deny_authenticated_select" on "public"."calendar_events"
+  as permissive
+  for select
+  to 
+  using (false);
+create policy "deny_authenticated_write" on "public"."calendar_events"
+  as permissive
+  for all
+  to 
+  using (false)
+  with check (false);
+create policy "deny_anon_select" on "public"."calendar_sources"
+  as permissive
+  for select
+  to 
+  using (false);
+create policy "deny_anon_write" on "public"."calendar_sources"
+  as permissive
+  for all
+  to 
+  using (false)
+  with check (false);
+create policy "deny_authenticated_select" on "public"."calendar_sources"
+  as permissive
+  for select
+  to 
+  using (false);
+create policy "deny_authenticated_write" on "public"."calendar_sources"
+  as permissive
+  for all
+  to 
+  using (false)
+  with check (false);
 create policy "deny_anon_select" on "public"."clinical_records"
   as permissive
   for select
@@ -966,6 +1139,28 @@ create policy "deny_authenticated_write" on "public"."people"
   to 
   using (false)
   with check (false);
+create policy "deny_anon_select" on "public"."tags"
+  as permissive
+  for select
+  to 
+  using (false);
+create policy "deny_anon_write" on "public"."tags"
+  as permissive
+  for all
+  to 
+  using (false)
+  with check (false);
+create policy "deny_authenticated_select" on "public"."tags"
+  as permissive
+  for select
+  to 
+  using (false);
+create policy "deny_authenticated_write" on "public"."tags"
+  as permissive
+  for all
+  to 
+  using (false)
+  with check (false);
 create policy "deny_anon_select" on "public"."user_roles"
   as permissive
   for select
@@ -990,6 +1185,40 @@ create policy "deny_authenticated_write" on "public"."user_roles"
   with check (false);
 
 -- 11. grants
+revoke all on table "public"."calendar_events" from public, anon, authenticated, service_role;
+grant delete on table "public"."calendar_events" to postgres;
+grant insert on table "public"."calendar_events" to postgres;
+grant maintain on table "public"."calendar_events" to postgres;
+grant references on table "public"."calendar_events" to postgres;
+grant select on table "public"."calendar_events" to postgres;
+grant trigger on table "public"."calendar_events" to postgres;
+grant truncate on table "public"."calendar_events" to postgres;
+grant update on table "public"."calendar_events" to postgres;
+grant delete on table "public"."calendar_events" to service_role;
+grant insert on table "public"."calendar_events" to service_role;
+grant maintain on table "public"."calendar_events" to service_role;
+grant references on table "public"."calendar_events" to service_role;
+grant select on table "public"."calendar_events" to service_role;
+grant trigger on table "public"."calendar_events" to service_role;
+grant truncate on table "public"."calendar_events" to service_role;
+grant update on table "public"."calendar_events" to service_role;
+revoke all on table "public"."calendar_sources" from public, anon, authenticated, service_role;
+grant delete on table "public"."calendar_sources" to postgres;
+grant insert on table "public"."calendar_sources" to postgres;
+grant maintain on table "public"."calendar_sources" to postgres;
+grant references on table "public"."calendar_sources" to postgres;
+grant select on table "public"."calendar_sources" to postgres;
+grant trigger on table "public"."calendar_sources" to postgres;
+grant truncate on table "public"."calendar_sources" to postgres;
+grant update on table "public"."calendar_sources" to postgres;
+grant delete on table "public"."calendar_sources" to service_role;
+grant insert on table "public"."calendar_sources" to service_role;
+grant maintain on table "public"."calendar_sources" to service_role;
+grant references on table "public"."calendar_sources" to service_role;
+grant select on table "public"."calendar_sources" to service_role;
+grant trigger on table "public"."calendar_sources" to service_role;
+grant truncate on table "public"."calendar_sources" to service_role;
+grant update on table "public"."calendar_sources" to service_role;
 revoke all on table "public"."clinical_records" from public, anon, authenticated, service_role;
 grant delete on table "public"."clinical_records" to anon;
 grant insert on table "public"."clinical_records" to anon;
@@ -1287,6 +1516,23 @@ grant select on table "public"."people" to service_role;
 grant trigger on table "public"."people" to service_role;
 grant truncate on table "public"."people" to service_role;
 grant update on table "public"."people" to service_role;
+revoke all on table "public"."tags" from public, anon, authenticated, service_role;
+grant delete on table "public"."tags" to postgres;
+grant insert on table "public"."tags" to postgres;
+grant maintain on table "public"."tags" to postgres;
+grant references on table "public"."tags" to postgres;
+grant select on table "public"."tags" to postgres;
+grant trigger on table "public"."tags" to postgres;
+grant truncate on table "public"."tags" to postgres;
+grant update on table "public"."tags" to postgres;
+grant delete on table "public"."tags" to service_role;
+grant insert on table "public"."tags" to service_role;
+grant maintain on table "public"."tags" to service_role;
+grant references on table "public"."tags" to service_role;
+grant select on table "public"."tags" to service_role;
+grant trigger on table "public"."tags" to service_role;
+grant truncate on table "public"."tags" to service_role;
+grant update on table "public"."tags" to service_role;
 revoke all on table "public"."user_roles" from public, anon, authenticated, service_role;
 grant delete on table "public"."user_roles" to anon;
 grant insert on table "public"."user_roles" to anon;
@@ -1373,6 +1619,9 @@ grant trigger on table "public"."v_admin_cadastros" to service_role;
 grant truncate on table "public"."v_admin_cadastros" to service_role;
 grant update on table "public"."v_admin_cadastros" to service_role;
 
+revoke all on function "public"."calendar_events_between"(p_start timestamp with time zone, p_end timestamp with time zone) from public, anon, authenticated, service_role;
+grant execute on function "public"."calendar_events_between"(p_start timestamp with time zone, p_end timestamp with time zone) to postgres;
+grant execute on function "public"."calendar_events_between"(p_start timestamp with time zone, p_end timestamp with time zone) to service_role;
 revoke all on function "public"."f_norm"(t text) from public, anon, authenticated, service_role;
 grant execute on function "public"."f_norm"(t text) to anon;
 grant execute on function "public"."f_norm"(t text) to authenticated;
