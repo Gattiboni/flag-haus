@@ -78,11 +78,46 @@ function buildSearchExpr(q: string): string | null {
 }
 
 /**
+ * Ids das pessoas que carregam a tag. Usa o índice GIN de `people.tags`
+ * (`contains` vira o operador `@>`), e roda no servidor como todo o resto do
+ * recorte desta tela.
+ *
+ * O passo extra existe porque `v_admin_cadastros` não projeta `people.tags`, e
+ * a view está fora do escopo desta entrega — mexer nela é migration, e
+ * migration é do Claudinho via MCP. Enquanto isso, o filtro é a interseção de
+ * duas queries em vez de um `where` só.
+ *
+ * Custo real: o universo é de ~24 pessoas hoje, e mesmo em milhares o retorno
+ * é uma coluna de uuid vinda de um índice. Se um dia o `in(...)` ficar grande
+ * demais pra URL do PostgREST, a saída certa é a view projetar `tags` — não
+ * paginar esta lista aqui.
+ */
+async function personIdsWithTag(admin: Admin, slug: string): Promise<string[]> {
+  const { data, error } = await admin
+    .from('people')
+    .select('id')
+    .contains('tags', [slug])
+    .is('deleted_at', null)
+
+  if (error) {
+    console.error('[admin/cadastros] filtro de tag falhou:', error.message)
+    // Devolver "todo mundo" aqui mostraria uma lista sem o recorte pedido, com
+    // o filtro aceso. Vazio é honesto: o recorte não pôde ser aplicado.
+    return []
+  }
+  return ((data ?? []) as Array<{ id: string }>).map((p) => p.id)
+}
+
+/**
  * Fábrica do recorte: devolve a função que aplica busca + filtros sobre um
  * select da view. Todo caminho de leitura passa por ela, então filtro novo
  * entra num lugar só.
  */
-function makeScoped(admin: Admin, query: CadastrosQuery) {
+function makeScoped(
+  admin: Admin,
+  query: CadastrosQuery,
+  taggedIds: string[] | null
+) {
   const statuses = resolveStatusFilter(query)
   const searchExpr = buildSearchExpr(query.q)
   const requireSession = query.filtros.includes('sessao')
@@ -100,6 +135,7 @@ function makeScoped(admin: Admin, query: CadastrosQuery) {
     if (statuses) b = b.in('operational_status', statuses)
     if (searchExpr) b = b.or(searchExpr)
     if (requireSession) b = b.not('next_session_at', 'is', null)
+    if (taggedIds) b = b.in('person_id', taggedIds)
     for (const f of flags) b = b.eq(f, true)
     return b
   }
@@ -111,7 +147,11 @@ function makeScoped(admin: Admin, query: CadastrosQuery) {
 
   return {
     scoped,
-    impossible: (statuses !== null && statuses.length === 0) || searchImpossible,
+    impossible:
+      (statuses !== null && statuses.length === 0) ||
+      searchImpossible ||
+      // Tag pedida que ninguém carrega: recorte legítimo e vazio, não erro.
+      (taggedIds !== null && taggedIds.length === 0),
   }
 }
 
@@ -132,7 +172,9 @@ export async function loadCadastros(
   query: CadastrosQuery
 ): Promise<LoadCadastrosResult> {
   const admin = createAdminClient()
-  const { scoped, impossible } = makeScoped(admin, query)
+
+  const taggedIds = query.tag ? await personIdsWithTag(admin, query.tag) : null
+  const { scoped, impossible } = makeScoped(admin, query, taggedIds)
 
   try {
     // Total geral só interessa quando há recorte — sem filtro, `count` já é ele.

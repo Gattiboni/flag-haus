@@ -259,6 +259,14 @@ export type CadastrosQuery = {
   q: string
   status: OperationalStatus[]
   filtros: QuickFilter[]
+  /**
+   * UMA tag, pelo slug. `''` = sem recorte de tag.
+   *
+   * Uma só, e não lista: "quem é VIP E fechamento" é uma pergunta que o Julio
+   * ainda não faz, e o filtro server-side de duas tags dobraria a query pra
+   * atender um caso hipotético.
+   */
+  tag: string
   sort: SortKey
   page: number
   per: number
@@ -268,6 +276,7 @@ export const EMPTY_QUERY: CadastrosQuery = {
   q: '',
   status: [],
   filtros: [],
+  tag: '',
   sort: DEFAULT_SORT,
   page: 1,
   per: DEFAULT_PER_PAGE,
@@ -279,7 +288,12 @@ export const EMPTY_QUERY: CadastrosQuery = {
  * casam com o filtro, e "25 de 25" ao ordenar por nome seria ruído.
  */
 export function hasActiveFilters(query: CadastrosQuery): boolean {
-  return query.q !== '' || query.status.length > 0 || query.filtros.length > 0
+  return (
+    query.q !== '' ||
+    query.status.length > 0 ||
+    query.filtros.length > 0 ||
+    query.tag !== ''
+  )
 }
 
 /**
@@ -296,6 +310,7 @@ export const CLEAR_PATCH: Partial<CadastrosQuery> = {
   q: '',
   status: [],
   filtros: [],
+  tag: '',
   sort: DEFAULT_SORT,
 }
 
@@ -368,7 +383,12 @@ export function parseCadastrosQuery(sp: RawSearchParams): CadastrosQuery {
   const rawPage = Number.parseInt(first(sp.page), 10)
   const page = Number.isFinite(rawPage) && rawPage > 0 ? rawPage : 1
 
-  return { q, status, filtros, sort, page, per }
+  // O slug NÃO é validado contra o catálogo aqui: a tag pode ter sido excluída
+  // desde que o link foi copiado, e quem trata isso é a tela (o filtro devolve
+  // vazio e o menu mostra o slug cru). Só a forma importa.
+  const tag = first(sp.tag).trim().slice(0, 60)
+
+  return { q, status, filtros, tag, sort, page, per }
 }
 
 /**
@@ -390,6 +410,7 @@ export function cadastrosHref(
   if (next.q) sp.set('q', next.q)
   if (next.status.length) sp.set('status', next.status.join(','))
   if (next.filtros.length) sp.set('filtros', next.filtros.join(','))
+  if (next.tag) sp.set('tag', next.tag)
   if (next.sort !== DEFAULT_SORT) sp.set('sort', next.sort)
   if (next.per !== DEFAULT_PER_PAGE) sp.set('per', String(next.per))
   if (next.page > 1) sp.set('page', String(next.page))

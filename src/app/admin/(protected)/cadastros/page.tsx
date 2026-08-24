@@ -16,6 +16,7 @@ import { Alert, Card } from '@/components/ui'
 import { CadastrosList, type CadastroItem } from './CadastrosList'
 import { CadastrosToolbar } from './CadastrosToolbar'
 import { loadCadastros } from './data'
+import { listTags } from '@/app/actions/tags'
 import './cadastros.css'
 
 /**
@@ -40,7 +41,9 @@ export default async function CadastrosPage({
 
   const sp = await searchParams
   const query = parseCadastrosQuery(sp)
-  const result = await loadCadastros(query)
+  // Catálogo inteiro: o menu de tag lista ativas e inativas (estas com sufixo),
+  // porque quem já tem uma tag desativada continua filtrável por ela.
+  const [result, tagCatalog] = await Promise.all([loadCadastros(query), listTags()])
 
   if (result.status === 'error') {
     return (
@@ -73,7 +76,7 @@ export default async function CadastrosPage({
         )}
       </div>
 
-      <CadastrosToolbar query={query} />
+      <CadastrosToolbar query={query} tagCatalog={tagCatalog} />
 
       {/* O Card entra mesmo com zero linhas, de propósito: o cabeçalho de coluna
           agora É a barra de filtro. Sumir com ele no vazio deixaria o Julio sem

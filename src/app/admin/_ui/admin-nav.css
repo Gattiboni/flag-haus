@@ -71,9 +71,14 @@
   padding-bottom: env(safe-area-inset-bottom);
 }
 
+/* Uma coluna por item, seja qual for a quantidade. Era `repeat(2, 1fr)`
+   fixo, de quando a navegação tinha dois destinos: o Calendário da Fase 4
+   entrou como terceiro e quebrava a barra em duas linhas. `auto-flow: column`
+   não erra na próxima seção que aparecer. */
 .fh-admin-bottomnav__list {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  grid-auto-flow: column;
+  grid-auto-columns: 1fr;
 }
 
 .fh-admin-bottomnav__item {

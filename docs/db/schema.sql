@@ -32,7 +32,7 @@ create type "public"."user_role" as enum ('admin', 'viewer');
 
 -- 3. funções
 CREATE OR REPLACE FUNCTION public.calendar_events_between(p_start timestamp with time zone, p_end timestamp with time zone)
- RETURNS TABLE(event_id uuid, kind text, title text, starts_at timestamp with time zone, ends_at timestamp with time zone, all_day boolean, category text, origin text, editable boolean, artist text, person_id uuid, person_name text, person_phone text, person_tags text[], meta jsonb)
+ RETURNS TABLE(event_id uuid, kind text, title text, starts_at timestamp with time zone, ends_at timestamp with time zone, all_day boolean, category text, origin text, editable boolean, artist text, service_type text, person_id uuid, person_name text, person_phone text, person_tags text[], meta jsonb)
  LANGUAGE sql
  STABLE
 AS $function$
@@ -47,6 +47,7 @@ AS $function$
     e.origin,
     (e.origin = 'crm') as editable,
     e.artist,
+    e.service_type,
     e.person_id,
     p.name as person_name,
     p.phone as person_phone,
@@ -77,6 +78,7 @@ AS $function$
     'birthday'::text as origin,
     false as editable,
     null::text as artist,
+    null::text as service_type,
     p.id as person_id,
     p.name as person_name,
     p.phone as person_phone,
@@ -497,7 +499,8 @@ create table "public"."calendar_events" (
   "person_id" uuid,
   "match_source" text,
   "created_at" timestamp with time zone default now() not null,
-  "updated_at" timestamp with time zone default now() not null
+  "updated_at" timestamp with time zone default now() not null,
+  "service_type" text
 );
 
 create table "public"."calendar_sources" (
@@ -667,6 +670,7 @@ alter table "public"."calendar_events" add constraint "calendar_events_source_ex
 alter table "public"."calendar_events" add constraint "calendar_events_category_check" CHECK ((category = ANY (ARRAY['sessao'::text, 'outros'::text])));
 alter table "public"."calendar_events" add constraint "calendar_events_match_source_check" CHECK ((match_source = ANY (ARRAY['phone'::text, 'manual'::text])));
 alter table "public"."calendar_events" add constraint "calendar_events_origin_check" CHECK ((origin = ANY (ARRAY['google'::text, 'crm'::text])));
+alter table "public"."calendar_events" add constraint "calendar_events_service_type_check" CHECK ((service_type = ANY (ARRAY['tattoo'::text, 'piercing'::text])));
 alter table "public"."calendar_events" add constraint "calendar_events_status_check" CHECK ((status = ANY (ARRAY['confirmed'::text, 'cancelled'::text])));
 alter table "public"."calendar_sources" add constraint "calendar_sources_pkey" PRIMARY KEY (id);
 alter table "public"."calendar_sources" add constraint "calendar_sources_provider_external_unique" UNIQUE (provider, external_id);

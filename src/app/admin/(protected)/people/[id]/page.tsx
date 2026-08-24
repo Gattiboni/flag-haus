@@ -19,6 +19,8 @@ import {
 import { LOCKABLE_FIELDS, type PersonField } from '@/app/admin/_ui/person-fields'
 import { PersonEdit } from './PersonEdit'
 import { PersonNotes } from './PersonNotes'
+import { PersonTags } from './PersonTags'
+import { listTags } from '@/app/actions/tags'
 import { PersonDelete } from './PersonDelete'
 import { NewJob } from './NewJob'
 import type { JobStatus } from '@/lib/domain/job-status'
@@ -67,6 +69,8 @@ type PersonRow = {
   lng: number | null
   extra_data: Record<string, unknown> | null
   identified_at: string | null
+  /** Slugs de `people.tags`. Escritos SÓ pelas actions de tag. */
+  tags: string[] | null
 }
 
 type JobRow = {
@@ -125,7 +129,7 @@ export default async function PersonDetailPage({
 
   const { data: personData, error: personErr } = await admin
     .from('people')
-    .select('id, name, phone, email, birth_date, lat, lng, extra_data, identified_at, deleted_at')
+    .select('id, name, phone, email, birth_date, lat, lng, extra_data, identified_at, deleted_at, tags')
     .eq('id', id)
     .is('deleted_at', null)
     .maybeSingle()
@@ -144,7 +148,7 @@ export default async function PersonDetailPage({
   if (!personData) notFound()
   const person = personData as unknown as PersonRow
 
-  const [{ data: jobsData }, { data: consentsData }, { data: eventsData }] =
+  const [{ data: jobsData }, { data: consentsData }, { data: eventsData }, tagCatalog] =
     await Promise.all([
       admin
         .from('jobs')
@@ -165,6 +169,10 @@ export default async function PersonDetailPage({
         .eq('person_id', id)
         .order('occurred_at', { ascending: false })
         .limit(20),
+      // Catálogo inteiro (ativas e inativas): o editor precisa das ativas pra
+      // oferecer, e o render precisa das inativas pra não tratar como órfã uma
+      // tag que só foi aposentada.
+      listTags(),
     ])
 
   const jobs = (jobsData ?? []) as JobRow[]
@@ -248,6 +256,23 @@ export default async function PersonDetailPage({
             </dl>
 
             <ExtraData data={person.extra_data} />
+          </Card>
+
+          {/* Tags (Fase 4, Bloco 5). Card próprio, acima das observações: a
+              tag é o rótulo que se lê de relance, a nota é o que se lê com
+              calma. E ela não entra no PersonEdit porque `people.tags` tem um
+              escritor só — as actions de tag —, então não faz sentido dentro
+              de um formulário cujo assunto é a disputa com o cadastro público. */}
+          <Card>
+            <CardHeader
+              title="Tags"
+              description="Rótulo manual do contato. Renomear uma tag reflete em todo mundo; excluir deixa quem tinha com uma badge cinza, removível."
+            />
+            <PersonTags
+              personId={person.id}
+              initialTags={Array.isArray(person.tags) ? person.tags : []}
+              catalog={tagCatalog}
+            />
           </Card>
 
           {/* Observações vivas (Bloco 5B). Card próprio, não uma linha do

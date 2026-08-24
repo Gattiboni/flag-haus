@@ -1190,3 +1190,122 @@ Migration aplicada por fora (MCP) antes do código, como sempre.
 - Decisão #035 — interesse em extra_data, perguntado uma vez, RPC intocável.
 
 ---
+
+## 2026-08-23 — CRM: Calendário vivo (espelho Google + write-through) + Tags nível contato
+
+A maior entrega desde a fundação. O Google Calendar do estúdio vira cidadão do
+CRM: espelho local sincronizado, página de calendário com três vistas, criação e
+reagendamento pelo admin escrevendo NO Google, bandeja de vínculo
+evento→cliente, e tags nível contato como fundação transversal (ficha → lista →
+calendário). Processo novo estreado: contrato de-para aprovado antes do banco,
+migrations via MCP com rito dry-run→ok→aplicar, mock HTML funcional aprovado
+antes de qualquer linha de código.
+
+### Banco (3 migrations via MCP, contra o contrato aprovado)
+
+- `add_tags_foundation`: catálogo `tags` (slug UNIQUE imutável = identidade) +
+  `people.tags text[]` com GIN. Sem junção, sem FK — órfã é regra de UI.
+- `add_calendar_mirror`: `calendar_sources` (plural desde o berço, seed da
+  agenda "Horarios Flag Haus") + `calendar_events` (18 colunas, propriedade de
+  campo Google-owned × CRM-owned documentada em comment) + RPC
+  `calendar_events_between` — fonte única: espelho vivo ∪ aniversários com
+  recorrência anual resolvida NO SQL em America/Sao_Paulo (virada de ano
+  provada: 5+3 na janela dez→jan; 29/02 clampa).
+- `add_service_type_to_calendar_events`: `service_type` nullable
+  (tattoo|piercing, NULL pra evento sem cara de sessão), mesmo vocabulário de
+  `jobs.service_type` — fecha o ciclo agenda→job. Backfill dos 105 exato
+  (65/33/7) + RPC recriada expondo o campo.
+- Rito completo nas três: RLS + 4 policies deny + revoke; comments em TODAS as
+  colunas desde o berço (gap do P1 não se repetiu); advisor sem ERROR.
+
+### Adicionado
+
+- **Sync incremental por token** (−90d/+400d na primeira rodada), upsert por
+  chave externa respeitando propriedade de campo: Google sobrescreve os campos
+  dele, `origin` preservado, vínculo/flags manuais intocáveis. Cancelou no
+  Google → `status='cancelled'`, nunca DELETE. Matcher de telefone na descrição
+  (util canônico de phone, match único; 0/sem match/2+ telefones = bandeja,
+  ambiguidade é humano). Parser de artista/categoria/tipo por criador e
+  keywords; guest NÃO é adivinhado (correção manual trava flag). Cron 2x/dia +
+  botão "Sincronizar agora" com resultado na tela e carimbo.
+- **Página `/admin/calendario`** (sidebar + bottom nav): vistas Mês/Semana/
+  Agenda, navegação Hoje/◀ ▶, cards com cadeado/ícone/hora/cor por categoria
+  (Sessões oxblood · Aniversários dourado · Outros granito), "+N mais" contando
+  DEPOIS dos filtros, drawer com detalhe/pessoa/tags/Abrir ficha, chips de
+  categoria + filtro de artista (evento sem artista não some), aniversários
+  direto do cadastro, vista+data na URL e filtros em localStorage, 390px.
+- **Write-through**: form "Novo evento" cria NA agenda do Google e reflete no
+  espelho (`origin='crm'`); ao vincular pessoa, a descrição já sai no padrão com
+  telefone — o Julio usa a convenção sem perceber. Drag e edição só em evento do
+  CRM (patch Google→espelho; falha no Google = nada persiste local). Cadeado
+  protege os CAMPOS do Google; metadados CRM (pessoa, artista, categoria, tipo)
+  são editáveis em qualquer evento pela seção "Classificação no CRM — não vai
+  pro Google".
+- **Bandeja de vínculo**: eventos do Google sem cliente, com busca e vínculo em
+  linha (`match_source='manual'`, nunca sobrescrito pelo matcher; vincular NÃO
+  reescreve o Google). Janela rolante de ~90 dias + futuro — evento velho
+  envelhece pra fora da bandeja em vez de acumular culpa.
+- **Tags nível contato** (doc normativo em `docs/`): catálogo com indireção
+  slug→(nome,cor) resolvida no render — rename/recolor dispersam sem tocar
+  contato; criar inline cria E aplica com cor automática da paleta (8 hexes
+  próprios, contraste ≥4,5:1 em teste determinístico); desativar bloqueia
+  entrada, preserva estoque e destrava saída; excluir sem cascata gera órfã
+  cinza removível (degrada pro slug cru, nunca quebra); confirmação de exclusão
+  embutida na linha com copy honesta. Ficha com editor completo + modal
+  Gerenciar; lista `/admin/cadastros` filtra por tag (slug na URL); calendário
+  filtra por "Tag do cliente" com semântica ESTRITA + faixa de aviso
+  obrigatória + Limpar.
+
+### Validado
+
+- Review funcional completo via browser (Claudinho) com prova de banco em cada
+  passo: sync 2x → 105 linhas/105 chaves (idempotência); parser 65/33/7 idêntico
+  ao dry-run; vínculo manual e desvínculo com resíduo zero; ciclo de vida
+  INTEIRO de tags (criar → colisão de slug com mensagem certa → rename com slug
+  imutável → recolor → desativar/reativar → filtros → excluir → órfã → remover)
+  terminando em `tags=0, pessoas_com_tag=0` por query; filtro estrito do
+  calendário escondendo evento sem contato COM a faixa; virada de ano dos
+  aniversários no SQL.
+- Prova com a agenda VIVA: sync incremental trouxe só os deltas do fim de semana
+  (9 novos · 3 atualizados), todos classificados pelo parser novo, com contador
+  e bandeja atualizando sem reload.
+- Codinho: tsc/build limpos por bloco, dry-run do sync contra a agenda real,
+  teste da paleta, CDP 390×844 sem overflow.
+- Write-through (criar no admin→Google, drag, sobrescrita Google→espelho):
+  validado pelo Codinho em desenvolvimento; carimbo final em produção é o smoke
+  pós-deploy do plano (evento de teste descartável).
+
+### Corrigido na esteira (rodada 2)
+
+- Contador da Bandeja não atualizava pós-sync/pós-vínculo (achado do review) —
+  corrigido e provado com dado vivo (103→112 sem reload).
+- Campo Tipo do form nascia sem persistência — resolvido pela migration 3 +
+  fiação completa (parser, form, drawer).
+
+### Comportamentos documentados (não são bugs)
+
+- Bandeja com janela rolante: o espelho guarda −90d do sync; a bandeja mostra
+  ~90d+futuro de hoje. Contadores podem divergir do total do espelho conforme os
+  dias passam — deliberado.
+- Linhas `cancelled` ficam no espelho como histórico inerte (a RPC filtra).
+- Congelamentos esporádicos de ~30s do renderer em dev (Windows/Turbopack,
+  parente do incidente Jest worker do P1) — observar em produção antes de culpar
+  código.
+- `npm run moas` não exporta comments de coluna — os comments EXISTEM no banco;
+  gap é do gerador de snapshot, anotado.
+
+### Pendências reconhecidas
+
+- Smoke de produção pós-deploy (write-through com evento descartável) — Fase 6
+  do plano.
+- `v_admin_cadastros` não projeta tags — filtro da lista usa 2 queries
+  (funcional, volume atual folga); projetar na próxima migration que tocar a
+  view, reaplicando o rito invoker/revoke da Decisão #032.
+- Herdada: copy LGPD 12 meses; ESLint CadastroForm; 390 em iPhone físico.
+
+### Decisões relacionadas
+
+- #036 (arquitetura do calendário) · #037 (modelo de tags) · #038 (SQL não
+  versiona; de-para é o artefato)
+
+---

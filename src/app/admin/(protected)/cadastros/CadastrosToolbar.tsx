@@ -10,7 +10,8 @@ import {
   type CadastrosQuery,
 } from '@/app/admin/_ui/cadastros'
 import { Input } from '@/components/ui'
-import { FiltrosSheet } from './CadastrosMenus'
+import type { TagCatalogEntry } from '@/app/admin/_ui/tags'
+import { FiltrosSheet, TagMenu } from './CadastrosMenus'
 import './cadastros.css'
 
 /**
@@ -32,7 +33,13 @@ import './cadastros.css'
  * implementações do mesmo papel.
  */
 
-export function CadastrosToolbar({ query }: { query: CadastrosQuery }) {
+export function CadastrosToolbar({
+  query,
+  tagCatalog,
+}: {
+  query: CadastrosQuery
+  tagCatalog: TagCatalogEntry[]
+}) {
   return (
     <div className="flex flex-wrap items-center gap-fh-3">
       <form
@@ -47,6 +54,7 @@ export function CadastrosToolbar({ query }: { query: CadastrosQuery }) {
         {query.filtros.length > 0 && (
           <input type="hidden" name="filtros" value={query.filtros.join(',')} />
         )}
+        {query.tag && <input type="hidden" name="tag" value={query.tag} />}
         {/* Só o que difere do default, como em `cadastrosHref` — a URL que a
             busca produz tem que ser a mesma que um clique de menu produziria. */}
         {query.sort !== DEFAULT_SORT && (
@@ -66,8 +74,14 @@ export function CadastrosToolbar({ query }: { query: CadastrosQuery }) {
         />
       </form>
 
-      <div className="flex items-center gap-fh-2 md:hidden">
-        <FiltrosSheet query={query} />
+      {/* A tag não pertence a cabeçalho de coluna nenhum (a lista não tem
+          coluna de tag), então o dropdown dela mora aqui — nas duas larguras,
+          diferente dos outros quatro, que no desktop descem pros cabeçalhos. */}
+      <div className="flex items-center gap-fh-2">
+        <TagMenu query={query} catalog={tagCatalog} />
+        <span className="md:hidden">
+          <FiltrosSheet query={query} />
+        </span>
       </div>
 
       {hasActiveState(query) && (

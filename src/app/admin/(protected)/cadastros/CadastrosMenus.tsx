@@ -19,6 +19,7 @@ import {
   type QuickFilter,
   type SortKey,
 } from '@/app/admin/_ui/cadastros'
+import { filterOptionLabel, type TagCatalogEntry } from '@/app/admin/_ui/tags'
 import { ColumnMenu, MenuGroup, MenuLink } from './ColumnMenu'
 import './cadastros.css'
 
@@ -209,6 +210,88 @@ export function FiltrosSheet({ query }: { query: CadastrosQuery }) {
           </section>
         )
       })}
+    </ColumnMenu>
+  )
+}
+
+/* ------------------------------------------------------------------
+   Tag do cliente (Fase 4, Bloco 5)
+   ------------------------------------------------------------------ */
+
+/**
+ * Filtro por UMA tag, no mesmo padrão dos demais dropdowns: cada item é um
+ * <Link> pra uma URL, o estado inteiro segue na barra de endereço, e o servidor
+ * continua fazendo o recorte.
+ *
+ * Não é dropdown de COLUNA porque a lista não tem coluna de tag — tag é rótulo
+ * que se lê na ficha, e trazer uma coluna dela pra cá disputaria espaço com o
+ * nome, que é o dado que identifica a linha. Ele mora na barra, ao lado da
+ * busca.
+ *
+ * Inativas aparecem com o sufixo "(desativada)": elas seguem filtráveis (quem
+ * tem, tem), e esconder isso faria o Julio procurar no editor uma tag que não
+ * está mais lá pra aplicar.
+ */
+export function TagMenu({
+  query,
+  catalog,
+}: {
+  query: CadastrosQuery
+  catalog: TagCatalogEntry[]
+}) {
+  // Tag de um link antigo, já excluída do catálogo: aparece pelo slug cru em
+  // vez de sumir calada com o filtro ainda aceso na lista.
+  const orphan = query.tag && !catalog.some((t) => t.slug === query.tag)
+
+  return (
+    <ColumnMenu
+      label="Tag"
+      count={query.tag ? 1 : 0}
+      // `start` e não `end` como o Filtrar/Ordenar: aquele é o último item da
+      // barra, então ancorar pela direita o mantém dentro da tela. Este fica no
+      // meio da linha, e ancorado pela direita o painel saía ~18px pela
+      // esquerda em 390px (medido em CDP).
+      align="start"
+      icon={<Tag size={14} strokeWidth={1.5} />}
+      triggerClassName="fh-cad-menu__trigger--button"
+    >
+      <MenuGroup label="Tag do cliente">
+        <MenuLink
+          href={cadastrosHref(query, { tag: '' })}
+          active={query.tag === ''}
+          closeOnSelect
+        >
+          Todas
+        </MenuLink>
+
+        {orphan && (
+          <MenuLink
+            href={cadastrosHref(query, { tag: query.tag })}
+            active
+            title="Essa tag foi excluída do catálogo."
+            closeOnSelect
+          >
+            {query.tag} (excluída)
+          </MenuLink>
+        )}
+
+        {catalog.map((tag) => (
+          <MenuLink
+            key={tag.slug}
+            href={cadastrosHref(query, { tag: tag.slug })}
+            active={query.tag === tag.slug}
+            closeOnSelect
+          >
+            {filterOptionLabel(tag)}
+          </MenuLink>
+        ))}
+
+        {catalog.length === 0 && !orphan && (
+          <p className="fh-cad-menu__empty fh-micro">
+            Nenhuma tag no catálogo. Cria a primeira na ficha de um contato.
+          </p>
+        )}
+      </MenuGroup>
     </ColumnMenu>
   )
 }

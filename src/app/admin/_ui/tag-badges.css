@@ -1,0 +1,75 @@
+/* ============================================================
+   Flag Haus — Badges de tag (Fase 4, Bloco 5)
+   Só aparência, lendo tokens. A COR de cada badge é dado
+   (tags.color) e entra por style inline; tudo o mais é token.
+   ============================================================ */
+
+.fh-tag-list {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: var(--fh-space-1);
+  align-items: center;
+}
+
+.fh-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 1px var(--fh-space-2);
+  border: 1px solid currentColor;
+  border-radius: var(--fh-radius-sm);
+  font-size: var(--fh-text-micro);
+  font-weight: var(--fh-weight-medium);
+  line-height: 1.7;
+  letter-spacing: var(--fh-tracking-body);
+  white-space: nowrap;
+  /* Vazada: o fundo é a superfície de baixo, nunca uma cor sólida. */
+  background: transparent;
+}
+
+/* Órfã e desativada não podem parecer uma tag em uso. A órfã perde a cor
+   (ela não tem mais dona no catálogo); a desativada mantém a cor e ganha o
+   tracejado — ela ainda existe, só não aceita ninguém novo. */
+.fh-tag[data-orphan] {
+  color: var(--fh-text-muted);
+  border-color: var(--fh-border-subtle);
+  border-style: dashed;
+}
+
+.fh-tag[data-inactive] {
+  border-style: dashed;
+  opacity: 0.75;
+}
+
+.fh-tag__x {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  cursor: pointer;
+  opacity: 0.65;
+  transition: opacity var(--fh-transition-fast) var(--fh-ease);
+}
+
+.fh-tag__x:hover:not(:disabled) {
+  opacity: 1;
+}
+
+.fh-tag__x:disabled {
+  cursor: not-allowed;
+  opacity: 0.35;
+}
+
+.fh-tag__x:focus-visible {
+  outline: var(--fh-focus-ring);
+  outline-offset: var(--fh-focus-offset);
+  border-radius: var(--fh-radius-sm);
+}
+
+.fh-tag-empty {
+  font-size: var(--fh-text-micro);
+  color: var(--fh-text-muted);
+}

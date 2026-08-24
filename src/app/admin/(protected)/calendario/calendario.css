@@ -1,0 +1,1033 @@
+/* ============================================================
+   Flag Haus — Tela de Calendário (Fase 4)
+   Só aparência, lendo tokens. Layout é Tailwind, como manda a
+   Spec #4c-visual.
+
+   Exceção declarada: os hexes de CATEGORIA são fixados pelo
+   contrato de dados §10 (o mesmo sistema que pinta chip, card e
+   drawer, e que o front espelha em CATEGORY_COLORS). Eles entram
+   como tokens locais aqui embaixo — mudar um exige mudar o outro,
+   e é por isso que os dois citam o §10.
+   ============================================================ */
+
+.fh-cal-wrap {
+  --cal-sessao-ink: #8b0000;
+  --cal-sessao-tint: #f6e9e9;
+  --cal-aniversario-ink: #8a6d00;
+  --cal-aniversario-tint: #f5efda;
+  --cal-outros-ink: #5a5a5a;
+  --cal-outros-tint: #edecea;
+
+  border: var(--fh-border);
+  border-radius: var(--fh-radius-md);
+  background: var(--fh-surface);
+  overflow: hidden;
+  transition: opacity var(--fh-transition) var(--fh-ease);
+}
+
+/* Carregando outra janela: a grade some de leve em vez de sumir. Trocar o
+   grid por um spinner faria a tela pular de altura a cada seta. */
+.fh-cal-wrap[data-pending] {
+  opacity: 0.55;
+}
+
+/* ------------------------------------------------------------
+   Cabeçalho e barra de navegação
+   ------------------------------------------------------------ */
+
+.fh-cal-legend {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+
+.fh-cal-toolbar,
+.fh-cal-filters {
+  display: flex;
+  align-items: center;
+  gap: var(--fh-space-2);
+  flex-wrap: wrap;
+}
+
+.fh-cal-period {
+  font-family: var(--fh-font-heading);
+  font-size: var(--fh-text-h4);
+  letter-spacing: var(--fh-tracking-caps);
+  text-transform: uppercase;
+  color: var(--fh-text-primary);
+  /* Empurra a troca de vista pra direita no desktop; no celular o wrap manda. */
+  margin-right: auto;
+}
+
+.fh-cal-iconbtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: var(--fh-hit-min);
+  min-height: var(--fh-hit-min);
+  padding: 0 var(--fh-space-2);
+  border: var(--fh-border);
+  border-radius: var(--fh-radius-sm);
+  background: var(--fh-surface);
+  color: var(--fh-text-primary);
+  cursor: pointer;
+  transition: border-color var(--fh-transition-fast) var(--fh-ease);
+}
+
+.fh-cal-iconbtn:hover {
+  border-color: var(--fh-border-hover);
+}
+
+.fh-cal-iconbtn:focus-visible,
+.fh-cal-chip:focus-visible,
+.fh-cal-views button:focus-visible,
+.fh-cal-more:focus-visible,
+.fh-cal-ev:focus-visible {
+  outline: var(--fh-focus-ring);
+  outline-offset: var(--fh-focus-offset);
+}
+
+/* Troca de vista: segmentado, um controle só. */
+.fh-cal-views {
+  display: flex;
+  border: var(--fh-border);
+  border-radius: var(--fh-radius-sm);
+  overflow: hidden;
+}
+
+.fh-cal-views button {
+  padding: var(--fh-control-pad-y) var(--fh-space-3);
+  min-height: var(--fh-hit-min);
+  border: 0;
+  border-left: var(--fh-border);
+  background: var(--fh-surface);
+  color: var(--fh-text-secondary);
+  font-size: var(--fh-text-micro);
+  font-weight: var(--fh-weight-medium);
+  cursor: pointer;
+  transition: background var(--fh-transition-fast) var(--fh-ease);
+}
+
+.fh-cal-views button:first-child {
+  border-left: 0;
+}
+
+.fh-cal-views button[data-active] {
+  background: var(--fh-surface-inverse);
+  color: var(--fh-text-inverse);
+}
+
+/* ------------------------------------------------------------
+   Filtros
+   ------------------------------------------------------------ */
+
+.fh-cal-chip {
+  padding: var(--fh-space-1) var(--fh-space-3);
+  min-height: var(--fh-hit-min);
+  border: var(--fh-border);
+  border-radius: 999px;
+  background: var(--fh-surface);
+  color: var(--fh-text-secondary);
+  font-size: var(--fh-text-micro);
+  font-weight: var(--fh-weight-medium);
+  cursor: pointer;
+  transition:
+    background var(--fh-transition-fast) var(--fh-ease),
+    border-color var(--fh-transition-fast) var(--fh-ease);
+}
+
+/* Chip ligado usa a MESMA cor do card daquela categoria: é o que faz o
+   sistema visual ser um só (item 13). O chip "Todos" não tem categoria e
+   fica no tratamento neutro. */
+.fh-cal-chip[data-on] {
+  background: var(--fh-surface-sunken);
+  border-color: var(--fh-border-active);
+  color: var(--fh-text-primary);
+}
+
+.fh-cal-chip[data-cat='sessao'][data-on] {
+  background: var(--cal-sessao-tint, #f6e9e9);
+  border-color: var(--cal-sessao-ink, #8b0000);
+  color: var(--cal-sessao-ink, #8b0000);
+}
+
+.fh-cal-chip[data-cat='aniversario'][data-on] {
+  background: var(--cal-aniversario-tint, #f5efda);
+  border-color: var(--cal-aniversario-ink, #8a6d00);
+  color: var(--cal-aniversario-ink, #8a6d00);
+}
+
+.fh-cal-chip[data-cat='outros'][data-on] {
+  background: var(--cal-outros-tint, #edecea);
+  border-color: var(--cal-outros-ink, #5a5a5a);
+  color: var(--cal-outros-ink, #5a5a5a);
+}
+
+.fh-cal-flabel {
+  font-size: var(--fh-text-micro);
+  color: var(--fh-text-secondary);
+  margin-left: var(--fh-space-2);
+}
+
+.fh-cal-select {
+  min-height: var(--fh-hit-min);
+  padding: var(--fh-control-pad-y) var(--fh-control-pad-x);
+  border: var(--fh-border);
+  border-radius: var(--fh-radius-sm);
+  background: var(--fh-field-bg);
+  color: var(--fh-text-primary);
+  font-family: var(--fh-font-body);
+  font-size: var(--fh-text-micro);
+  max-width: 100%;
+}
+
+.fh-cal-select:focus-visible {
+  outline: var(--fh-focus-ring);
+  outline-offset: var(--fh-focus-offset);
+}
+
+.fh-cal-syncmsg {
+  font-size: var(--fh-text-micro);
+  color: var(--fh-text-secondary);
+}
+
+/* ------------------------------------------------------------
+   Cartão de evento — compartilhado pelas três vistas
+   ------------------------------------------------------------ */
+
+.fh-cal-ev {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  width: 100%;
+  padding: 2px var(--fh-space-1);
+  border: 0;
+  border-left: 2px solid var(--cal-outros-ink, #5a5a5a);
+  border-radius: 2px;
+  background: var(--cal-outros-tint, #edecea);
+  color: var(--cal-outros-ink, #5a5a5a);
+  font-family: var(--fh-font-body);
+  font-size: var(--fh-text-micro);
+  line-height: 1.5;
+  text-align: left;
+  cursor: pointer;
+  /* Sem isto o título longo estoura a célula do mês e leva a linha junto. */
+  min-width: 0;
+  overflow: hidden;
+}
+
+.fh-cal-ev[data-cat='sessao'] {
+  border-left-color: var(--cal-sessao-ink, #8b0000);
+  background: var(--cal-sessao-tint, #f6e9e9);
+  color: var(--cal-sessao-ink, #8b0000);
+}
+
+.fh-cal-ev[data-cat='aniversario'] {
+  border-left-color: var(--cal-aniversario-ink, #8a6d00);
+  background: var(--cal-aniversario-tint, #f5efda);
+  color: var(--cal-aniversario-ink, #8a6d00);
+}
+
+.fh-cal-ev__lock {
+  flex: none;
+  opacity: 0.8;
+}
+
+.fh-cal-ev__h {
+  flex: none;
+  font-variant-numeric: tabular-nums;
+  font-weight: var(--fh-weight-medium);
+}
+
+.fh-cal-ev__t {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ------------------------------------------------------------
+   Vista de mês
+   ------------------------------------------------------------ */
+
+.fh-cal-month {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+}
+
+.fh-cal-dow {
+  padding: var(--fh-space-2) 4px;
+  border-bottom: var(--fh-border);
+  background: var(--fh-surface-sunken);
+  font-size: 10px;
+  font-weight: var(--fh-weight-semibold);
+  letter-spacing: var(--fh-tracking-caps);
+  color: var(--fh-text-secondary);
+  text-align: center;
+}
+
+.fh-cal-day {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-height: 78px;
+  padding: 3px;
+  border-right: var(--fh-border);
+  border-bottom: var(--fh-border);
+  min-width: 0;
+  overflow: hidden;
+}
+
+.fh-cal-day:nth-child(7n + 7) {
+  border-right: 0;
+}
+
+.fh-cal-day[data-outside] {
+  background: var(--fh-surface-sunken);
+}
+
+.fh-cal-day[data-outside] .fh-cal-day__num {
+  color: var(--fh-text-muted);
+}
+
+.fh-cal-day__num {
+  font-size: var(--fh-text-micro);
+  font-variant-numeric: tabular-nums;
+  color: var(--fh-text-secondary);
+  text-align: right;
+  padding-right: 2px;
+}
+
+/* Marcador do dia atual: o número ganha o disco, não a célula inteira —
+   pintar a célula competiria com a cor das categorias. */
+.fh-cal-day[data-today] .fh-cal-day__num {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  align-self: flex-end;
+  min-width: 20px;
+  height: 20px;
+  padding: 0;
+  border-radius: 999px;
+  background: var(--fh-surface-inverse);
+  color: var(--fh-text-inverse);
+  font-weight: var(--fh-weight-semibold);
+}
+
+.fh-cal-day__evs {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.fh-cal-more {
+  padding: 0 var(--fh-space-1);
+  border: 0;
+  background: none;
+  color: var(--fh-text-secondary);
+  font-family: var(--fh-font-body);
+  font-size: 10px;
+  text-align: left;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+/* ------------------------------------------------------------
+   Vista de semana
+   ------------------------------------------------------------ */
+
+.fh-cal-weeknav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--fh-space-2);
+  padding: var(--fh-space-2);
+  border-bottom: var(--fh-border);
+}
+
+.fh-cal-week {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+}
+
+.fh-cal-wday {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-height: 160px;
+  padding: 3px;
+  border-right: var(--fh-border);
+  min-width: 0;
+  overflow: hidden;
+}
+
+.fh-cal-wday:last-child {
+  border-right: 0;
+}
+
+.fh-cal-wday__head {
+  padding: var(--fh-space-1) 0;
+  border-bottom: var(--fh-border);
+  margin-bottom: 2px;
+  font-size: var(--fh-text-micro);
+  font-weight: var(--fh-weight-medium);
+  color: var(--fh-text-secondary);
+  text-align: center;
+}
+
+.fh-cal-wday[data-today] .fh-cal-wday__head {
+  color: var(--fh-text-primary);
+  font-weight: var(--fh-weight-semibold);
+}
+
+.fh-cal-free {
+  padding: var(--fh-space-2) var(--fh-space-1);
+  font-size: var(--fh-text-micro);
+  color: var(--fh-text-muted);
+}
+
+/* ------------------------------------------------------------
+   Vista de agenda
+   ------------------------------------------------------------ */
+
+.fh-cal-agenda {
+  display: flex;
+  flex-direction: column;
+}
+
+.fh-cal-agroup {
+  display: flex;
+  flex-direction: column;
+  gap: var(--fh-space-1);
+  padding: var(--fh-space-3);
+  border-bottom: var(--fh-border);
+}
+
+.fh-cal-agroup:last-child {
+  border-bottom: 0;
+}
+
+.fh-cal-agroup h4 {
+  margin: 0 0 var(--fh-space-1);
+  font-size: var(--fh-text-micro);
+  font-weight: var(--fh-weight-semibold);
+  letter-spacing: var(--fh-tracking-caps);
+  text-transform: uppercase;
+  color: var(--fh-text-secondary);
+}
+
+.fh-cal-agroup h4[data-today] {
+  color: var(--fh-text-accent);
+}
+
+/* A agenda é a vista de celular: aqui o cartão respira. */
+.fh-cal-agenda .fh-cal-ev {
+  padding: var(--fh-space-2);
+  gap: var(--fh-space-2);
+  font-size: var(--fh-text-body);
+}
+
+.fh-cal-empty {
+  padding: var(--fh-space-6) var(--fh-space-4);
+  text-align: center;
+  font-size: var(--fh-text-micro);
+  color: var(--fh-text-secondary);
+}
+
+/* ------------------------------------------------------------
+   Drawer de detalhe
+
+   `fixed` + backdrop de propósito (item 14): as células do mês têm
+   `overflow: hidden`, e um painel `absolute` dentro delas sairia
+   cortado em metade dos dias do grid.
+   ------------------------------------------------------------ */
+
+.fh-cal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  border: 0;
+  padding: 0;
+  background: rgb(45 44 42 / 0.35);
+  cursor: pointer;
+}
+
+.fh-cal-drawer {
+  position: fixed;
+  z-index: 61;
+  inset: auto 0 0 0;
+  display: flex;
+  flex-direction: column;
+  max-height: 85vh;
+  border-top: var(--fh-border-strong);
+  border-radius: var(--fh-radius-lg) var(--fh-radius-lg) 0 0;
+  background: var(--fh-surface);
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+.fh-cal-drawer__head {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--fh-space-2);
+  padding: var(--fh-space-4);
+  border-bottom: var(--fh-border);
+}
+
+.fh-cal-drawer__head h3 {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  font-size: var(--fh-text-h4);
+  overflow-wrap: anywhere;
+}
+
+.fh-cal-drawer__dot {
+  flex: none;
+  width: 10px;
+  height: 10px;
+  margin-top: 6px;
+  border-radius: 999px;
+  background: var(--cal-outros-ink, #5a5a5a);
+}
+
+.fh-cal-drawer__dot[data-cat='sessao'] {
+  background: var(--cal-sessao-ink, #8b0000);
+}
+
+.fh-cal-drawer__dot[data-cat='aniversario'] {
+  background: var(--cal-aniversario-ink, #8a6d00);
+}
+
+.fh-cal-drawer__body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: var(--fh-space-3);
+  padding: var(--fh-space-4);
+  overflow-y: auto;
+}
+
+.fh-cal-drawer__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--fh-space-2);
+  padding: var(--fh-space-4);
+  border-top: var(--fh-border);
+}
+
+.fh-cal-drawer__tags {
+  display: block;
+  margin-top: var(--fh-space-1);
+}
+
+.fh-cal-row,
+.fh-cal-note {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--fh-space-2);
+  margin: 0;
+  font-size: var(--fh-text-micro);
+  color: var(--fh-text-primary);
+  min-width: 0;
+}
+
+.fh-cal-row > svg,
+.fh-cal-note > svg {
+  flex: none;
+  margin-top: 2px;
+  color: var(--fh-text-secondary);
+}
+
+.fh-cal-row > span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.fh-cal-row--muted {
+  color: var(--fh-text-muted);
+}
+
+.fh-cal-note {
+  padding: var(--fh-space-2) var(--fh-space-3);
+  border-radius: var(--fh-radius-sm);
+  background: var(--fh-surface-sunken);
+  color: var(--fh-text-secondary);
+}
+
+.fh-cal-desc {
+  white-space: pre-line;
+}
+
+.fh-cal-link {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--fh-space-1);
+  min-height: var(--fh-hit-min);
+  color: var(--fh-action-tertiary-text);
+  font-size: var(--fh-text-micro);
+  font-weight: var(--fh-weight-medium);
+}
+
+.fh-cal-link:hover {
+  color: var(--fh-action-tertiary-text-hover);
+}
+
+/* ------------------------------------------------------------
+   Celular (o iPhone do Julio, 390px)
+   ------------------------------------------------------------ */
+
+@media (max-width: 767px) {
+  .fh-cal-period {
+    font-size: var(--fh-text-body);
+    margin-right: 0;
+  }
+
+  .fh-cal-views {
+    width: 100%;
+  }
+
+  .fh-cal-views button {
+    flex: 1;
+  }
+
+  /* Mês em 390px: a célula tem ~50px. O título não cabe em lugar nenhum e o
+     horário rouba o espaço do ícone, então o cartão vira o ícone da categoria
+     (+ cadeado) e o toque abre o drawer, que tem tudo.
+
+     Diferente do mock, esta regra é ESCOPADA ao mês: lá ela era global e
+     apagava o título também na agenda — justo a vista feita pro celular. */
+  .fh-cal-month .fh-cal-ev {
+    justify-content: center;
+    padding: 3px 0;
+  }
+
+  .fh-cal-month .fh-cal-ev__t,
+  .fh-cal-month .fh-cal-ev__h {
+    display: none;
+  }
+
+  .fh-cal-day {
+    min-height: 72px;
+  }
+
+  /* Semana colapsa pra um dia por vez, com navegação própria (item 11). */
+  .fh-cal-week {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .fh-cal-wday {
+    display: none;
+    border-right: 0;
+    min-height: 220px;
+  }
+
+  .fh-cal-wday[data-mobile-active] {
+    display: flex;
+  }
+
+  .fh-cal-wday .fh-cal-ev {
+    padding: var(--fh-space-2);
+    gap: var(--fh-space-2);
+    font-size: var(--fh-text-body);
+  }
+}
+
+@media (min-width: 768px) {
+  /* A navegação de dia da semana só existe no celular. */
+  .fh-cal-weeknav {
+    display: none;
+  }
+
+  .fh-cal-drawer {
+    inset: 0 0 0 auto;
+    width: min(420px, 100%);
+    max-height: none;
+    border-top: 0;
+    border-left: var(--fh-border-strong);
+    border-radius: 0;
+  }
+
+  .fh-cal-day {
+    min-height: 108px;
+  }
+}
+
+/* ------------------------------------------------------------
+   Bloco 3 — criar, editar, arrastar
+   ------------------------------------------------------------ */
+
+/* Alvo do drop. Só o mês recebe arrasto: é a única vista em que a
+   posição do cartão SIGNIFICA um dia (na semana ela também, mas em
+   390px a semana é um dia só, e arrastar pra lugar nenhum não é
+   funcionalidade). */
+.fh-cal-day[data-dragover] {
+  background: var(--fh-surface-sunken);
+  outline: 1.5px dashed var(--fh-border-active);
+  outline-offset: -2px;
+}
+
+.fh-cal-ev[draggable='true'] {
+  cursor: grab;
+}
+
+.fh-cal-ev[draggable='true']:active {
+  cursor: grabbing;
+}
+
+/* Duas opções curtas lado a lado (Tipo, no modal). */
+.fh-cal-inline-radios {
+  flex-direction: row;
+  flex-wrap: wrap;
+  gap: var(--fh-space-4);
+  align-items: center;
+}
+
+.fh-cal-inline-radios .fh-radio-group__legend {
+  width: 100%;
+}
+
+/* Preview da descrição: monoespaçado porque é o texto LITERAL que vai
+   pro Google, quebras de linha inclusive. */
+.fh-cal-preview {
+  margin: 0;
+  padding: var(--fh-space-3);
+  border: var(--fh-border);
+  border-radius: var(--fh-radius-sm);
+  background: var(--fh-surface-sunken);
+  color: var(--fh-text-secondary);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: var(--fh-text-micro);
+  line-height: var(--fh-leading-snug);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+/* ------------------------------------------------------------
+   Busca de pessoa
+   ------------------------------------------------------------ */
+
+.fh-cal-picker {
+  position: relative;
+}
+
+.fh-cal-results {
+  list-style: none;
+  margin: var(--fh-space-1) 0 0;
+  padding: 0;
+  max-height: 220px;
+  overflow-y: auto;
+  border: var(--fh-border);
+  border-radius: var(--fh-radius-sm);
+  background: var(--fh-surface);
+}
+
+.fh-cal-results li + li {
+  border-top: var(--fh-border);
+}
+
+.fh-cal-results button {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  width: 100%;
+  min-height: var(--fh-hit-min);
+  padding: var(--fh-space-2) var(--fh-space-3);
+  border: 0;
+  background: none;
+  color: var(--fh-text-primary);
+  font-family: var(--fh-font-body);
+  font-size: var(--fh-text-micro);
+  text-align: left;
+  cursor: pointer;
+}
+
+.fh-cal-results button:hover {
+  background: var(--fh-surface-sunken);
+}
+
+.fh-cal-results button:focus-visible {
+  outline: var(--fh-focus-ring);
+  outline-offset: calc(var(--fh-focus-offset) * -1);
+}
+
+.fh-cal-results button span {
+  color: var(--fh-text-secondary);
+  font-variant-numeric: tabular-nums;
+}
+
+.fh-cal-results__msg {
+  padding: var(--fh-space-2) var(--fh-space-3);
+  font-size: var(--fh-text-micro);
+  color: var(--fh-text-muted);
+}
+
+.fh-cal-picked {
+  display: flex;
+  align-items: center;
+  gap: var(--fh-space-2);
+  padding: var(--fh-space-2) var(--fh-space-3);
+  border: var(--fh-border);
+  border-radius: var(--fh-radius-sm);
+  background: var(--fh-surface-sunken);
+  font-size: var(--fh-text-micro);
+}
+
+.fh-cal-picked > span {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.fh-cal-picked > svg {
+  flex: none;
+  color: var(--fh-success);
+}
+
+/* ------------------------------------------------------------
+   Editor do drawer e toast
+   ------------------------------------------------------------ */
+
+.fh-cal-drawer__edit {
+  display: flex;
+  flex-direction: column;
+  gap: var(--fh-space-3);
+  padding: var(--fh-space-4);
+  border-top: var(--fh-border);
+  background: var(--fh-surface-sunken);
+}
+
+/* O toast fica ACIMA do drawer (z 61) e da barra inferior do celular:
+   metade das mensagens explica algo que não aconteceu, e uma
+   explicação escondida atrás do painel não explica nada. */
+.fh-cal-toast {
+  position: fixed;
+  z-index: 70;
+  left: 50%;
+  bottom: calc(var(--fh-space-5) + env(safe-area-inset-bottom));
+  transform: translateX(-50%);
+  width: max-content;
+  max-width: calc(100vw - var(--fh-space-6));
+  margin: 0;
+  padding: var(--fh-space-2) var(--fh-space-4);
+  border-radius: var(--fh-radius-sm);
+  background: var(--fh-surface-inverse);
+  color: var(--fh-text-inverse);
+  font-size: var(--fh-text-micro);
+  text-align: center;
+}
+
+/* ------------------------------------------------------------
+   Bloco 4 — bandeja de vínculo e metadados CRM
+   ------------------------------------------------------------ */
+
+.fh-cal-bandeja-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--fh-space-2);
+  min-height: var(--fh-hit-min);
+  padding: var(--fh-space-1) var(--fh-space-3);
+  border: var(--fh-border);
+  border-radius: var(--fh-radius-sm);
+  background: var(--fh-surface);
+  color: var(--fh-text-primary);
+  font-family: var(--fh-font-body);
+  font-size: var(--fh-text-micro);
+  font-weight: var(--fh-weight-medium);
+  cursor: pointer;
+  /* Empurra a bandeja pro fim da faixa: ela é a exceção da linha de
+     filtros, não mais um filtro. */
+  margin-left: auto;
+}
+
+.fh-cal-bandeja-btn:hover {
+  border-color: var(--fh-border-hover);
+}
+
+.fh-cal-bandeja-btn:focus-visible {
+  outline: var(--fh-focus-ring);
+  outline-offset: var(--fh-focus-offset);
+}
+
+.fh-cal-count {
+  min-width: 20px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: var(--fh-surface-inverse);
+  color: var(--fh-text-inverse);
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+}
+
+.fh-cal-bandeja {
+  border: var(--fh-border);
+  border-radius: var(--fh-radius-md);
+  background: var(--fh-surface);
+  overflow: hidden;
+}
+
+.fh-cal-bandeja > header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--fh-space-2);
+  padding: var(--fh-space-3);
+  border-bottom: var(--fh-border);
+  background: var(--fh-surface-sunken);
+}
+
+.fh-cal-bandeja ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  /* Backlog de ~100 eventos não pode empurrar o calendário pra fora da
+     tela: o painel rola dentro de si. */
+  max-height: 420px;
+  overflow-y: auto;
+}
+
+.fh-cal-bandeja__row {
+  display: flex;
+  flex-direction: column;
+  gap: var(--fh-space-2);
+  padding: var(--fh-space-3);
+  border-bottom: var(--fh-border);
+}
+
+.fh-cal-bandeja__row:last-child {
+  border-bottom: 0;
+}
+
+.fh-cal-bandeja__what {
+  display: flex;
+  align-items: baseline;
+  gap: var(--fh-space-2);
+  min-width: 0;
+}
+
+.fh-cal-bandeja__date {
+  flex: none;
+  font-size: var(--fh-text-micro);
+  font-variant-numeric: tabular-nums;
+  color: var(--fh-text-secondary);
+}
+
+.fh-cal-bandeja__title {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  font-size: var(--fh-text-micro);
+  font-weight: var(--fh-weight-medium);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.fh-cal-bandeja__title > svg {
+  flex: none;
+  color: var(--fh-text-secondary);
+}
+
+/* Busca e botão lado a lado no desktop; empilhados em 390px, onde a
+   busca precisa da largura toda. */
+.fh-cal-bandeja__pick {
+  display: flex;
+  flex-direction: column;
+  gap: var(--fh-space-2);
+}
+
+.fh-cal-bandeja__pick > :first-child {
+  flex: 1;
+  min-width: 0;
+}
+
+.fh-cal-bandeja__msg {
+  padding: var(--fh-space-4);
+  font-size: var(--fh-text-micro);
+  color: var(--fh-text-secondary);
+}
+
+/* Vincular pelo drawer: mesma busca, empilhada. */
+.fh-cal-linker {
+  display: flex;
+  flex-direction: column;
+  gap: var(--fh-space-2);
+  min-width: 0;
+}
+
+.fh-cal-meta {
+  display: flex;
+  flex-direction: column;
+  gap: var(--fh-space-3);
+  padding: var(--fh-space-3);
+  border: var(--fh-border);
+  border-radius: var(--fh-radius-sm);
+  background: var(--fh-surface-sunken);
+}
+
+/* Ação secundária dentro de uma linha de texto (Desvincular). */
+.fh-cal-textbtn {
+  display: block;
+  margin-top: var(--fh-space-1);
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--fh-action-tertiary-text);
+  font-family: var(--fh-font-body);
+  font-size: var(--fh-text-micro);
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.fh-cal-textbtn:hover:not(:disabled) {
+  color: var(--fh-action-tertiary-text-hover);
+}
+
+.fh-cal-textbtn:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+@media (min-width: 768px) {
+  .fh-cal-bandeja__pick {
+    flex-direction: row;
+    align-items: flex-start;
+  }
+}
+
+/* ------------------------------------------------------------
+   Bloco 6 — faixa de aviso do filtro de tag
+
+   Warning, não info: o filtro estrito ESCONDE eventos (todo evento
+   sem cliente vinculado some), e essa é a única situação da tela em
+   que o que não aparece importa mais que o que aparece.
+   ------------------------------------------------------------ */
+
+.fh-cal-tagwarn {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--fh-space-2);
+  margin: 0;
+  padding: var(--fh-space-2) var(--fh-space-3);
+  border: 1px solid var(--fh-warning);
+  border-radius: var(--fh-radius-sm);
+  background: var(--fh-warning-surface);
+  color: var(--fh-warning-text);
+  font-size: var(--fh-text-micro);
+}
+
+.fh-cal-tagwarn > span {
+  flex: 1;
+  min-width: 0;
+}
+
+.fh-cal-tagwarn .fh-cal-textbtn {
+  margin-top: 0;
+  color: var(--fh-warning-text);
+}

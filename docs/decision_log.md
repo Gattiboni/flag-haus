@@ -1748,4 +1748,90 @@ enxuta é a regra desde a Emenda D).
 
 ---
 
+## Decision #036 — 2026-08-23
+
+### Calendário: espelho local + write-through; Google é a fonte da verdade
+
+**Data:** 2026-08-23 · **Owner:** Gattiboni
+
+**Contexto.** O estúdio opera a agenda no Google Calendar (Julio e Lethicia, sem
+distribuir acesso ao admin). O CRM precisava enxergar e operar essa agenda sem
+criar uma segunda fonte da verdade.
+
+**Decisão.** (1) **Espelho local** (`calendar_sources`/`calendar_events`)
+sincronizado incrementalmente; o front lê UMA RPC (`calendar_events_between`) e
+nunca consulta o Google. (2) **Write-through**: criar/editar no admin escreve NO
+Google primeiro; falhou lá, nada persiste local. (3) **Google vence no sync** —
+sem merge, sem conflito. (4) **Cadeado por CAMPO, não por evento**: campos do
+Google são intocáveis fora do write-through; metadados do CRM (pessoa, artista,
+categoria, tipo) são editáveis em qualquer evento e nunca escrevem no Google.
+(5) **Matcher conservador**: telefone único com match único vincula; qualquer
+ambiguidade vai pra bandeja — vínculo manual > automático, sempre. (6)
+Cancelamento vira `status='cancelled'`, preservando histórico. O grão fino (8
+decisões embutidas, propriedade campo a campo) vive no contrato
+`docs/contrato_dados_calendario_tags_flag_haus.md` §6 e §13 — fonte normativa.
+
+**Alternativas descartadas.** Fetch direto ao Google no load (acopla UX à API,
+mata atribuição e bandeja); agenda local com sync bidirecional (conflito
+distribuído pra resolver com 2 usuários — cerimônia sem cliente); cadeado total
+em evento nativo (mataria a bandeja e a correção de guest).
+
+---
+
+## Decision #037 — 2026-08-23
+
+### Tags nível contato: catálogo + array de slugs + indireção, sem junção
+
+**Data:** 2026-08-23 · **Owner:** Gattiboni
+
+**Contexto.** O Julio precisa organizar contatos visualmente e filtrar a agenda
+por rótulos próprios. Modelo maduro já validado em outro projeto do Alan, com
+doc de mecânica trazido como normativo (`docs/` — CRUD, cascateamento, TRAPs).
+
+**Decisão.** (1) Catálogo `tags` com **slug UNIQUE imutável como identidade**;
+contato guarda SÓ slugs em `people.tags text[]` (GIN); toda tela resolve
+slug→(nome,cor) no render — a indireção É o mecanismo de dispersão
+(rename/recolor sem tocar contato). (2) **Sem tabela de junção, sem FK**: órfã é
+estado legítimo de UI (badge cinza, removível, recusada em escrita nova), não
+constraint. (3) **Duas famílias de escrita**: aplicação (array do contato) ×
+catálogo (gestão) — `submit_cadastro`, sync e imports NUNCA tocam `people.tags`.
+(4) Desativar bloqueia entrada, preserva estoque, destrava saída — save de
+contato jamais trava por tag inativa. (5) **Paleta própria de 8 hexes** com
+contraste ≥4,5:1 provado em teste determinístico; tag pinta badge, NUNCA card de
+evento (dois sistemas de cor, dois papéis). (6) Filtro de tag no calendário é
+ESTRITO com faixa de aviso — filtro nunca silencioso.
+
+**Alternativas descartadas.** Junção normalizada (cerimônia sem ganho no volume;
+migrar depois é mecânico se precisar); FK/cascade na exclusão (perda silenciosa
+de rótulo em massa); cores livres por tag (ilegibilidade e WCAG na loteria);
+filtro frouxo mostrando eventos sem contato (mentira visual).
+
+---
+
+## Decision #038 — 2026-08-23
+
+### SQL não versiona: o de-para no contrato é o artefato auditável
+
+**Data:** 2026-08-23 · **Owner:** Gattiboni
+
+**Contexto.** A pendência "supabase/migrations/ não versionado" se arrastava no
+changelog desde a Emenda D. Revisar DDL bruto linha a linha é inviável e não
+agrega; SQL committado nasce devendo (nunca reflete o que foi de fato aplicado
+com o passar das migrations).
+
+**Decisão.** O repositório NÃO versiona arquivos de migration. O fluxo canônico:
+(1) contrato de dados em `docs/` com **de-para em tabelas** (estrutura → coluna
+→ tipo → default/check → regra e motivo) aprovado pelo Alan; (2) **dry run**
+resumido batido contra o de-para, ok em uma linha; (3) aplicação via MCP pelo
+Claudinho; (4) verificação pós-migration (advisor, grants, prova funcional com
+dado real); (5) `npm run moas` regenera `docs/db/schema.sql` — o snapshot do
+estado REAL é o que o repo versiona. Auditabilidade = contrato aprovado +
+snapshot real + decisionlog, não SQL morto. A pendência crônica morre
+reclassificada: era decisão, não dívida.
+
+**Alternativas descartadas.** Versionar migrations (artefato que envelhece mal e
+ninguém revisa de verdade); aprovar DDL bruto (teatro de revisão).
+
+---
+
 _(Novas entradas devem seguir este mesmo formato.)_

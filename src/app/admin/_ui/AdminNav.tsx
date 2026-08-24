@@ -2,14 +2,17 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { ListChecks, Users } from 'lucide-react'
+import { CalendarDays, ListChecks, Users } from 'lucide-react'
 import { CADASTROS_PATH } from './cadastros'
+import { CALENDARIO_PATH } from './calendario'
 import './admin-nav.css'
 
 /**
- * Navegação do admin (Bloco 4 §3A). Dois destinos reais e mais nada — sem
- * "Painel", sem placeholder, sem item desabilitado: um item que não leva a
- * lugar nenhum ensina o Julio a desconfiar do menu.
+ * Navegação do admin (Bloco 4 §3A). Só destino real — sem "Painel", sem
+ * placeholder, sem item desabilitado: um item que não leva a lugar nenhum
+ * ensina o Julio a desconfiar do menu.
+ *
+ * Fase 4 acrescenta o Calendário, o terceiro destino.
  *
  * Client Component só por causa do `usePathname` (marcar o item ativo). O gate
  * continua onde sempre esteve: no layout server, via `requireOperator`.
@@ -37,6 +40,12 @@ const ITEMS: readonly NavItem[] = [
     label: 'Cadastros',
     icon: Users,
     match: (p) => p.startsWith(CADASTROS_PATH),
+  },
+  {
+    href: CALENDARIO_PATH,
+    label: 'Calendário',
+    icon: CalendarDays,
+    match: (p) => p.startsWith(CALENDARIO_PATH),
   },
 ]
 

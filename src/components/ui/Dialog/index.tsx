@@ -23,6 +23,16 @@ export type DialogProps = {
    * Diferente de `loading`, que diz "já está acontecendo".
    */
   confirmDisabled?: boolean
+  /**
+   * Esconde o botão de confirmar — o modal vira PAINEL: o trabalho acontece no
+   * corpo (cada linha se salva sozinha) e a única ação de rodapé é fechar.
+   *
+   * Modificador acrescentado na Fase 4 pelo "Gerenciar tags", onde não existe
+   * um "confirmar" que faça sentido: renomear, recolorir, desativar e excluir
+   * são cinco decisões independentes, e um botão único no rodapé sugeriria que
+   * elas só valem no fim. Aditivo — sem ele, o Dialog se comporta como sempre.
+   */
+  hideConfirm?: boolean
   /** Corpo custom entre a descrição e as ações. */
   children?: ReactNode
 }
@@ -42,6 +52,7 @@ export function Dialog({
   onConfirm,
   loading = false,
   confirmDisabled = false,
+  hideConfirm = false,
   children,
 }: DialogProps) {
   const titleId = useId()
@@ -119,15 +130,17 @@ export function Dialog({
           <Button variant="secondary" onClick={onClose} disabled={loading}>
             {cancelLabel}
           </Button>
-          <Button
-            ref={confirmRef}
-            variant={variant === 'danger' ? 'danger' : 'primary'}
-            onClick={onConfirm}
-            loading={loading}
-            disabled={confirmDisabled}
-          >
-            {confirmLabel}
-          </Button>
+          {!hideConfirm && (
+            <Button
+              ref={confirmRef}
+              variant={variant === 'danger' ? 'danger' : 'primary'}
+              onClick={onConfirm}
+              loading={loading}
+              disabled={confirmDisabled}
+            >
+              {confirmLabel}
+            </Button>
+          )}
         </div>
       </div>
     </div>,

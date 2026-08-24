@@ -52,12 +52,14 @@ Espelho de eventos das fontes externas + eventos criados pelo CRM (write-through
 | 16 | match_source | text | sim |  | phone (matcher automático) \| manual (bandeja/drawer). Auditoria do vínculo. |
 | 17 | created_at | timestamp with time zone | não | now() |  |
 | 18 | updated_at | timestamp with time zone | não | now() |  |
+| 19 | service_type | text | sim |  | tattoo\|piercing, NULL pra evento sem cara de sessão. Mesmo vocabulário de jobs.service_type. Parser no sync recomputa SÓ se meta_source.service_type_manual=false; form do CRM e drawer gravam com flag manual. |
 
 **Constraints**
 
 - `calendar_events_category_check` — CHECK ((category = ANY (ARRAY['sessao'::text, 'outros'::text])))
 - `calendar_events_match_source_check` — CHECK ((match_source = ANY (ARRAY['phone'::text, 'manual'::text])))
 - `calendar_events_origin_check` — CHECK ((origin = ANY (ARRAY['google'::text, 'crm'::text])))
+- `calendar_events_service_type_check` — CHECK ((service_type = ANY (ARRAY['tattoo'::text, 'piercing'::text])))
 - `calendar_events_status_check` — CHECK ((status = ANY (ARRAY['confirmed'::text, 'cancelled'::text])))
 - `calendar_events_person_id_fkey` — FOREIGN KEY (person_id) REFERENCES people(id)
 - `calendar_events_source_id_fkey` — FOREIGN KEY (source_id) REFERENCES calendar_sources(id)
@@ -1306,7 +1308,7 @@ SELECT p.id AS person_id,
 
 ```sql
 CREATE OR REPLACE FUNCTION public.calendar_events_between(p_start timestamp with time zone, p_end timestamp with time zone)
- RETURNS TABLE(event_id uuid, kind text, title text, starts_at timestamp with time zone, ends_at timestamp with time zone, all_day boolean, category text, origin text, editable boolean, artist text, person_id uuid, person_name text, person_phone text, person_tags text[], meta jsonb)
+ RETURNS TABLE(event_id uuid, kind text, title text, starts_at timestamp with time zone, ends_at timestamp with time zone, all_day boolean, category text, origin text, editable boolean, artist text, service_type text, person_id uuid, person_name text, person_phone text, person_tags text[], meta jsonb)
  LANGUAGE sql
  STABLE
 AS $function$
@@ -1321,6 +1323,7 @@ AS $function$
     e.origin,
     (e.origin = 'crm') as editable,
     e.artist,
+    e.service_type,
     e.person_id,
     p.name as person_name,
     p.phone as person_phone,
@@ -1351,6 +1354,7 @@ AS $function$
     'birthday'::text as origin,
     false as editable,
     null::text as artist,
+    null::text as service_type,
     p.id as person_id,
     p.name as person_name,
     p.phone as person_phone,
@@ -1812,3 +1816,4 @@ _Referência — a fonte da verdade do DDL é `schema.sql`._
 | 20260818040603 | add_service_type_and_artist_to_jobs |
 | 20260819034439 | add_tags_foundation |
 | 20260819034656 | add_calendar_mirror |
+| 20260823232828 | add_service_type_to_calendar_events |
